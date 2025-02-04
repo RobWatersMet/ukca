@@ -1,86 +1,52 @@
-! *****************************COPYRIGHT*******************************
-!
-! (c) [University of Cambridge] [2008]. All rights reserved.
-! This routine has been licensed to the Met Office for use and
-! distribution under the UKCA collaboration agreement, subject
-! to the terms and conditions set out therein.
-! [Met Office Ref SC138]
-!
-! *****************************COPYRIGHT*******************************
-!
-! Purpose: Routine to read in dry deposition velocities at 1 metre.
-!          Original version taken from the Cambridge TOMCAT model.
-!
-!  Part of the UKCA model, a community model supported by the
-!  Met Office and NCAS, with components provided initially
-!  by The University of Cambridge, University of Leeds and
-!  The Met. Office.  See www.ukca.ac.uk
-!
-!          Called from ASAD routine ASAD_CINIT.
-!
-! Code Owner: Please refer to the UM file CodeOwners.txt
-! This file belongs in section: UKCA
-!
-! Code description:
-!   Language: FORTRAN 90
-!   This code is written to UMDP3 v6 programming standards.
-!
-! ---------------------------------------------------------------------
-!
-MODULE ukca_inddep_mod
+module ukca_inddep_mod
+  implicit none
+  character(len = *), parameter, private :: ModuleName = 'UKCA_INDDEP_MOD'
+  public
 
-IMPLICIT NONE
+  contains
+  subroutine ukca_inddep()
+    use asad_mod, only : depvel, jddepc, jddept, jpdd
+    use ukca_chem_defs_mod, only : depvel_defs
+    use parkind1, only : jpim, jprb
+    use yomhook, only : dr_hook, lhook
+    use nvtx
+    use ereport_mod, only : ereport
+    use errormessagelength_mod, only : errormessagelength
+    integer(kind=jpim), parameter :: zhook_in = 0
+    integer(kind=jpim), parameter :: zhook_out = 1
+    integer :: errcode
+    integer :: ns
+    integer :: nt
+    integer :: nc
+    CHARACTER(LEN = errormessagelength) :: cmessage
+    real(kind=jprb) :: zhook_handle
+    CHARACTER(LEN = *), PARAMETER :: RoutineName = 'UKCA_INDDEP'
 
-CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName = 'UKCA_INDDEP_MOD'
+    if (lhook) then
+      call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
+    end if
+    call nvtxStartRange(ModuleName // ':' // RoutineName)
+    if (SIZE(depvel_defs) /= SIZE(depvel)) then
+      cmessage(:) = 'sizes of depvel_defs and depvel are inconsistent'
+      errcode = 1
+      call ereport('UKCA_INDDEP', errcode, cmessage)
+    end if
+    !$acc kernels
+    !$acc loop gang vector independent collapse(3)
+    do ns = 1, jpdd, 1
+      do nc = 1, jddepc, 1
+        do nt = 1, jddept, 1
+          depvel(nt,nc,ns) = depvel_defs(nt,nc,ns)
+        enddo
+      enddo
+    enddo
+    !$acc end kernels
+    if (lhook) then
+      call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
+    end if
+    call nvtxEndRange()
+    return
 
-CONTAINS
+  end subroutine ukca_inddep
 
-SUBROUTINE ukca_inddep
-
-USE asad_mod,           ONLY: depvel, jddepc, jddept, jpdd
-USE ukca_chem_defs_mod, ONLY: depvel_defs
-USE parkind1, ONLY: jprb, jpim
-USE yomhook, ONLY: lhook, dr_hook
-USE ereport_mod, ONLY: ereport
-
-
-USE errormessagelength_mod, ONLY: errormessagelength
-
-IMPLICIT NONE
-
-INTEGER :: errcode                ! Variable passed to ereport
-INTEGER :: ns                   ! Loop variable
-INTEGER :: nt                   ! Loop variable
-INTEGER :: nc                   ! Loop variable
-
-CHARACTER(LEN=errormessagelength)  :: cmessage  ! String for error message
-
-INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
-INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
-REAL(KIND=jprb)               :: zhook_handle
-
-CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_INDDEP'
-
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-
-!       Reading dry deposition velocities from module
-!       Dataset is for 6 time points and 5 land categories.
-
-IF (SIZE(depvel_defs) /= SIZE(depvel)) THEN
-  cmessage='sizes of depvel_defs and depvel are inconsistent'
-  errcode=1
-  CALL ereport('UKCA_INDDEP',errcode,cmessage)
-END IF
-
-DO ns=1,jpdd
-  DO nc=1,jddepc
-    DO nt=1,jddept
-      depvel(nt,nc,ns)=depvel_defs(nt,nc,ns)
-    END DO
-  END DO
-END DO
-
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
-RETURN
-END SUBROUTINE ukca_inddep
-END MODULE ukca_inddep_mod
+end module ukca_inddep_mod

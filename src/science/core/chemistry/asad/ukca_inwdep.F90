@@ -1,102 +1,68 @@
-! *****************************COPYRIGHT*******************************
-!
-! (c) [University of Cambridge] [2008]. All rights reserved.
-! This routine has been licensed to the Met Office for use and
-! distribution under the UKCA collaboration agreement, subject
-! to the terms and conditions set out therein.
-! [Met Office Ref SC138]
-!
-! *****************************COPYRIGHT*******************************
-!
-! Purpose: Subroutine to read in coefficients for calculating
-!          effective Henry's Law coefficients. Original version
-!          taken from the Cambridge TOMCAT model.
-!
-!  Part of the UKCA model, a community model supported by the
-!  Met Office and NCAS, with components provided initially
-!  by The University of Cambridge, University of Leeds and
-!  The Met. Office.  See www.ukca.ac.uk
-!
-!          Called from ASAD routine ASAD_cinit.
-!
-! Code Owner: Please refer to the UM file CodeOwners.txt
-! This file belongs in section: UKCA
-!
-!
-! Code description:
-!   Language: FORTRAN 90
-!   This code is written to UMDP3 v6 programming standards.
-!
-! ---------------------------------------------------------------------
-!
-MODULE ukca_inwdep_mod
+module ukca_inwdep_mod
+  implicit none
+  character(len = *), parameter, private :: ModuleName = 'UKCA_INWDEP_MOD'
+  public
 
-IMPLICIT NONE
+  contains
+  subroutine ukca_inwdep()
+    use asad_mod, only : ct_ddhr, ct_dhr, ct_k298, ct_kd298, ddhr, dhr, jpdw, k298, kd298
+    use ukca_chem_defs_mod, only : henry_defs
+    use ukca_chem_offline, only : henry_defs_const, nwet_constant
+    use ukca_config_specification_mod, only : ukca_config
+    use parkind1, only : jpim, jprb
+    use yomhook, only : dr_hook, lhook
+    use nvtx
+    use ereport_mod, only : ereport
+    use errormessagelength_mod, only : errormessagelength
+    integer(kind=jpim), parameter :: zhook_in = 0
+    integer(kind=jpim), parameter :: zhook_out = 1
+    integer :: errcode
+    integer :: ns
+    CHARACTER(LEN = errormessagelength) :: cmessage
+    real(kind=jprb) :: zhook_handle
+    CHARACTER(LEN = *), PARAMETER :: RoutineName = 'UKCA_INWDEP'
 
-CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName = 'UKCA_INWDEP_MOD'
+    if (lhook) then
+      call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
+    end if
+    call nvtxStartRange(ModuleName // ':' // RoutineName)
+    if (SIZE(henry_defs) /= jpdw * 6) then
+      cmessage(:) = 'jpdw and henry_defs are inconsistent'
+      errcode = 1
+      call ereport('UKCA_INWDEP', errcode, cmessage)
+    end if
+    !$acc kernels
+    !$acc loop gang vector independent
+    do ns = 1, jpdw, 1
+      k298(ns) = henry_defs(1,ns)
+      dhr(ns) = henry_defs(2,ns)
+      kd298(ns,1) = henry_defs(3,ns)
+      ddhr(ns,1) = henry_defs(4,ns)
+      kd298(ns,2) = henry_defs(5,ns)
+      ddhr(ns,2) = henry_defs(6,ns)
+    enddo
+    !$acc end kernels
+    if (ukca_config%l_ukca_offline .OR. ukca_config%l_ukca_offline_be) then
+      if (nwet_constant > 0) then
+        !$acc kernels
+        !$acc loop gang vector independent
+        do ns = 1, nwet_constant, 1
+          ct_k298(ns) = henry_defs_const(1,ns)
+          ct_dhr(ns) = henry_defs_const(2,ns)
+          ct_kd298(ns,1) = henry_defs_const(3,ns)
+          ct_ddhr(ns,1) = henry_defs_const(4,ns)
+          ct_kd298(ns,2) = henry_defs_const(5,ns)
+          ct_ddhr(ns,2) = henry_defs_const(6,ns)
+        enddo
+        !$acc end kernels
+      end if
+    end if
+    if (lhook) then
+      call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
+    end if
+    call nvtxEndRange()
+    return
 
-CONTAINS
+  end subroutine ukca_inwdep
 
-SUBROUTINE ukca_inwdep
-
-USE asad_mod,             ONLY: kd298, k298, ddhr, dhr,                        &
-                                ct_k298, ct_kd298, ct_ddhr,                    &
-                                ct_dhr, jpdw
-USE ukca_chem_defs_mod,   ONLY: henry_defs
-USE ukca_chem_offline,    ONLY: henry_defs_const, nwet_constant
-USE ukca_config_specification_mod, ONLY: ukca_config
-USE parkind1, ONLY: jprb, jpim
-USE yomhook, ONLY: lhook, dr_hook
-USE ereport_mod, ONLY: ereport
-USE errormessagelength_mod, ONLY: errormessagelength
-
-IMPLICIT NONE
-
-INTEGER :: errcode                ! Variable passed to ereport
-INTEGER            :: ns       ! Loop variable
-
-CHARACTER (LEN=errormessagelength) :: cmessage ! String for error message
-
-INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
-INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
-REAL(KIND=jprb)               :: zhook_handle
-
-CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_INWDEP'
-
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-
-!       Use module to define Henry constants
-
-IF (SIZE(henry_defs) /= jpdw*6) THEN
-  cmessage='jpdw and henry_defs are inconsistent'
-  errcode=1
-  CALL ereport('UKCA_INWDEP',errcode,cmessage)
-END IF
-
-DO ns=1,jpdw
-  k298(ns)    = henry_defs(1,ns)
-  dhr(ns)     = henry_defs(2,ns)
-  kd298(ns,1) = henry_defs(3,ns)
-  ddhr(ns,1)  = henry_defs(4,ns)
-  kd298(ns,2) = henry_defs(5,ns)
-  ddhr(ns,2)  = henry_defs(6,ns)
-END DO
-
-! Dissociation of offline ozone
-IF (ukca_config%l_ukca_offline .OR. ukca_config%l_ukca_offline_be) THEN
-  IF (nwet_constant > 0) THEN
-    DO ns=1,nwet_constant
-      ct_k298(ns)    = henry_defs_const(1,ns)
-      ct_dhr(ns)     = henry_defs_const(2,ns)
-      ct_kd298(ns,1) = henry_defs_const(3,ns)
-      ct_ddhr(ns,1)  = henry_defs_const(4,ns)
-      ct_kd298(ns,2) = henry_defs_const(5,ns)
-      ct_ddhr(ns,2)  = henry_defs_const(6,ns)
-    END DO
-  END IF
-END IF
-
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
-RETURN
-END SUBROUTINE ukca_inwdep
-END MODULE ukca_inwdep_mod
+end module ukca_inwdep_mod

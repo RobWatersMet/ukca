@@ -1,240 +1,185 @@
-! *****************************COPYRIGHT*******************************
-!
-! (c) [University of Cambridge] [2008]. All rights reserved.
-! This routine has been licensed to the Met Office for use and
-! distribution under the UKCA collaboration agreement, subject
-! to the terms and conditions set out therein.
-! [Met Office Ref SC138]
-!
-! *****************************COPYRIGHT*******************************
-!
-! Purpose: Calculates trimolecular rate coefficients
-!
-!  Part of the UKCA model, a community model supported by
-!  The Met Office and NCAS, with components provided initially
-!  by The University of Cambridge, University of Leeds and
-!  The Met. Office.  See www.ukca.ac.uk
-!
-!          Called from ASAD_CDRIVE
-!
-! Code Owner: Please refer to the UM file CodeOwners.txt
-! This file belongs in section: UKCA
-!
-!     Method
-!     ------
-!     See the IUPAC reference material on their website for details on
-!     calculation of termolecular rates.
-!     http://www.iupac-kinetic.ch.cam.ac.uk/
-!
-!     Local variables
-!     ---------------
-!     zo         Low pressure limit to rate*density
-!     zi         High pressure limit to rate
-!     zr         Ratio of zo/zi
-!     iho2       Reaction index for HO2+HO2+M
-!     ih2o       Array index for advected tracer H2O
-!     in2o5      Reaction index for N2O5+M
-!     ino2no3    Reaction index for NO2+NO3+M
-!
-! Code description:
-!   Language: FORTRAN 90
-!   This code is written to UMDP3 v6 programming standards.
-!
-! ---------------------------------------------------------------------
-!
-MODULE asad_trimol_mod
+module asad_trimol_mod
+  implicit none
+  character(len = *), parameter, private :: ModuleName = 'ASAD_TRIMOL_MOD'
+  public
 
-IMPLICIT NONE
+  contains
+  subroutine asad_trimol(n_points)
+    use asad_mod, only : at, f, jpcspf, jptk, ntrkx, peps, rk, specf, spt, t, t300, tnd, wp
+    use parkind1, only : jpim, jprb
+    use yomhook, only : dr_hook, lhook
+    use nvtx
+    use ukca_um_legacy_mod, only : exp_v, oneover_v, powr_v
+    integer(kind=jpim), parameter :: zhook_in = 0
+    integer(kind=jpim), parameter :: zhook_out = 1
+    integer, intent(in) :: n_points
+    integer, save :: ih2o
+    integer :: iho2
+    integer :: in2o5
+    integer :: ino2no3
+    integer :: idmsoho2_a
+    integer :: idmsoho2_b
+    integer :: j
+    integer :: jl
+    integer :: jtr
+    integer :: jr
+    real :: zo
+    real :: zi
+    real :: zfc
+    real :: zr
+    real, allocatable, dimension(:), save :: nf
+    real :: nf2
+    logical, save :: first = .true.
+    logical, save :: first_pass = .true.
+    real(kind=jprb) :: zhook_handle
+    CHARACTER(LEN = *), PARAMETER :: RoutineName = 'ASAD_TRIMOL'
+    real, dimension(n_points) :: tmp
+    real, dimension(n_points) :: tmp_out
+    real, dimension(n_points) :: inv_t_power4
+    real, dimension(n_points) :: inv_t_power7
+    real, dimension(n_points) :: inv_t_power4_out
+    real, dimension(n_points) :: inv_t_power7_out
+    real, dimension(n_points) :: t_power3
+    real, dimension(n_points) :: t_power6
+    real, dimension(n_points) :: inv_t
+    integer :: idx
+    integer :: idx_1
+    integer :: idx_2
 
-CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName = 'ASAD_TRIMOL_MOD'
+    if (lhook) then
+      call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
+    end if
+    call nvtxStartRange(ModuleName // ':' // RoutineName)
+    iho2 = 0
+    in2o5 = 0
+    ino2no3 = 0
+    idmsoho2_a = 0
+    idmsoho2_b = 0
+    call oneover_v(n_points, t, inv_t)
+    if (first_pass) then
+      if (first) then
+        ALLOCATE(nf(1:jptk))
+        !$acc kernels
+        !$acc loop gang vector independent
+        do idx = LBOUND(nf, dim=1), UBOUND(nf, dim=1), 1
+          nf(idx) = 1.0
+        enddo
+        !$acc end kernels
+        ! PSyclone CodeBlock (unsupported code) reason:
+        !  - PSyclone doesn't yet support reference to imported symbols inside WHERE clauses.
+        WHERE (at(:, 1) > 1E-3) nf(:) = 0.75 - 1.27 * LOG10(at(:, 1))
+        !$acc kernels
+        ih2o = 0
+        !$acc loop seq
+        do jtr = 1, jpcspf, 1
+          if (specf(jtr) == 'H2O       ') then
+            ih2o = jtr
+          end if
+        enddo
+        first = .false.
+        !$acc end kernels
+      end if
+      first_pass = .false.
+    end if
+    do j = 1, jptk, 1
+      jr = ntrkx(j)
+      if (spt(j,1) == 'HO2    ' .AND. spt(j,2) == 'HO2    ') then
+        iho2 = jr
+      end if
+      in2o5 = 0
+      if (spt(j,1) == 'N2O5      ') then
+        in2o5 = jr
+      end if
+      ino2no3 = 0
+      if (spt(j,1) == 'NO2       ' .AND. spt(j,2) == 'NO3       ' .OR. spt(j,2) == 'NO2       ' .AND. spt(j,1) == 'NO3       ') then
+        ino2no3 = jr
+      end if
+      idmsoho2_a = 0
+      if (spt(j,1) == 'DMS       ' .AND. spt(j,2) == 'OH        ' .AND. spt(j,3) == 'DMSO      ' .AND. spt(j,4) == 'HO2       ') then
+        idmsoho2_a = jr
+      end if
+      idmsoho2_b = 0
+      if (spt(j,1) == 'DMS       ' .AND. spt(j,2) == 'OH        ' .AND. spt(j,3) == 'SO2       ' .AND. spt(j,4) == 'MeOO      ') then
+        idmsoho2_b = jr
+      end if
+      call powr_v(n_points, t300, at(j,3), t_power3)
+      call powr_v(n_points, t300, at(j,6), t_power6)
+      inv_t_power4(:) = -at(j,4) * inv_t(:)
+      inv_t_power7(:) = -at(j,7) * inv_t(:)
+      call exp_v(n_points, inv_t_power4, inv_t_power4_out)
+      call exp_v(n_points, inv_t_power7, inv_t_power7_out)
+      !$acc kernels
+      !$acc loop gang vector independent
+      do jl = 1, n_points, 1
+        zo = at(j,2) * t_power3(jl) * inv_t_power4_out(jl) * tnd(jl)
+        zi = at(j,5) * t_power6(jl) * inv_t_power7_out(jl)
+        if (zo < peps) then
+          rk(jl,jr) = zi
+        else
+          if (zi < peps) then
+            rk(jl,jr) = zo
+          else
+            if (idmsoho2_a /= 0 .OR. idmsoho2_b /= 0) then
+              zo = zo * 0.2095
+              zi = zi * 0.2095 * tnd(jl)
+              rk(jl,jr) = zo / (1 + zi)
+            else
+              nf2 = nf(j)
+              if (at(j,1) <= 1.0) then
+                zfc = at(j,1)
+              else
+                if (in2o5 /= 0 .OR. ino2no3 /= 0) then
+                  zfc = 2.5 * EXP(-1950.0 / t(jl)) + 0.9 * EXP(-t(jl) / at(j,1))
+                else
+                  zfc = EXP(-t(jl) / at(j,1))
+                  nf2 = 0.75 - 1.27 * LOG10(zfc)
+                end if
+              end if
+              zr = zo / zi
+              rk(jl,jr) = zo / (1.0 + zr) * zfc ** (1.0 / (1.0 + (LOG10(zr) / nf2) ** 2))
+            end if
+          end if
+        end if
+      enddo
+      !$acc end kernels
+    enddo
+    if (ih2o /= 0 .AND. iho2 /= 0) then
+      !$acc kernels
+      !$acc loop gang vector independent
+      do idx_1 = 1, n_points, 1
+        tmp(idx_1) = 2200.0 * inv_t(idx_1)
+      enddo
+      !$acc end kernels
+      call exp_v(n_points, tmp, tmp_out)
+      !$acc kernels
+      !$acc loop gang vector independent
+      do jl = 1, n_points, 1
+        rk(jl,iho2) = rk(jl,iho2) * (1.0 + 1.4e-21 * f(jl,ih2o) * tmp_out(jl))
+      enddo
+      !$acc end kernels
+    else
+      if (ih2o == 0 .AND. iho2 /= 0) then
+        !$acc kernels
+        !$acc loop gang vector independent
+        do idx_2 = 1, n_points, 1
+          tmp(idx_2) = 2200.0 * inv_t(idx_2)
+        enddo
+        !$acc end kernels
+        call exp_v(n_points, tmp, tmp_out)
+        !$acc kernels
+        !$acc loop gang vector independent
+        do jl = 1, n_points, 1
+          rk(jl,iho2) = rk(jl,iho2) * (1.0 + 1.4e-21 * wp(jl) * tnd(jl) * tmp_out(jl))
+        enddo
+        !$acc end kernels
+      end if
+    end if
+    if (lhook) then
+      call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
+    end if
+    call nvtxEndRange()
+    return
 
-CONTAINS
+  end subroutine asad_trimol
 
-SUBROUTINE asad_trimol(n_points)
-
-USE asad_mod,        ONLY: rk, at, ntrkx, spt, t300, t, peps,                  &
-                           tnd, f, wp, specf, jpcspf, jptk
-USE parkind1, ONLY: jprb, jpim
-USE yomhook, ONLY: lhook, dr_hook
-USE ukca_um_legacy_mod, ONLY: exp_v, powr_v, oneover_v
-
-IMPLICIT NONE
-
-INTEGER, INTENT(IN) :: n_points
-
-!       Local variables
-
-INTEGER, SAVE :: ih2o              ! Index for h2o in tracer array
-INTEGER       :: iho2              ! Index for ho2+ho2 in rk array
-INTEGER       :: in2o5             ! Reaction index for N2O5+M
-INTEGER       :: ino2no3           ! Reaction index for NO2+NO3+M
-INTEGER       :: idmsoho2_a        ! Reaction index for DMS+OH+O2
-INTEGER       :: idmsoho2_b        ! Reaction index for DMS+OH+O2
-
-INTEGER       :: j                 ! Loop variable
-INTEGER       :: jl                ! Loop variable
-INTEGER       :: jtr               ! Loop variable
-INTEGER       :: jr                ! Index
-
-REAL :: zo                         ! k_0
-REAL :: zi                         ! k_infinity
-REAL :: zfc                        ! F_c
-REAL :: zr                         ! k_0/k_infinity
-REAL, ALLOCATABLE, SAVE :: nf(:)   ! component of broadening factor
-REAL :: nf2                        ! Covers a small change to nf
-
-LOGICAL, SAVE :: first = .TRUE.
-LOGICAL, SAVE :: first_pass = .TRUE.
-
-INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
-INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
-REAL(KIND=jprb)               :: zhook_handle
-
-CHARACTER(LEN=*), PARAMETER :: RoutineName='ASAD_TRIMOL'
-
-REAL :: tmp(1:n_points)
-REAL :: tmp_out(1:n_points)
-REAL :: inv_t_power4(1:n_points)
-REAL :: inv_t_power7(1:n_points)
-REAL :: inv_t_power4_out(1:n_points)
-REAL :: inv_t_power7_out(1:n_points)
-REAL :: t_power3(1:n_points)
-REAL :: t_power6(1:n_points)
-REAL :: inv_t(1:n_points)
-
-
-!       1.  Calculate trimolecular rate coefficients
-!           --------- ------------ ---- ------------
-
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-iho2  = 0
-in2o5   = 0
-ino2no3 = 0
-idmsoho2_a = 0
-idmsoho2_b = 0
-CALL oneover_v(n_points, t, inv_t)
-
-! OMP CRITICAL will only allow one thread through this code at a time,
-! while the other threads are held until completion.
-!$OMP CRITICAL (asad_trimol_init)
-IF (first_pass) THEN
-  IF (first) THEN
-    ! Calculate the N factor to be used in broadening factor
-    ALLOCATE(nf(jptk))
-    nf(:) = 1.0
-    WHERE (at(:,1) > 1e-3) nf(:) = 0.75 - 1.27*LOG10(at(:,1))
-
-    ! Check if H2O is an advected tracer
-    ih2o = 0
-    DO jtr = 1, jpcspf
-      IF ( specf(jtr)  ==  'H2O       ' ) ih2o = jtr
-    END DO
-    first = .FALSE.
-  END IF
-  first_pass = .FALSE.
-END IF
-!$OMP END CRITICAL (asad_trimol_init)
-
-DO j = 1, jptk
-  jr = ntrkx(j)
-
-  IF ( spt(j,1) == 'HO2    ' .AND. spt(j,2) == 'HO2    ' )                     &
-       iho2 = jr
-
-  !         N2O5 + M
-  !         reset to zero each step
-
-  in2o5 = 0
-  IF (spt(j,1) == 'N2O5      ') in2o5 = jr
-
-  !         NO2 + NO3 + M
-  !         reset to zero each step
-
-  ino2no3 = 0
-  IF ((spt(j,1) == 'NO2       ' .AND. spt(j,2) == 'NO3       ')                &
-       .OR. (spt(j,2) == 'NO2       ' .AND.                                    &
-       spt(j,1) == 'NO3       ')) ino2no3 = jr
-
-  ! Catch for DMS + OH + O2 reaction
-  idmsoho2_a = 0
-  IF (spt(j,1) == 'DMS       ' .AND. spt(j,2) == 'OH        '                  &
-      .AND. spt(j,3) == 'DMSO      ' .AND.                                     &
-      spt(j,4) == 'HO2       ')  idmsoho2_a = jr
-
-  ! Other DMS +OH + O2 branch in StratTrop
-  idmsoho2_b = 0
-  IF (spt(j,1) == 'DMS       ' .AND. spt(j,2) == 'OH        '                  &
-      .AND. spt(j,3) == 'SO2       ' .AND.                                     &
-      spt(j,4) == 'MeOO      ')  idmsoho2_b = jr
-
-
-  CALL powr_v(n_points,t300,at(j,3),t_power3)
-  CALL powr_v(n_points,t300,at(j,6),t_power6)
-  inv_t_power4(1:n_points) = -at(j,4)*inv_t(1:n_points)
-  inv_t_power7(1:n_points) = -at(j,7)*inv_t(1:n_points)
-  CALL exp_v(n_points,inv_t_power4,inv_t_power4_out)
-  CALL exp_v(n_points,inv_t_power7,inv_t_power7_out)
-  DO jl = 1, n_points
-    zo = at(j,2) * t_power3(jl) *                                              &
-                   inv_t_power4_out(jl)  * tnd(jl)
-    zi = at(j,5) * t_power6(jl) * inv_t_power7_out(jl)
-    IF ( zo < peps ) THEN
-      rk(jl,jr) = zi
-    ELSE IF ( zi < peps ) THEN
-      rk(jl,jr) = zo
-    ELSE
-
-      ! Special case for DMS+OH+O2 -> DMSO + HO2 / SO2 + MeOO
-      ! k = (9.5e-39 * [O2] * exp(5270/T))/(1+7.5e-29[O2]exp(5610/T))
-      ! IUPAC 1997+
-      ! http://iupac.pole-ether.fr/htdocs/datasheets/pdf/SOx22_HO_CH3SCH3.pdf
-      IF (idmsoho2_a /= 0 .OR. idmsoho2_b /= 0) THEN
-        ! Multiply by 0.21 to give in terms of [O2] instead of [M]
-        zo = zo * 0.2095
-        zi = zi * 0.2095 * tnd(jl)
-        rk(jl,jr) = zo/(1 + zi)
-      ELSE
-        nf2 = nf(j)
-        IF ( at(j,1) <= 1.0 ) THEN
-          zfc = at(j,1)
-        ELSE IF ( in2o5 /= 0 .OR. ino2no3 /= 0 ) THEN ! dependent
-                                                      ! reactions
-          zfc = 2.5*EXP(-1950.0/t(jl))+0.9*EXP(-t(jl)/at(j,1))
-        ELSE              ! temperature dependent Fc
-          zfc = EXP( -t(jl)/at(j,1) )
-          nf2 = 0.75 - 1.27*LOG10(zfc)
-        END IF
-        zr = zo / zi
-        rk(jl,jr) = (zo/(1.0+zr)) *                                            &
-                     zfc**(1.0/(1.0 + (LOG10(zr)/nf2)**2))
-      END IF
-    END IF
-  END DO
-END DO              ! end of loop over jptk
-
-!       2. Dependent reactions.
-!          --------- ----------
-
-! HO2 + HO2 [+ M]
-IF (ih2o /= 0 .AND. iho2 /= 0 ) THEN
-  !         h2o is an advected tracer
-  tmp(1:n_points) = 2200.0*inv_t(1:n_points)
-  CALL exp_v(n_points,tmp,tmp_out)
-  DO jl = 1, n_points
-    rk(jl,iho2) = rk(jl,iho2) *                                                &
-    ( 1.0 + 1.4e-21*f(jl,ih2o)*tmp_out(jl) )
-  END DO
-ELSE IF (ih2o == 0 .AND. iho2 /= 0) THEN
-  !         use modelled water concentration
-  tmp(1:n_points) = 2200.0*inv_t(1:n_points)
-  CALL exp_v(n_points,tmp,tmp_out)
-  DO jl = 1, n_points
-    rk(jl,iho2) = rk(jl,iho2) *                                                &
-    ( 1.0 + 1.4e-21*wp(jl)*tnd(jl)*tmp_out(jl) )
-  END DO
-END IF
-
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
-RETURN
-END SUBROUTINE asad_trimol
-END MODULE asad_trimol_mod
+end module asad_trimol_mod
