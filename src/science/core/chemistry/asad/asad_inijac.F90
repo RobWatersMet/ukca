@@ -90,19 +90,16 @@ module asad_inijac_mod
     enddo
     !$acc end kernels
     do jr = 1, jpnr, 1
-      !$acc kernels
       ir1 = nspi(jr,1)
       ir2 = nspi(jr,2)
       ip1 = nspi(jr,3)
       ip2 = nspi(jr,4)
       ip3 = nspi(jr,5)
-      !$acc loop gang vector independent
       do j = 1, jpmsp, 1
         ifam(j) = 0
         itype(j) = '  '
         itr(j) = 0
       enddo
-      !$acc end kernels
       if (ir1 /= 0) then
         ifam(1) = moffam(ir1)
         itype(1) = ctype(ir1)
