@@ -1,132 +1,162 @@
-! *****************************COPYRIGHT*******************************
-!
-! (c) [University of Leeds] [2008]. All rights reserved.
-! This routine has been licensed to the Met Office for use and
-! distribution under the UKCA collaboration agreement, subject
-! to the terms and conditions set out therein.
-! [Met Office Ref SC138]
-!
-! *****************************COPYRIGHT*******************************
-!
-!  Description:
-!    This subroutine sediments solid NAT particles (treated as solid HNO3).
-!    The fall velocity is relatively slow for NAT and much faster for NAT/ice,
-!    i.e., at lower temperatures. Method and parameters are from SLIMCAT.
-!
-!  UKCA is a community model supported by The Met Office and
-!  NCAS, with components initially provided by The University of
-!  Cambridge, University of Leeds and The Met Office. See
-!  www.ukca.ac.uk
-!
-! Code Owner: Please refer to the UM file CodeOwners.txt
-! This file belongs in section: UKCA
-!
-!  Code Description:
-!    Language:  FORTRAN 90
-!
-! ######################################################################
-!
-MODULE ukca_sediment_mod
+module ukca_sediment_mod
+  implicit none
+  character(len = *), parameter, private :: ModuleName = 'UKCA_SEDIMENT_MOD'
+  public
 
-IMPLICIT NONE
+  contains
+  subroutine ukca_sediment(rows, row_length, model_levels, shno3, qcf, r_theta_levels, mass, secs_per_step, l_stratosphere)
+    use yomhook, only : dr_hook, lhook
+    use parkind1, only : jpim, jprb
+    real, parameter :: fv1 = 0.000463
+    real, parameter :: fv2 = 0.01736
+    integer(kind=jpim), parameter :: zhook_in = 0
+    integer(kind=jpim), parameter :: zhook_out = 1
+    integer, intent(in) :: rows
+    integer, intent(in) :: row_length
+    integer, intent(in) :: model_levels
+    real, intent(in) :: secs_per_step
+    real, dimension(row_length,rows,0:model_levels), intent(in) :: r_theta_levels
+    real, dimension(row_length,rows,model_levels), intent(in) :: mass
+    real, dimension(row_length,rows,model_levels), intent(in) :: qcf
+    logical, dimension(row_length,rows,model_levels), intent(in) :: l_stratosphere
+    real, dimension(row_length,rows,model_levels), intent(inout) :: shno3
+    integer :: i
+    integer :: j
+    integer :: k
+    real, dimension(row_length,rows) :: thick
+    real, dimension(row_length,rows) :: sed_mmr
+    real, dimension(row_length,rows) :: frac
+    real, dimension(row_length,rows) :: psc1
+    real, dimension(row_length,rows) :: psc2
+    real, dimension(row_length,rows,model_levels) :: sh2o
+    real(kind=jprb) :: zhook_handle
+    CHARACTER(LEN = *), PARAMETER :: RoutineName = 'UKCA_SEDIMENT'
+    integer :: widx3
+    integer :: widx2
+    integer :: widx1
+    integer :: idx
+    integer :: idx_1
+    integer :: idx_2
+    integer :: idx_3
+    integer :: idx_4
+    integer :: idx_5
+    integer :: idx_6
+    integer :: idx_7
+    integer :: idx_8
+    integer :: idx_9
+    integer :: idx_10
+    integer :: idx_11
+    integer :: idx_12
+    integer :: idx_13
+    integer :: widx2_1
+    integer :: widx1_1
+    integer :: widx2_2
+    integer :: widx1_2
+    integer :: widx2_3
+    integer :: widx1_3
 
-CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName = 'UKCA_SEDIMENT_MOD'
+    if (lhook) then
+      call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
+    end if
+    !$acc kernels
+    !$acc loop gang vector independent collapse(3)
+    do k = 1, model_levels, 1
+      do j = 1, rows, 1
+        do i = 1, row_length, 1
+          sh2o(i,j,k) = qcf(i,j,k)
+        enddo
+      enddo
+    enddo
+    !$acc end kernels
+    !$acc kernels
+    !$acc loop gang vector independent collapse(3)
+    do widx3 = 1, model_levels, 1
+      do widx2 = 1, rows, 1
+        do widx1 = 1, row_length, 1
+          if (.NOT.l_stratosphere(widx1,widx2,widx3)) then
+            sh2o(widx1,widx2,widx3) = 0.0
+          end if
+        enddo
+      enddo
+    enddo
+    !$acc end kernels
+    do k = 2, model_levels, 1
+      if (MAXVAL(shno3(:,:,k)) > 0.0) then
+        !$acc kernels
+        !$acc loop gang vector independent collapse(2)
+        do idx = 1, rows, 1
+          do idx_1 = 1, row_length, 1
+            psc1(idx_1,idx) = 0.0
+          enddo
+        enddo
+        !$acc loop gang vector independent collapse(2)
+        do idx_2 = 1, rows, 1
+          do idx_3 = 1, row_length, 1
+            psc2(idx_3,idx_2) = 0.0
+          enddo
+        enddo
+        !$acc loop gang vector independent collapse(2)
+        do widx2_1 = 1, SIZE(shno3, dim=2), 1
+          do widx1_1 = 1, SIZE(shno3, dim=1), 1
+            if (shno3(widx1_1,widx2_1,k) > 0.0) then
+              psc1(widx1_1,widx2_1) = 1.0
+            end if
+          enddo
+        enddo
+        !$acc loop gang vector independent collapse(2)
+        do widx2_2 = 1, SIZE(sh2o, dim=2), 1
+          do widx1_2 = 1, SIZE(sh2o, dim=1), 1
+            if (sh2o(widx1_2,widx2_2,k) > 0.0) then
+              psc2(widx1_2,widx2_2) = 1.0
+            end if
+          enddo
+        enddo
+        !$acc loop gang vector independent collapse(2)
+        do idx_4 = 1, rows, 1
+          do idx_5 = 1, row_length, 1
+            thick(idx_5,idx_4) = r_theta_levels(idx_5,idx_4,k) - r_theta_levels(idx_5,idx_4,k - 1)
+          enddo
+        enddo
+        !$acc loop gang vector independent collapse(2)
+        do idx_6 = 1, rows, 1
+          do idx_7 = 1, row_length, 1
+            frac(idx_7,idx_6) = (psc1(idx_7,idx_6) * fv1 + psc2(idx_7,idx_6) * fv2) * secs_per_step / thick(idx_7,idx_6)
+          enddo
+        enddo
+        !$acc loop gang vector independent collapse(2)
+        do widx2_3 = 1, rows, 1
+          do widx1_3 = 1, row_length, 1
+            if (frac(widx1_3,widx2_3) > 1.0) then
+              frac(widx1_3,widx2_3) = 1.0
+            end if
+          enddo
+        enddo
+        !$acc loop gang vector independent collapse(2)
+        do idx_8 = 1, rows, 1
+          do idx_9 = 1, row_length, 1
+            sed_mmr(idx_9,idx_8) = shno3(idx_9,idx_8,k) * frac(idx_9,idx_8)
+          enddo
+        enddo
+        !$acc loop gang vector independent collapse(2)
+        do idx_10 = LBOUND(shno3, dim=2), UBOUND(shno3, dim=2), 1
+          do idx_11 = LBOUND(shno3, dim=1), UBOUND(shno3, dim=1), 1
+            shno3(idx_11,idx_10,k) = shno3(idx_11,idx_10,k) - sed_mmr(idx_11,idx_10)
+          enddo
+        enddo
+        !$acc loop gang vector independent collapse(2)
+        do idx_12 = LBOUND(shno3, dim=2), UBOUND(shno3, dim=2), 1
+          do idx_13 = LBOUND(shno3, dim=1), UBOUND(shno3, dim=1), 1
+            shno3(idx_13,idx_12,k - 1) = shno3(idx_13,idx_12,k - 1) + sed_mmr(idx_13,idx_12) * mass(idx_13,idx_12,k) / mass(idx_13,idx_12,k - 1)
+          enddo
+        enddo
+        !$acc end kernels
+      end if
+    enddo
+    if (lhook) then
+      call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
+    end if
+    return
 
-CONTAINS
+  end subroutine ukca_sediment
 
-SUBROUTINE ukca_sediment(rows, row_length, model_levels,                       &
-                  shno3, qcf, r_theta_levels, mass, secs_per_step,             &
-                  L_stratosphere)
-!
-
-USE yomhook, ONLY: lhook, dr_hook
-USE parkind1, ONLY: jprb, jpim
-IMPLICIT NONE
-
-! Subroutine interface
-
-INTEGER, INTENT(IN) :: rows
-INTEGER, INTENT(IN) :: row_length
-INTEGER, INTENT(IN) :: model_levels
-REAL   , INTENT(IN) :: secs_per_step
-
-REAL   , INTENT(IN) :: r_theta_levels(row_length, rows,                        &
-                                   0:model_levels)
-REAL   , INTENT(IN) :: mass(row_length, rows, model_levels)
-REAL   , INTENT(IN) :: qcf(row_length, rows, model_levels)
-LOGICAL, INTENT(IN) :: L_stratosphere(row_length, rows, model_levels)
-REAL, INTENT(IN OUT) :: shno3(row_length, rows, model_levels)
-
-! Local variables
-! Slow sedimentation in the presence of NAT only, fast in the presence of ice
-! fall velocity for NAT PSCs, from SLIMCAT:
-REAL, PARAMETER :: fv1 = 0.000463  ! m/s
-! fall velocity for NAT/ICE PSCs, from SLIMCAT
-REAL, PARAMETER :: fv2 = 0.01736   ! m/s
-
-INTEGER :: i,j,k
-
-REAL :: thick(row_length, rows)
-REAL :: sed_mmr(row_length, rows)
-REAL :: frac(row_length, rows)
-REAL :: psc1(row_length, rows)
-REAL :: psc2(row_length, rows)
-REAL :: sh2o(row_length, rows, model_levels)
-! Local copy of ice cloud fraction- masked out in troposphere.
-
-INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
-INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
-REAL(KIND=jprb)               :: zhook_handle
-
-CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_SEDIMENT'
-
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-
-! do sedimentation. Don't do it at bottom level.
-! any limiting of NAT formation will already have been considered in the
-! amounts of shno3
-
-! set sh2o=0.0 in the troposphere, elsewhere to frozen cloud fraction
-DO k = 1, model_levels
-  DO j = 1, rows
-    DO i = 1, row_length
-      sh2o(i,j,k) = qcf(i,j,k)
-    END DO
-  END DO
-END DO
-WHERE (.NOT. L_stratosphere) sh2o = 0.0
-
-DO k=2,model_levels
-  IF (MAXVAL(shno3(:,:,k)) > 0.0) THEN
-
-    ! set presence of PSC1/PSC2 indicators
-    psc1 = 0.0
-    psc2 = 0.0
-    WHERE (shno3(:,:,k) > 0.0) psc1 = 1.0
-    WHERE (sh2o (:,:,k) > 0.0) psc2 = 1.0
-
-    ! calculate model level thickness
-    thick = r_theta_levels(:,:,k) - r_theta_levels(:,:,k-1)
-
-    ! calculate relative fraction of HNO3S to be moved into lower level
-    frac = (psc1*fv1 + psc2*fv2) * secs_per_step / thick
-
-    ! limit fraction to 1.
-    WHERE (frac > 1.0) frac = 1.0
-
-    ! calculate fraction in MMR or VMR to be sedimented
-    sed_mmr = shno3(:,:,k) * frac
-
-    ! subtract from layer under consideration
-    shno3(:,:,k  ) = shno3(:,:,k  ) - sed_mmr
-
-    ! add to next layer below.
-    shno3(:,:,k-1) = shno3(:,:,k-1) +                                          &
-                     sed_mmr * mass(:,:,k) / mass(:,:,k-1)
-  END IF
-END DO
-
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
-RETURN
-END SUBROUTINE ukca_sediment
-END MODULE ukca_sediment_mod
+end module ukca_sediment_mod

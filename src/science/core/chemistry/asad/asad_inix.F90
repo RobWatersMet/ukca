@@ -41,11 +41,9 @@ module asad_inix_mod
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
     call nvtxStartRange(ModuleName // ':' // RoutineName)
-    !$acc kernels
     jpnpx3 = jpnr / (3 * 3) + 3 * 3
     nstst = 0
     nf = 0
-    !$acc loop seq
     do js = 1, jpspec, 1
       itype(:) = ctype(js)
       nlall(js) = js
@@ -58,6 +56,7 @@ module asad_inix_mod
         nlf(nf) = js
       end if
     enddo
+    !$acc kernels
     !$acc loop seq
     do js = 1, jpspec, 1
       iprd = 0
@@ -125,7 +124,9 @@ module asad_inix_mod
         end if
       end if
     enddo
+    !$acc end kernels
     ngmax = ngrp(1,3)
+    !$acc kernels
     !$acc loop seq
     do js = 2, jpspec, 1
       ngmax = MAX(ngmax, ngrp(js,3))

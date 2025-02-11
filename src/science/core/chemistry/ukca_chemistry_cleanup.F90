@@ -1,200 +1,155 @@
-! *****************************COPYRIGHT*******************************
-!
-! (c) [University of Cambridge] [2008]. All rights reserved.
-! This routine has been licensed to the Met Office for use and
-! distribution under the UKCA collaboration agreement, subject
-! to the terms and conditions set out therein.
-! [Met Office Ref SC138]
-!
-! *****************************COPYRIGHT*******************************
-!
-! Description:
-!  Cleanup routine for chemistry
-!
-!  Part of the UKCA model, a community model supported by
-!  The Met Office and NCAS, with components provided initially
-!  by The University of Cambridge, University of Leeds and
-!  The Met. Office.  See www.ukca.ac.uk
-!
-!   Called from UKCA_CHEMISTRY_CTL, UKCA_CHEMISTRY_CTL_COL and
-!   UKCA_CHEMISTRY_CTL_TROPRAQ.
-!
-! Code Owner: Please refer to the UM file CodeOwners.txt
-! This file belongs in section: UKCA
-!
-! Code description:
-!   Language: FORTRAN 90
-!   This code is written to UMDP3 v6 programming standards.
-!
-!------------------------------------------------------------------
-!
-MODULE ukca_chemistry_cleanup_mod
+module ukca_chemistry_cleanup_mod
+  implicit none
+  character(len = *), parameter, private :: ModuleName = 'UKCA_CHEMISTRY_CLEANUP_MOD'
+  public
 
-IMPLICIT NONE
+  contains
+  subroutine ukca_chemistry_cleanup(row_length, rows, model_levels, ntracers, secs_per_step, pres, drain, crain, latitude, env_ozone3d, qcf, r_theta_levels, mass, z_top_of_model, shno3_3d, nat_psc, tracer)
+    use asad_mod, only : jpctr
+    use ukca_config_specification_mod, only : i_top_1lev, i_top_2levh2o, i_top_bc, ukca_config
+    use ukca_conserve_mod, only : ukca_conserve
+    use ukca_cspecies, only : n_h2o, n_hono2, nn_cl
+    use ukca_sediment_mod, only : ukca_sediment
+    use ukca_stratf_mod, only : ukca_stratf
+    use ukca_topboundary_mod, only : ukca_top_boundary
+    use ukca_tropopause, only : l_stratosphere
+    use ereport_mod, only : ereport
+    use errormessagelength_mod, only : errormessagelength
+    use parkind1, only : jpim, jprb
+    use yomhook, only : dr_hook, lhook
+    logical, parameter :: after_chem = .false.
+    integer(kind=jpim), parameter :: zhook_in = 0
+    integer(kind=jpim), parameter :: zhook_out = 1
+    integer, intent(in) :: row_length
+    integer, intent(in) :: rows
+    integer, intent(in) :: model_levels
+    integer, intent(in) :: ntracers
+    real, intent(in) :: secs_per_step
+    real, dimension(row_length,rows,model_levels), intent(in) :: pres
+    real, dimension(row_length,rows,model_levels), intent(in) :: drain
+    real, dimension(row_length,rows,model_levels), intent(in) :: crain
+    real, dimension(row_length,rows), intent(in) :: latitude
+    real, dimension(row_length,rows,model_levels), intent(in) :: env_ozone3d
+    real, dimension(row_length,rows,model_levels), intent(in) :: qcf
+    real, dimension(row_length,rows,0:model_levels), intent(in) :: r_theta_levels
+    real, dimension(row_length,rows,model_levels), intent(in) :: mass
+    real, intent(in) :: z_top_of_model
+    real, dimension(row_length,rows,model_levels), intent(inout) :: shno3_3d
+    real, dimension(row_length,rows,model_levels), intent(out) :: nat_psc
+    real, dimension(row_length,rows,model_levels,ntracers), intent(inout) :: tracer
+    integer :: i
+    integer :: j
+    integer :: k
+    integer :: errcode
+    CHARACTER(LEN = errormessagelength) :: cmessage
+    real(kind=jprb) :: zhook_handle
+    CHARACTER(LEN = *), PARAMETER :: RoutineName = 'UKCA_CHEMISTRY_CLEANUP'
+    integer :: idx
+    integer :: idx_1
+    integer :: idx_2
+    integer :: idx_3
+    integer :: idx_4
+    integer :: idx_5
+    integer :: idx_6
+    integer :: idx_7
+    integer :: idx_8
 
-CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName='UKCA_CHEMISTRY_CLEANUP_MOD'
+    if (lhook) then
+      call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
+    end if
+    if (ukca_config%l_ukca_offline_be) then
+      return
+    end if
+    if (nn_cl > 0) then
+      call ukca_conserve(row_length, rows, model_levels, ntracers, tracer, pres, drain, crain, after_chem)
+    end if
+    if (ukca_config%l_ukca_strat .OR. ukca_config%l_ukca_stratcfc .OR. ukca_config%l_ukca_strattrop .OR. ukca_config%l_ukca_cristrat) then
+      if (ukca_config%l_ukca_het_psc) then
+        !$acc kernels
+        !$acc loop gang vector independent collapse(3)
+        do idx = LBOUND(tracer, dim=3), UBOUND(tracer, dim=3), 1
+          do idx_1 = LBOUND(tracer, dim=2), UBOUND(tracer, dim=2), 1
+            do idx_2 = LBOUND(tracer, dim=1), UBOUND(tracer, dim=1), 1
+              tracer(idx_2,idx_1,idx,n_hono2) = tracer(idx_2,idx_1,idx,n_hono2) - shno3_3d(idx_2,idx_1,idx)
+            enddo
+          enddo
+        enddo
+        !$acc end kernels
+        call ukca_sediment(rows, row_length, model_levels, shno3_3d, qcf, r_theta_levels, mass, secs_per_step, l_stratosphere(:,:,:))
+        !$acc kernels
+        !$acc loop gang vector independent collapse(3)
+        do idx_3 = LBOUND(tracer, dim=3), UBOUND(tracer, dim=3), 1
+          do idx_4 = LBOUND(tracer, dim=2), UBOUND(tracer, dim=2), 1
+            do idx_5 = LBOUND(tracer, dim=1), UBOUND(tracer, dim=1), 1
+              tracer(idx_5,idx_4,idx_3,n_hono2) = tracer(idx_5,idx_4,idx_3,n_hono2) + shno3_3d(idx_5,idx_4,idx_3)
+            enddo
+          enddo
+        enddo
+        !$acc end kernels
+      end if
+      if (ukca_config%i_ukca_topboundary == i_top_2levh2o) then
+        !$acc kernels
+        !$acc loop gang vector independent collapse(3)
+        do i = 1, rows, 1
+          do j = 1, row_length, 1
+            do k = 1, ntracers, 1
+              if (k /= n_h2o) then
+                tracer(j,i,model_levels,k) = tracer(j,i,model_levels - 2,k)
+                tracer(j,i,model_levels - 1,k) = tracer(j,i,model_levels - 2,k)
+              end if
+            enddo
+          enddo
+        enddo
+        !$acc end kernels
+      else
+        if (ukca_config%i_ukca_topboundary == i_top_1lev) then
+          !$acc kernels
+          !$acc loop gang vector independent collapse(3)
+          do i = 1, rows, 1
+            do j = 1, row_length, 1
+              do k = 1, ntracers, 1
+                tracer(j,i,model_levels,k) = tracer(j,i,model_levels - 1,k)
+              enddo
+            enddo
+          enddo
+          !$acc end kernels
+        else
+          if (ukca_config%i_ukca_topboundary >= i_top_bc) then
+            if (z_top_of_model > 85500.0 .OR. z_top_of_model < 79000.0) then
+              errcode = 25
+              cmessage(:) = 'Can only impose a top boundary condition at 85 km.'
+              call ereport(ModuleName // ':' // RoutineName, errcode, cmessage)
+            end if
+            if (.NOT.ALL(ABS(latitude(row_length,:) - latitude(1,:)) < EPSILON(0.0))) then
+              errcode = 1
+              cmessage(:) = 'Can only impose top boundary condition if latitude is constant on rows'
+              call ereport(ModuleName // ':' // RoutineName, errcode, cmessage)
+            end if
+            call ukca_top_boundary(row_length, rows, model_levels, ntracers, latitude(1,:), tracer)
+          end if
+        end if
+      end if
+      if (ukca_config%l_ukca_het_psc) then
+        !$acc kernels
+        !$acc loop gang vector independent collapse(3)
+        do idx_6 = LBOUND(nat_psc, dim=3), UBOUND(nat_psc, dim=3), 1
+          do idx_7 = LBOUND(nat_psc, dim=2), UBOUND(nat_psc, dim=2), 1
+            do idx_8 = LBOUND(nat_psc, dim=1), UBOUND(nat_psc, dim=1), 1
+              nat_psc(idx_8,idx_7,idx_6) = shno3_3d(idx_8,idx_7,idx_6)
+            enddo
+          enddo
+        enddo
+        !$acc end kernels
+      end if
+    else
+      if (.NOT.ukca_config%l_ukca_offline) then
+        call ukca_stratf(row_length, rows, model_levels, jpctr, env_ozone3d, tracer(:,:,:,:jpctr))
+      end if
+    end if
+    if (lhook) then
+      call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
+    end if
 
-CONTAINS
+  end subroutine ukca_chemistry_cleanup
 
-SUBROUTINE ukca_chemistry_cleanup(row_length, rows, model_levels, ntracers,    &
-                                  secs_per_step, pres, drain, crain,           &
-                                  latitude, env_ozone3d, qcf, r_theta_levels,  &
-                                  mass, z_top_of_model, shno3_3d, nat_psc,     &
-                                  tracer)
-
-USE asad_mod,                      ONLY: jpctr
-
-USE ukca_config_specification_mod, ONLY: ukca_config, i_top_2levH2O,           &
-                                         i_top_1lev, i_top_BC
-USE ukca_conserve_mod,             ONLY: ukca_conserve
-USE ukca_cspecies,                 ONLY: n_h2o, n_hono2, nn_cl
-USE ukca_sediment_mod,             ONLY: ukca_sediment
-USE ukca_stratf_mod,               ONLY: ukca_stratf
-USE ukca_topboundary_mod,          ONLY: ukca_top_boundary
-USE ukca_tropopause,               ONLY: l_stratosphere
-
-USE ereport_mod,                   ONLY: ereport
-USE errormessagelength_mod,        ONLY: errormessagelength
-USE parkind1,                      ONLY: jprb, jpim
-USE yomhook,                       ONLY: lhook, dr_hook
-
-IMPLICIT NONE
-
-INTEGER, INTENT(IN) :: row_length
-INTEGER, INTENT(IN) :: rows
-INTEGER, INTENT(IN) :: model_levels
-INTEGER, INTENT(IN) :: ntracers
-
-REAL, INTENT(IN)     :: secs_per_step                       ! time step
-REAL, INTENT(IN)     :: pres(row_length,rows,model_levels)  ! pressure
-REAL, INTENT(IN)     :: drain(row_length,rows,model_levels) ! 3-D LS rain
-REAL, INTENT(IN)     :: crain(row_length,rows,model_levels) ! 3-D convec
-REAL, INTENT(IN)     :: latitude(row_length,rows)           ! latitude (degrees)
-REAL, INTENT(IN)     :: env_ozone3d(row_length,rows,model_levels) ! O3
-REAL, INTENT(IN)     :: qcf(row_length,rows,model_levels)
-REAL, INTENT(IN)     :: r_theta_levels(row_length,rows,0:model_levels)
-REAL, INTENT(IN)     :: mass(row_length,rows,model_levels)  ! cell mass
-REAL, INTENT(IN)     :: z_top_of_model                      ! top of model (m)
-REAL, INTENT(IN OUT) :: shno3_3d(row_length,rows,model_levels)
-REAL, INTENT(OUT)    :: nat_psc(row_length,                                    &
-                                rows,model_levels)    ! Nitric acid trihydrate
-                                                      ! (kg(nat)/kg(air))
-REAL, INTENT(IN OUT) :: tracer(row_length,rows,                                &
-                               model_levels,ntracers) ! tracer MMR
-! Local variables
-
-INTEGER :: i
-INTEGER :: j
-INTEGER :: k
-
-INTEGER :: errcode ! Error code: ereport
-
-! The call to ukca_conserve requires a logical to be set.
-! ukca_conserve calculates and conserves total chlorine, bromine, and
-! hydrogen. For these elements closed chemistry should be prescribed.
-! Called after chemistry, after_chem, it rescales the chlorine, bromine
-! and hydrogen containing compounds so that total chlorine, bromine
-! and hydrogen are conserved under chemistry.
-LOGICAL, PARAMETER :: after_chem = .FALSE.
-
-CHARACTER(LEN=errormessagelength) :: cmessage         ! Error message
-
-INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
-INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
-REAL(KIND=jprb)               :: zhook_handle
-
-CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_CHEMISTRY_CLEANUP'
-
-
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-
-IF (ukca_config%l_ukca_offline_be) RETURN
-
-! Rescale bromine and chlorine tracers to guarantee conservation of total
-! chlorine, bromine, and hydrogen over timestep. Only makes sense if at least
-! chlorine chemistry is present.
-IF (nn_cl > 0) THEN
-  CALL ukca_conserve(row_length, rows, model_levels, ntracers,                 &
-       tracer, pres, drain, crain, after_chem)
-END IF
-
-IF (ukca_config%l_ukca_strat .OR. ukca_config%l_ukca_stratcfc .OR.             &
-    ukca_config%l_ukca_strattrop .OR. ukca_config%l_ukca_cristrat) THEN
-
-  IF (ukca_config%l_ukca_het_psc) THEN
-    ! Do NAT PSC sedimentation
-
-    ! take NAT out of gasphase again
-    tracer(:,:,:,n_hono2) = tracer(:,:,:,n_hono2) - shno3_3d
-
-    CALL ukca_sediment(rows, row_length, model_levels, shno3_3d, qcf,          &
-             r_theta_levels, mass, secs_per_step, l_stratosphere(:,:,:))
-
-    ! add solid-phase HNO3 back to gasphase HNO3
-    tracer(:,:,:,n_hono2) = tracer(:,:,:,n_hono2) + shno3_3d
-  END IF
-
-  ! i_ukca_topboundary==0 (i_top_none) corresponds to no overwriting of
-  ! top level(s) or any top boundary condition
-  IF (ukca_config%i_ukca_topboundary == i_top_2levH2O) THEN
-    ! Tracer overwrites required to stop accumulation of tracer mass
-    ! in the uppermost layers.  Exclude water vapour.
-    DO i=1,rows
-      DO j=1,row_length
-        DO k=1,ntracers
-          IF (k /= n_h2o) THEN
-            tracer(j,i,model_levels  ,k) = tracer(j,i,model_levels-2,k)
-            tracer(j,i,model_levels-1,k) = tracer(j,i,model_levels-2,k)
-          END IF
-        END DO
-      END DO
-    END DO
-  ELSE IF (ukca_config%i_ukca_topboundary == i_top_1lev) THEN
-    ! over-write top level for all tracers with 2nd-highest level
-    DO i=1,rows
-      DO j=1,row_length
-        DO k=1,ntracers
-          tracer(j,i,model_levels,k) = tracer(j,i,model_levels-1,k)
-        END DO
-      END DO
-    END DO
-  ELSE IF (ukca_config%i_ukca_topboundary >= i_top_BC) THEN
-    ! Apply top boundary condition for NO, CO, O3, optionally H2O, using
-    ! ACE-FTS climatologies (assumes constant latitude on each row)
-    ! no tracer over-writing at top levels
-    IF ((z_top_of_model > 85500.0) .OR. (z_top_of_model < 79000.0)) THEN
-      errcode=25
-      cmessage='Can only impose a top boundary condition at 85 km.'
-      CALL ereport(ModuleName//':'//RoutineName,errcode,cmessage)
-    END IF
-    IF (.NOT. ALL(ABS(latitude(row_length,:) - latitude(1,:))                  &
-                                                          < EPSILON(0.0))) THEN
-      errcode=1
-      cmessage=                                                                &
-        'Can only impose top boundary condition if latitude is constant on rows'
-      CALL ereport(ModuleName//':'//RoutineName,errcode,cmessage)
-    END IF
-    CALL ukca_top_boundary(row_length, rows, model_levels, ntracers,           &
-                           latitude(1,:), tracer)
-  END IF
-
-  ! Copy NAT MMR into user_diagostics
-  IF (ukca_config%l_ukca_het_psc) THEN
-    nat_psc(:,:,:) = shno3_3d(:,:,:)
-  END IF
-
-ELSE IF (.NOT. ukca_config%l_ukca_offline) THEN   ! tropospheric chemistry
-  ! Call routine to overwrite O3 and HNO3 species once per day
-  ! above tropopause. Only for tropospheric chemistry
-
-  CALL ukca_stratf(row_length,rows, model_levels,                              &
-                   jpctr, env_ozone3d,                                         &
-                   tracer(1:row_length,1:rows,1:model_levels,1:jpctr))
-
-END IF     ! l_ukca_strat etc
-
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
-
-END SUBROUTINE ukca_chemistry_cleanup
-
-END MODULE ukca_chemistry_cleanup_mod
+end module ukca_chemistry_cleanup_mod

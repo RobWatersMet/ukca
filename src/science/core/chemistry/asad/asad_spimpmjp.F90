@@ -36,7 +36,7 @@ module asad_spimpmjp_mod
         if (spfj(jl,ip) > 0.0) then
           f(jl,jtr) = f_initial(jl,jtr) + cdt * fdot(jl,jtr)
         else
-          f(jl,jtr) = f_initial(jl,jtr) + cdt * fdot(jl,jtr) / (1.0 - cdt * spfj(jl,ip))
+          f(jl,jtr) = f_initial(jl,jtr) + (cdt * fdot(jl,jtr)) / (1.0 - cdt * spfj(jl,ip))
         end if
         if (f(jl,jtr) < f_min) then
           f(jl,jtr) = f_min

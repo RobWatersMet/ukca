@@ -165,14 +165,15 @@ module asad_bimol_mod
     call oneover_v(n_points, t, inv_t)
     if (first_pass) then
       if (first) then
-        !$acc kernels
         first = .false.
+        !$acc kernels
         !$acc loop seq
         do jtr = 1, jpcspf, 1
           if (specf(jtr) == 'H2O       ') then
             ih2o = jtr
           end if
         enddo
+        !$acc end kernels
         r1(:) = '          '
         r2(:) = r1(:)
         prods(:) = r1(:)
@@ -202,8 +203,7 @@ module asad_bimol_mod
         prods(1) = 'HO2       '
         prods(2) = 'HCHO      '
         imeooro2b = asad_findreaction(r1,r2,prods,2,spb,nbrkx,jpbk + 1,jpspb)
-        !$acc end kernels
-        if (imeoomeooa /= 0 .AND. imeoomeoob /= 0 .AND. (imeooro2a /= 0 .AND. imeooro2b /= 0)) then
+        if ((imeoomeooa /= 0 .AND. imeoomeoob /= 0) .AND. (imeooro2a /= 0 .AND. imeooro2b /= 0)) then
           errcode = 2
           cmessage(:) = 'ASAD_BIMOL: Cannot have both MeOO+MeOO & MeOO+RO2 reactions'
           call ereport('ASAD_BIMOL', errcode, cmessage)
@@ -336,7 +336,7 @@ module asad_bimol_mod
       !$acc kernels
       !$acc loop gang vector independent
       do idx_12 = LBOUND(z3, dim=1), UBOUND(z3, dim=1), 1
-        z3(idx_12) = 6.5e-34 * tmp_out(idx_12 + (1 - LBOUND(z3, dim=1))) * tnd(idx_12 + (1 - LBOUND(z3, dim=1)))
+        z3(idx_12) = (6.5e-34 * tmp_out(idx_12 + (1 - LBOUND(z3, dim=1)))) * tnd(idx_12 + (1 - LBOUND(z3, dim=1)))
       enddo
       !$acc loop gang vector independent
       do idx_13 = 1, n_points, 1
@@ -474,7 +474,7 @@ module asad_bimol_mod
       enddo
       !$acc end kernels
     end if
-    if (imeoo2a /= 0 .AND. imeoo2b /= 0 .AND. (.NOT.ukca_config%l_ukca_cristrat)) then
+    if ((imeoo2a /= 0 .AND. imeoo2b /= 0) .AND. (.NOT.ukca_config%l_ukca_cristrat)) then
       !$acc kernels
       !$acc loop gang vector independent
       do idx_33 = 1, n_points, 1

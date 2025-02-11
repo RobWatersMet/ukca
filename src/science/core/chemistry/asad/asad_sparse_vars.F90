@@ -530,13 +530,12 @@ module asad_sparse_vars
     enddo
     !$acc end kernels
     if (ndepw /= 0 .OR. ndepd /= 0) then
-      !$acc kernels
-      !$acc loop seq
       do js = 1, jpspec, 1
         ifamd = moffam(js)
         itrd = madvtr(js)
         ityped(:) = ctype(js)
         if (ifamd /= 0) then
+          !$acc kernels
           !$acc loop gang vector independent
           do jl = 1, n_points, 1
             if (ityped(:) == jpfm .OR. ityped(:) == jpif .AND. linfam(jl,itrd)) then
@@ -544,16 +543,18 @@ module asad_sparse_vars
               spfj(jl,p) = spfj(jl,p) - nodd(js) * (dpd(jl,js) + dpw(jl,js)) * y(jl,js)
             end if
           enddo
+          !$acc end kernels
         end if
         if (itrd /= 0) then
+          !$acc kernels
           p = nonzero_map(itrd,itrd)
           !$acc loop gang vector independent
           do idx_7 = LBOUND(spfj, dim=1), UBOUND(spfj, dim=1), 1
             spfj(idx_7,p) = spfj(idx_7,p) - (dpd(idx_7 + (LBOUND(dpd, dim=1) - LBOUND(spfj, dim=1)),js) + dpw(idx_7 + (LBOUND(dpw, dim=1) - LBOUND(spfj, dim=1)),js)) * y(idx_7 + (LBOUND(y, dim=1) - LBOUND(spfj, dim=1)),js)
           enddo
+          !$acc end kernels
         end if
       enddo
-      !$acc end kernels
     end if
     !$acc kernels
     !$acc loop gang vector independent collapse(2)

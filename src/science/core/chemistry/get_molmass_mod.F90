@@ -1,326 +1,304 @@
-! *****************************COPYRIGHT*******************************
-! (C) Crown copyright Met Office. All rights reserved.
-! For further details please refer to the file COPYRIGHT.txt
-! which you should have received as part of this distribution.
-! *****************************COPYRIGHT*******************************
-!
-! Description:
-!   Module containing the function GET_MOLMASS to
-!   get the molar mass of a given chemical species
-!
-! Method:
-!   Use values in the module ukca_constants to return the molar
-!   mass of a given chemical species. The name of the species
-!   (species_name) is an input argument that has been passed by
-!   another routine where the species is used as a tracer,
-!   emission field, lower boundary condition, etc.
-!
-! Part of the UKCA model, a community model supported by the
-! Met Office and NCAS, with components provided initially
-! by The University of Cambridge, University of Leeds and
-! The Met. Office.  See www.ukca.ac.uk
-!
-! Code Owner: Please refer to the UM file CodeOwners.txt
-! This file belongs in section: UKCA
-!
-! Code Description:
-!   Language:  FORTRAN 90
-!   This code is written to UMDP3 programming standards.
-!
-! ----------------------------------------------------------------------
-!
-MODULE get_molmass_mod
-
-IMPLICIT NONE
-
-CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName='GET_MOLMASS_MOD'
-
-CONTAINS
-
-FUNCTION get_molmass (species_name)
-
-USE ukca_constants,  ONLY: m_br, m_brcl, m_bro, m_brono2, m_c, m_c2h4,         &
-                           m_c2h6, m_c3h6, m_c3h8, m_c4h10, m_ccl4,            &
-                           m_cf2cl2, m_cf2clbr, m_cf2clcfcl2, m_cfcl3,         &
-                           m_ch2br2, m_ch4, m_chf2cl, m_cl, m_cl2o2,           &
-                           m_clo, m_clono2, m_co, m_cs2, m_dms, m_h2,          &
-                           m_h2s, m_hbr, m_hcho, m_hcl, m_hobr, m_hocl,        &
-                           m_isop, m_me2co, m_me2s, m_mebr, m_meccl3,          &
-                           m_mecho, m_mecl, m_meoh, m_monoterp, m_n2o,         &
-                           m_nh3, m_no, m_no2, m_oclo, m_ocs, m_oxylene,       &
-                           m_so2, m_so4, m_toluene, m_c2h2, m_tbut2ene,        &
-                           m_benzene, m_etoh, m_etcho, m_mek, m_hcooh,         &
-                           m_meco2h, m_hoch2cho
-
-USE ereport_mod,     ONLY: ereport
-USE parkind1,        ONLY: jpim,  jprb     ! DrHook
-USE yomhook,         ONLY: lhook, dr_hook  ! DrHook
-USE errormessagelength_mod, ONLY: errormessagelength
-
-IMPLICIT NONE
-
-! Function arguments
-CHARACTER (LEN=10), INTENT(IN) :: species_name ! name of a chemical species,
-                                               ! emission field, etc
-! Function return value
-REAL :: get_molmass
-
-! Local variables
-INTEGER                        :: ierr
-CHARACTER (LEN=errormessagelength)             :: cmessage
-
-INTEGER (KIND=jpim), PARAMETER :: zhook_in  = 0  ! DrHook tracing entry
-INTEGER (KIND=jpim), PARAMETER :: zhook_out = 1  ! DrHook tracing exit
-REAL    (KIND=jprb)            :: zhook_handle   ! DrHook tracing
-
-CHARACTER(LEN=*), PARAMETER :: RoutineName='GET_MOLMASS'
-
-! End of header
-
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_in, zhook_handle)
-
-ierr = 0
-
-! Use values from the module ukca_constants to return the
-! molar mass of a given chemical species
-SELECT CASE ( species_name )
-
-CASE ('NO2       ', 'NOx       ')
-  !  Fields reported in kg of NO2
-  get_molmass = m_no2
-
-CASE ('NO        ')
-  get_molmass = m_no
-
-CASE ('H2        ', 'no_H2     ')
-  get_molmass = m_h2
-
-CASE ('NH3       ')
-  get_molmass = m_nh3
-
-CASE ('N2O       ', 'no_N2O    ')
-  get_molmass = m_n2o
-
-CASE ('BC_fossil ', 'BC_biofuel', 'BC_biomass',                                &
-      'OM_fossil ', 'OM_biofuel', 'OM_biomass')
-  get_molmass = m_c
-
-  ! -----------------------------------------
-  ! Sulphur containing
-CASE ('SO2       ', 'SO2_low   ', 'SO2_high  ', 'SO2_nat   ')
-  ! Some of these are emission fields
-  get_molmass = m_so2
-
-CASE ('DMS       ')
-  get_molmass = m_dms
-
-CASE ('Me2S      ')
-  get_molmass = m_me2s
-
-CASE ('SO4       ')
-  get_molmass = m_so4
-
-CASE ('COS       ')
-  get_molmass = m_ocs
-
-CASE ('H2S       ')
-  get_molmass = m_h2s
-
-CASE ('CS2       ')
-  get_molmass = m_cs2
-
-  ! -----------------------------------------
-  ! CO, CH4 and NMVOCs
-CASE ('CO        ')
-  get_molmass = m_co
-
-CASE ('CH4       ')
-  get_molmass = m_ch4
-
-CASE ('C2H6      ')
-  get_molmass = m_c2h6
-
-CASE ('C2H4      ')
-  get_molmass = m_c2h4
-
-CASE ('C3H8      ')
-  get_molmass = m_c3h8
-
-CASE ('C3H6      ')
-  get_molmass = m_c3h6
-
-CASE ('C4H10     ')
-  get_molmass = m_c4h10
-
-CASE ('MeOH      ', 'CH3OH     ')
-  get_molmass = m_meoh
-
-CASE ('Me2CO     ')
-  get_molmass = m_me2co
-
-CASE ('HCHO      ')
-  get_molmass = m_hcho
-
-CASE ('MeCHO     ')
-  get_molmass = m_mecho
-
-CASE ('C5H8      ')
-  get_molmass = m_isop
-
-CASE ('Monoterp  ', 'APINENE   ', 'BPINENE   ')
-  get_molmass = m_monoterp
-
-CASE ('TOLUENE   ')
-  get_molmass = m_toluene
-
-CASE ('oXYLENE   ')
-  get_molmass = m_oxylene
-
-  ! -----------------------------------------
-  ! Long-lived halocarbons containing chlorine
-CASE ('MeCl      ')
-  get_molmass = m_mecl
-
-CASE ('MeCCl3    ')
-  get_molmass = m_meccl3
-
-CASE ('CCl4      ')
-  get_molmass = m_ccl4
-
-CASE ('CF2Cl2    ')
-  get_molmass = m_cf2cl2
-
-CASE ('CFCl3     ')
-  get_molmass = m_cfcl3
-
-CASE ('CF2ClCFCl2')
-  get_molmass = m_cf2clcfcl2
-
-CASE ('CF2ClBr   ')
-  get_molmass = m_cf2clbr
-
-CASE ('CHF2Cl    ')
-  get_molmass = m_chf2cl
-
-  ! -----------------------------------------
-  ! Reactive and total chlorine
-CASE ('Cl        ', 'TOT_Cl    ')
-  get_molmass = m_cl
-
-CASE ('ClO       ', 'Clx       ')
-  get_molmass = m_clo
-
-CASE ('Cl2O2     ')
-  get_molmass = m_cl2o2
-
-CASE ('HCl       ')
-  get_molmass = m_hcl
-
-CASE ('HOCl      ')
-  get_molmass = m_hocl
-
-CASE ('ClONO2    ')
-  get_molmass = m_clono2
-
-CASE ('OClO      ')
-  get_molmass = m_oclo
-
-  ! -----------------------------------------
-  !   Bromocarbons, reactive bromine and total bromine
-CASE ('MeBr      ')
-  get_molmass = m_mebr
-
-CASE ('CH2Br2    ')
-  get_molmass = m_ch2br2
-
-CASE ('Br        ', 'TOT_Br    ')
-  get_molmass = m_br
-
-CASE ('BrO       ', 'Brx       ')
-  get_molmass = m_bro
-
-CASE ('HBr       ')
-  get_molmass = m_hbr
-
-CASE ('HOBr      ')
-  get_molmass = m_hobr
-
-CASE ('BrONO2    ')
-  get_molmass = m_brono2
-
-CASE ('BrCl      ')
-  get_molmass = m_brcl
-
-  ! -----------------------------------------
-  !   Emitted CRI species
-CASE ('C2H2      ')
-  get_molmass = m_c2h2
-
-CASE ('TBUT2ENE  ')
-  get_molmass = m_tbut2ene
-
-CASE ('BENZENE   ')
-  get_molmass = m_benzene
-
-CASE ('EtOH      ')
-  get_molmass = m_etoh
-
-CASE ('EtCHO     ')
-  get_molmass = m_etcho
-
-CASE ('MEK       ')
-  get_molmass = m_mek
-
-CASE ('HCOOH     ')
-  get_molmass = m_hcooh
-
-CASE ('MeCO2H    ')
-  get_molmass = m_meco2h
-
-CASE ('HOCH2CHO  ')
-  get_molmass = m_hoch2cho
-
-  ! -----------------------------------------
-  !   Others (report warning)
-CASE ('AGE       ')
-  get_molmass =  1.0
-  ierr        = -1
-
-CASE ('AGE OF AIR')
-  get_molmass =  1.0
-  ierr        = -1
-
-CASE ('PASSIVE O3')
-  get_molmass =  1.0
-  ierr        = -1
-
-CASE ('XXX       ')
-  get_molmass =  1.0   ! unused species
-  ierr        = -1
-
-CASE DEFAULT  ! report error
-  ierr     = 1
-END SELECT
-
-! -------------------------------------------
-! Report warning when the mass is set to 1
-! and error if the species is not found
-IF (ierr /= 0) THEN
-  SELECT CASE (ierr)
-  CASE (-1)
-    cmessage = 'Molecular mass of ' // TRIM(species_name) // ' set to 1'
-  CASE (1)
-    cmessage = 'Add molecular mass of ' // TRIM(species_name) //               &
-             ' to this routine and check if it is present in ukca_constants'
-  END SELECT
-
-  CALL ereport ('GET_MOLMASS', ierr, cmessage)
-END IF
-
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_out, zhook_handle)
-
-RETURN
-
-END FUNCTION get_molmass
-
-END MODULE get_molmass_mod
+module get_molmass_mod
+  implicit none
+  character(len = *), parameter, private :: ModuleName = 'GET_MOLMASS_MOD'
+  public
+
+  contains
+  function get_molmass(species_name)
+    use ukca_constants, only : m_benzene, m_br, m_brcl, m_bro, m_brono2, m_c, m_c2h2, m_c2h4, m_c2h6, m_c3h6, m_c3h8, m_c4h10, m_ccl4, m_cf2cl2, m_cf2clbr, m_cf2clcfcl2, m_cfcl3, m_ch2br2, m_ch4, m_chf2cl, m_cl, m_cl2o2, m_clo, m_clono2, m_co, m_cs2, m_dms, m_etcho, m_etoh, m_h2, m_h2s, m_hbr, m_hcho, m_hcl, m_hcooh, m_hobr, m_hoch2cho, m_hocl, m_isop, m_me2co, m_me2s, m_mebr, m_meccl3, m_mecho, m_mecl, m_meco2h, m_mek, m_meoh, m_monoterp, m_n2o, m_nh3, m_no, m_no2, m_oclo, m_ocs, m_oxylene, m_so2, m_so4, m_tbut2ene, m_toluene
+    use ereport_mod, only : ereport
+    use parkind1, only : jpim, jprb
+    use yomhook, only : dr_hook, lhook
+    use errormessagelength_mod, only : errormessagelength
+    integer(kind=jpim), parameter :: zhook_in = 0
+    integer(kind=jpim), parameter :: zhook_out = 1
+    CHARACTER(LEN = 10), INTENT(IN) :: species_name
+    real :: get_molmass
+    integer :: ierr
+    CHARACTER(LEN = errormessagelength) :: cmessage
+    real(kind=jprb) :: zhook_handle
+    CHARACTER(LEN = *), PARAMETER :: RoutineName = 'GET_MOLMASS'
+
+    if (lhook) then
+      call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
+    end if
+    ierr = 0
+    if (species_name(:) == 'NO2       ' .OR. species_name(:) == 'NOx       ') then
+      get_molmass = m_no2
+    else
+      if (species_name(:) == 'NO        ') then
+        get_molmass = m_no
+      else
+        if (species_name(:) == 'H2        ' .OR. species_name(:) == 'no_H2     ') then
+          get_molmass = m_h2
+        else
+          if (species_name(:) == 'NH3       ') then
+            get_molmass = m_nh3
+          else
+            if (species_name(:) == 'N2O       ' .OR. species_name(:) == 'no_N2O    ') then
+              get_molmass = m_n2o
+            else
+              if (species_name(:) == 'BC_fossil ' .OR. (species_name(:) == 'BC_biofuel' .OR. (species_name(:) == 'BC_biomass' .OR. (species_name(:) == 'OM_fossil ' .OR. (species_name(:) == 'OM_biofuel' .OR. species_name(:) == 'OM_biomass'))))) then
+                get_molmass = m_c
+              else
+                if (species_name(:) == 'SO2       ' .OR. (species_name(:) == 'SO2_low   ' .OR. (species_name(:) == 'SO2_high  ' .OR. species_name(:) == 'SO2_nat   '))) then
+                  get_molmass = m_so2
+                else
+                  if (species_name(:) == 'DMS       ') then
+                    get_molmass = m_dms
+                  else
+                    if (species_name(:) == 'Me2S      ') then
+                      get_molmass = m_me2s
+                    else
+                      if (species_name(:) == 'SO4       ') then
+                        get_molmass = m_so4
+                      else
+                        if (species_name(:) == 'COS       ') then
+                          get_molmass = m_ocs
+                        else
+                          if (species_name(:) == 'H2S       ') then
+                            get_molmass = m_h2s
+                          else
+                            if (species_name(:) == 'CS2       ') then
+                              get_molmass = m_cs2
+                            else
+                              if (species_name(:) == 'CO        ') then
+                                get_molmass = m_co
+                              else
+                                if (species_name(:) == 'CH4       ') then
+                                  get_molmass = m_ch4
+                                else
+                                  if (species_name(:) == 'C2H6      ') then
+                                    get_molmass = m_c2h6
+                                  else
+                                    if (species_name(:) == 'C2H4      ') then
+                                      get_molmass = m_c2h4
+                                    else
+                                      if (species_name(:) == 'C3H8      ') then
+                                        get_molmass = m_c3h8
+                                      else
+                                        if (species_name(:) == 'C3H6      ') then
+                                          get_molmass = m_c3h6
+                                        else
+                                          if (species_name(:) == 'C4H10     ') then
+                                            get_molmass = m_c4h10
+                                          else
+                                            if (species_name(:) == 'MeOH      ' .OR. species_name(:) == 'CH3OH     ') then
+                                              get_molmass = m_meoh
+                                            else
+                                              if (species_name(:) == 'Me2CO     ') then
+                                                get_molmass = m_me2co
+                                              else
+                                                if (species_name(:) == 'HCHO      ') then
+                                                  get_molmass = m_hcho
+                                                else
+                                                  if (species_name(:) == 'MeCHO     ') then
+                                                    get_molmass = m_mecho
+                                                  else
+                                                    if (species_name(:) == 'C5H8      ') then
+                                                      get_molmass = m_isop
+                                                    else
+                                                      if (species_name(:) == 'Monoterp  ' .OR. (species_name(:) == 'APINENE   ' .OR. species_name(:) == 'BPINENE   ')) then
+                                                        get_molmass = m_monoterp
+                                                      else
+                                                        if (species_name(:) == 'TOLUENE   ') then
+                                                          get_molmass = m_toluene
+                                                        else
+                                                          if (species_name(:) == 'oXYLENE   ') then
+                                                            get_molmass = m_oxylene
+                                                          else
+                                                            if (species_name(:) == 'MeCl      ') then
+                                                              get_molmass = m_mecl
+                                                            else
+                                                              if (species_name(:) == 'MeCCl3    ') then
+                                                                get_molmass = m_meccl3
+                                                              else
+                                                                if (species_name(:) == 'CCl4      ') then
+                                                                  get_molmass = m_ccl4
+                                                                else
+                                                                  if (species_name(:) == 'CF2Cl2    ') then
+                                                                    get_molmass = m_cf2cl2
+                                                                  else
+                                                                    if (species_name(:) == 'CFCl3     ') then
+                                                                      get_molmass = m_cfcl3
+                                                                    else
+                                                                      if (species_name(:) == 'CF2ClCFCl2') then
+                                                                        get_molmass = m_cf2clcfcl2
+                                                                      else
+                                                                        if (species_name(:) == 'CF2ClBr   ') then
+                                                                          get_molmass = m_cf2clbr
+                                                                        else
+                                                                          if (species_name(:) == 'CHF2Cl    ') then
+                                                                            get_molmass = m_chf2cl
+                                                                          else
+                                                                            if (species_name(:) == 'Cl        ' .OR. species_name(:) == 'TOT_Cl    ') then
+                                                                              get_molmass = m_cl
+                                                                            else
+                                                                              if (species_name(:) == 'ClO       ' .OR. species_name(:) == 'Clx       ') then
+                                                                                get_molmass = m_clo
+                                                                              else
+                                                                                if (species_name(:) == 'Cl2O2     ') then
+                                                                                  get_molmass = m_cl2o2
+                                                                                else
+                                                                                  if (species_name(:) == 'HCl       ') then
+                                                                                    get_molmass = m_hcl
+                                                                                  else
+                                                                                    if (species_name(:) == 'HOCl      ') then
+                                                                                      get_molmass = m_hocl
+                                                                                    else
+                                                                                      if (species_name(:) == 'ClONO2    ') then
+                                                                                        get_molmass = m_clono2
+                                                                                      else
+                                                                                        if (species_name(:) == 'OClO      ') then
+                                                                                          get_molmass = m_oclo
+                                                                                        else
+                                                                                          if (species_name(:) == 'MeBr      ') then
+                                                                                            get_molmass = m_mebr
+                                                                                          else
+                                                                                            if (species_name(:) == 'CH2Br2    ') then
+                                                                                              get_molmass = m_ch2br2
+                                                                                            else
+                                                                                              if (species_name(:) == 'Br        ' .OR. species_name(:) == 'TOT_Br    ') then
+                                                                                                get_molmass = m_br
+                                                                                              else
+                                                                                                if (species_name(:) == 'BrO       ' .OR. species_name(:) == 'Brx       ') then
+                                                                                                  get_molmass = m_bro
+                                                                                                else
+                                                                                                  if (species_name(:) == 'HBr       ') then
+                                                                                                    get_molmass = m_hbr
+                                                                                                  else
+                                                                                                    if (species_name(:) == 'HOBr      ') then
+                                                                                                      get_molmass = m_hobr
+                                                                                                    else
+                                                                                                      if (species_name(:) == 'BrONO2    ') then
+                                                                                                        get_molmass = m_brono2
+                                                                                                      else
+                                                                                                        if (species_name(:) == 'BrCl      ') then
+                                                                                                          get_molmass = m_brcl
+                                                                                                        else
+                                                                                                          if (species_name(:) == 'C2H2      ') then
+                                                                                                            get_molmass = m_c2h2
+                                                                                                          else
+                                                                                                            if (species_name(:) == 'TBUT2ENE  ') then
+                                                                                                              get_molmass = m_tbut2ene
+                                                                                                            else
+                                                                                                              if (species_name(:) == 'BENZENE   ') then
+                                                                                                                get_molmass = m_benzene
+                                                                                                              else
+                                                                                                                if (species_name(:) == 'EtOH      ') then
+                                                                                                                  get_molmass = m_etoh
+                                                                                                                else
+                                                                                                                  if (species_name(:) == 'EtCHO     ') then
+                                                                                                                    get_molmass = m_etcho
+                                                                                                                  else
+                                                                                                                    if (species_name(:) == 'MEK       ') then
+                                                                                                                      get_molmass = m_mek
+                                                                                                                    else
+                                                                                                                      if (species_name(:) == 'HCOOH     ') then
+                                                                                                                        get_molmass = m_hcooh
+                                                                                                                      else
+                                                                                                                        if (species_name(:) == 'MeCO2H    ') then
+                                                                                                                          get_molmass = m_meco2h
+                                                                                                                        else
+                                                                                                                          if (species_name(:) == 'HOCH2CHO  ') then
+                                                                                                                            get_molmass = m_hoch2cho
+                                                                                                                          else
+                                                                                                                            if (species_name(:) == 'AGE       ') then
+                                                                                                                              get_molmass = 1.0
+                                                                                                                              ierr = -1
+                                                                                                                            else
+                                                                                                                              if (species_name(:) == 'AGE OF AIR') then
+                                                                                                                                get_molmass = 1.0
+                                                                                                                                ierr = -1
+                                                                                                                              else
+                                                                                                                                if (species_name(:) == 'PASSIVE O3') then
+                                                                                                                                  get_molmass = 1.0
+                                                                                                                                  ierr = -1
+                                                                                                                                else
+                                                                                                                                  if (species_name(:) == 'XXX       ') then
+                                                                                                                                    get_molmass = 1.0
+                                                                                                                                    ierr = -1
+                                                                                                                                  else
+                                                                                                                                    ierr = 1
+                                                                                                                                  end if
+                                                                                                                                end if
+                                                                                                                              end if
+                                                                                                                            end if
+                                                                                                                          end if
+                                                                                                                        end if
+                                                                                                                      end if
+                                                                                                                    end if
+                                                                                                                  end if
+                                                                                                                end if
+                                                                                                              end if
+                                                                                                            end if
+                                                                                                          end if
+                                                                                                        end if
+                                                                                                      end if
+                                                                                                    end if
+                                                                                                  end if
+                                                                                                end if
+                                                                                              end if
+                                                                                            end if
+                                                                                          end if
+                                                                                        end if
+                                                                                      end if
+                                                                                    end if
+                                                                                  end if
+                                                                                end if
+                                                                              end if
+                                                                            end if
+                                                                          end if
+                                                                        end if
+                                                                      end if
+                                                                    end if
+                                                                  end if
+                                                                end if
+                                                              end if
+                                                            end if
+                                                          end if
+                                                        end if
+                                                      end if
+                                                    end if
+                                                  end if
+                                                end if
+                                              end if
+                                            end if
+                                          end if
+                                        end if
+                                      end if
+                                    end if
+                                  end if
+                                end if
+                              end if
+                            end if
+                          end if
+                        end if
+                      end if
+                    end if
+                  end if
+                end if
+              end if
+            end if
+          end if
+        end if
+      end if
+    end if
+    if (ierr /= 0) then
+      if (ierr == (-1)) then
+        cmessage(:) = 'Molecular mass of ' // TRIM(species_name) // ' set to 1'
+      else
+        if (ierr == 1) then
+          cmessage(:) = 'Add molecular mass of ' // TRIM(species_name) // ' to this routine and check if it is present in ukca_constants'
+        end if
+      end if
+      call ereport('GET_MOLMASS', ierr, cmessage)
+    end if
+    if (lhook) then
+      call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
+    end if
+    return
+
+  end function get_molmass
+
+end module get_molmass_mod

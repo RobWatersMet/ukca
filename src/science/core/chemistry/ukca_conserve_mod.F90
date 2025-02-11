@@ -1,672 +1,915 @@
-! *****************************COPYRIGHT*******************************
-
-! (c) [University of Cambridge] [2008]. All rights reserved.
-! This routine has been licensed to the Met Office for use and
-! distribution under the UKCA collaboration agreement, subject
-! to the terms and conditions set out therein.
-! [Met Office Ref SC138]
-
-! *****************************COPYRIGHT*******************************
-
-!  Description:
-!   Module to contain subroutine ukca_conserve
-
-!  UKCA is a community model supported by The Met Office and
-!  NCAS, with components initially provided by The University of
-!  Cambridge, University of Leeds and The Met Office. See
-!  www.ukca.ac.uk
-
-! Code Owner: Please refer to the UM file CodeOwners.txt
-! This file belongs in section: UKCA
-
-!  Code Description:
-!    Language:  FORTRAN 90
-!
-! ######################################################################
-
-MODULE ukca_conserve_mod
-
-USE ukca_config_specification_mod, ONLY: ukca_config
-
-USE yomhook, ONLY: lhook, dr_hook
-USE parkind1, ONLY: jprb, jpim
-
-USE umPrintMgr, ONLY: umMessage, umPrint, PrintStatus,                         &
-                      PrStatus_Normal, PrStatus_Oper
-IMPLICIT NONE
-
-CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName='UKCA_CONSERVE_MOD'
-
-CONTAINS
-
-SUBROUTINE ukca_conserve(row_length, rows, model_levels,                       &
-  ntracers, tracers,                                                           &
-  pres, drain, crain, direction)
-! Description:
-
-! This routine calculates and conserves total chlorine, bromine, and
-! hydrogen. For these elements closed chemistry should be prescribed.
-! Called before chemistry, with direction = .TRUE., it calculates
-! total bromine, chlorine, and hydrogen as 3-D fields. Called afer
-! chemistry, with direction = .FALSE., it rescales the chlorine, bromine
-! and hydrogen containing compounds so that total chlorine, bromine
-! and hydrogen are conserved under chemistry. Where a compound contains
-! more than one of the 3 elements. e.g, BrCl, it is only scaled for the
-! less abundant of the two constituents, Br. It is then subtracted from
-! the total chlorine.
-
-! Method: Rescaling of tracer variables.
-
-
-! Code Description:
-! Language: FORTRAN 90 + common extensions.
-
-! Declarations:
-! These are of the form:-
-!     INTEGER      ExampleVariable      !Description of variable
-
-
-USE asad_mod,           ONLY: advt, jpctr
-USE ukca_constants,     ONLY: c_cf2cl2, c_cfcl3, c_clo, c_cl,                  &
-  c_cl2o2, c_hcl, c_hocl, c_oclo, c_brcl,                                      &
-  c_clono2, c_chf2cl, c_meccl3, c_mecl,                                        &
-  c_cf2clbr, c_ccl4, c_ch2br2, c_cf2clcfcl2,                                   &
-  c_bro, c_br, c_hobr, c_brono2, c_mebr, c_hbr,                                &
-  c_cf3br, c_h2o, c_ch4, c_h2,                                                 &
-  c_ho2no2, c_hono2, c_h2o2, c_hcho, c_meooh,                                  &
-  c_hono, c_c2h6, c_etooh, c_mecho, c_pan,                                     &
-  c_c3h8, c_prooh, c_etcho, c_mecoch2ooh,                                      &
-  c_ppan, c_meono2, c_h, c_oh, c_ho2, c_meoo,                                  &
-  c_etoo, c_proo, c_etco3, c_mecoch2oo
-
-USE ereport_mod,        ONLY: ereport
-USE errormessagelength_mod, ONLY: errormessagelength
-
-IMPLICIT NONE
-
-! Subroutine interface
-INTEGER, INTENT(IN) :: row_length        ! no of points E-W
-INTEGER, INTENT(IN) :: rows              ! no of points N-S
-INTEGER, INTENT(IN) :: model_levels      ! no of levels
-INTEGER, INTENT(IN) :: ntracers          ! no of tracers
-
-LOGICAL, INTENT(IN) :: direction         ! T to calculate total Cl etc
-! F to rescale total Cl into compouds
-
-REAL, INTENT(IN) :: pres(row_length, rows, model_levels)  ! pressure (Pa)
-
-REAL, INTENT(IN) :: drain(row_length, rows, model_levels)
-REAL, INTENT(IN) :: crain(row_length, rows, model_levels)
-
-REAL, INTENT(IN OUT) :: tracers(row_length, rows, model_levels,                &
-  ntracers)    ! tracer array
-
-! Local variables
-
-! Maximum number of Br, Cl, and H compounds permitted
-INTEGER, PARAMETER :: max_comp = 50
-
-REAL, PARAMETER :: adjust_pres = 500.0 ! pressure below which allow
-! for changes of total hydrogen due to dehydration, and above which only
-! advective changes are allowed.
-
-REAL, PARAMETER :: washout_limit = 10000.0 ! pressure limit below which
-! hydrogen conservation is not enforced.
-
-INTEGER :: m,i,j,k
-
-! Reservoir tracer for bromine
-INTEGER, SAVE :: n_toth=0      ! position of total hydrogen tracer
-INTEGER, SAVE :: n_n2o=0         !             N2O
-
-LOGICAL, SAVE :: firstcall = .TRUE. ! flag for first call of subr.
-
-INTEGER, SAVE ::       ncl_tracers     ! number of Cl tracers
-INTEGER, SAVE ::       nbr_tracers     ! number of Br tracers
-INTEGER, SAVE ::       nh_tracers      ! number of H tracers
-
-REAL, ALLOCATABLE, SAVE :: total_cl(:,:,:) ! total chlorine VMR
-REAL, ALLOCATABLE, SAVE :: total_br(:,:,:) ! total bromine VMR
-REAL, ALLOCATABLE, SAVE :: total_h (:,:,:) ! total hydrogen VMR
-
-
-INTEGER, SAVE ::  cl_tracers(max_comp) ! positions of Cl tracers
-INTEGER, SAVE ::  br_tracers(max_comp) ! positions of Br tracers
-INTEGER, SAVE ::   h_tracers(max_comp) ! positions of hydrogen tracers
-
-REAL   , SAVE ::c_cl_tracers(max_comp) ! conversion factors VMR/MMR
-REAL   , SAVE ::c_br_tracers(max_comp) ! conversion factors
-REAL   , SAVE ::c_h_tracers(max_comp)  ! conversion factors
-
-REAL   , SAVE :: cl_validity(max_comp) ! number of Cl atoms per mol.
-REAL   , SAVE :: br_validity(max_comp) ! number of Br atoms per mol.
-
-REAL   , SAVE :: h_validity(max_comp)  ! number of H atoms per mol.
-
-LOGICAL, SAVE :: contains_bromine(max_comp) ! flag for Cl compounds which
-! also contain bromine.
-LOGICAL, SAVE :: do_not_change(max_comp)    ! leave unchanged.
-
-! Correction factor to achieve Cl or Br conservation
-REAL, ALLOCATABLE :: corrfac(:,:,:)
-
-INTEGER           :: errcode        ! error code
-CHARACTER(LEN=errormessagelength) :: cmessage       !   "   message
-
-INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
-INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
-REAL(KIND=jprb)               :: zhook_handle
-
-CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_CONSERVE'
-
-
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-IF (firstcall) THEN
-
-  IF (ntracers /= jpctr) THEN
-    errcode = 1
-    cmessage=' Number of tracers does not agree with jpctr'
-    WRITE(umMessage,'(1X,A,1X,I4,1X,I4)') cmessage,ntracers,jpctr
-    CALL umPrint(umMessage,src='ukca_conserve_mod')
-    CALL ereport('UKCA_CONSERVE_MOD:UKCA_CONSERVE',errcode,                    &
-      cmessage)
-  END IF
-
-  ! Calculate the number of Cl and Br tracers, their positions, mmr/vmr
-  ! conversion ratios, and validities (numbers of Cl/Br atoms per molecule).
-
-  ncl_tracers = 0
-  nbr_tracers = 0
-  nh_tracers = 0
-  contains_bromine = .FALSE.
-  do_not_change = .FALSE.
-  cl_tracers = 0
-  br_tracers = 0
-  h_tracers = 0
-  cl_validity = 1.0
-  br_validity = 1.0
-  h_validity = 1.0
-  c_br_tracers = 0.0
-  c_cl_tracers = 0.0
-  c_h_tracers = 0.0
-  DO m=1,jpctr
-    SELECT CASE (advt(m))
-
-      ! chlorine tracers
-    CASE ('CF2Cl2    ')
-      ncl_tracers = ncl_tracers + 1
-      cl_tracers(ncl_tracers) = m
-      c_cl_tracers(ncl_tracers) = c_cf2cl2
-      cl_validity(ncl_tracers) = 2.0
-    CASE ('CFCl3     ')
-      ncl_tracers = ncl_tracers + 1
-      cl_tracers(ncl_tracers) = m
-      c_cl_tracers(ncl_tracers) = c_cfcl3
-      cl_validity(ncl_tracers) = 3.0
-    CASE ('Clx       ','ClO       ')
-      ncl_tracers = ncl_tracers + 1
-      cl_tracers(ncl_tracers) = m
-      c_cl_tracers(ncl_tracers) = c_clo
-    CASE ('Cl        ')
-      ncl_tracers = ncl_tracers + 1
-      cl_tracers(ncl_tracers) = m
-      c_cl_tracers(ncl_tracers) = c_cl
-    CASE ('Cl2O2     ')
-      ncl_tracers = ncl_tracers + 1
-      cl_tracers(ncl_tracers) = m
-      c_cl_tracers(ncl_tracers) = c_cl2o2
-      cl_validity(ncl_tracers) = 2.0
-    CASE ('HCl       ')
-      ncl_tracers = ncl_tracers + 1
-      cl_tracers(ncl_tracers) = m
-      c_cl_tracers(ncl_tracers) = c_hcl
-      nh_tracers = nh_tracers + 1
-      h_tracers(nh_tracers) = m
-      c_h_tracers(nh_tracers) = c_hcl
-      do_not_change(nh_tracers) = .TRUE.
-    CASE ('HOCl      ')
-      ncl_tracers = ncl_tracers + 1
-      cl_tracers(ncl_tracers) = m
-      c_cl_tracers(ncl_tracers) = c_hocl
-      nh_tracers = nh_tracers + 1
-      h_tracers(nh_tracers) = m
-      c_h_tracers(nh_tracers) = c_hocl
-      do_not_change(nh_tracers) = .TRUE.
-    CASE ('OClO      ')
-      ncl_tracers = ncl_tracers + 1
-      cl_tracers(ncl_tracers) = m
-      c_cl_tracers(ncl_tracers) = c_oclo
-    CASE ('BrCl      ')
-      ncl_tracers = ncl_tracers + 1
-      cl_tracers(ncl_tracers) = m
-      c_cl_tracers(ncl_tracers) = c_brcl
-      contains_bromine(ncl_tracers) = .TRUE.
-      nbr_tracers = nbr_tracers + 1
-      br_tracers(nbr_tracers) = m
-      c_br_tracers(nbr_tracers) = c_brcl
-    CASE ('ClONO2    ')
-      ncl_tracers = ncl_tracers + 1
-      cl_tracers(ncl_tracers) = m
-      c_cl_tracers(ncl_tracers) = c_clono2
-    CASE ('CF2ClCFCl2')
-      ncl_tracers = ncl_tracers + 1
-      cl_tracers(ncl_tracers) = m
-      c_cl_tracers(ncl_tracers) = c_cf2clcfcl2
-      cl_validity(ncl_tracers) = 3.0
-    CASE ('CHF2Cl    ')
-      ncl_tracers = ncl_tracers + 1
-      cl_tracers(ncl_tracers) = m
-      c_cl_tracers(ncl_tracers) = c_chf2cl
-      nh_tracers = nh_tracers + 1
-      h_tracers(nh_tracers) = m
-      c_h_tracers(nh_tracers) = c_chf2cl
-      do_not_change(nh_tracers) = .TRUE.
-    CASE ('MeCCl3    ')
-      ncl_tracers = ncl_tracers + 1
-      cl_tracers(ncl_tracers) = m
-      c_cl_tracers(ncl_tracers) = c_meccl3
-      cl_validity(ncl_tracers) = 3.0
-      nh_tracers = nh_tracers + 1
-      h_tracers(nh_tracers) = m
-      c_h_tracers(nh_tracers) = c_meccl3
-      do_not_change(nh_tracers) = .TRUE.
-    CASE ('CCl4      ')
-      ncl_tracers = ncl_tracers + 1
-      cl_tracers(ncl_tracers) = m
-      c_cl_tracers(ncl_tracers) = c_ccl4
-      cl_validity(ncl_tracers) = 4.0
-    CASE ('MeCl      ')
-      ncl_tracers = ncl_tracers + 1
-      cl_tracers(ncl_tracers) = m
-      c_cl_tracers(ncl_tracers) = c_mecl
-      nh_tracers = nh_tracers + 1
-      h_tracers(nh_tracers) = m
-      c_h_tracers(nh_tracers) = c_mecl
-      do_not_change(nh_tracers) = .TRUE.
-    CASE ('CF2ClBr   ')
-      ncl_tracers = ncl_tracers + 1
-      cl_tracers(ncl_tracers) = m
-      c_cl_tracers(ncl_tracers) = c_cf2clbr
-      contains_bromine(ncl_tracers) = .TRUE.
-      nbr_tracers = nbr_tracers + 1
-      br_tracers(nbr_tracers) = m
-      c_br_tracers(nbr_tracers) = c_cf2clbr
-      ! Bromine tracers
-    CASE ('Brx       ','BrO       ')
-      nbr_tracers = nbr_tracers + 1
-      br_tracers(nbr_tracers) = m
-      c_br_tracers(nbr_tracers) = c_bro
-    CASE ('Br        ')
-      nbr_tracers = nbr_tracers + 1
-      br_tracers(nbr_tracers) = m
-      c_br_tracers(nbr_tracers) = c_br
-    CASE ('HOBr      ')
-      nbr_tracers = nbr_tracers + 1
-      br_tracers(nbr_tracers) = m
-      c_br_tracers(nbr_tracers) = c_hobr
-      nh_tracers = nh_tracers + 1
-      h_tracers(nh_tracers) = m
-      c_h_tracers(nh_tracers) = c_hobr
-      do_not_change(nh_tracers) = .TRUE.
-    CASE ('BrONO2    ')
-      nbr_tracers = nbr_tracers + 1
-      br_tracers(nbr_tracers) = m
-      c_br_tracers(nbr_tracers) = c_brono2
-    CASE ('MeBr      ')
-      nbr_tracers = nbr_tracers + 1
-      br_tracers(nbr_tracers) = m
-      c_br_tracers(nbr_tracers) = c_mebr
-      nh_tracers = nh_tracers + 1
-      h_tracers(nh_tracers) = m
-      c_h_tracers(nh_tracers) = c_mebr
-      do_not_change(nh_tracers) = .TRUE.
-    CASE ('HBr       ')
-      nbr_tracers = nbr_tracers + 1
-      br_tracers(nbr_tracers) = m
-      c_br_tracers(nbr_tracers) = c_hbr
-      nh_tracers = nh_tracers + 1
-      h_tracers(nh_tracers) = m
-      c_h_tracers(nh_tracers) = c_hbr
-      do_not_change(nh_tracers) = .TRUE.
-    CASE ('CF3Br     ')
-      nbr_tracers = nbr_tracers + 1
-      br_tracers(nbr_tracers) = m
-      c_br_tracers(nbr_tracers) = c_cf3br
-    CASE ('CH2Br2    ')
-      nbr_tracers = nbr_tracers + 1
-      br_tracers(nbr_tracers) = m
-      c_br_tracers(nbr_tracers) = c_ch2br2
-      br_validity(nbr_tracers) = 2.0
-      nh_tracers = nh_tracers + 1
-      h_tracers(nh_tracers) = m
-      c_h_tracers(nh_tracers) = c_ch2br2
-      h_validity(nh_tracers) = 2.0
-      do_not_change(nh_tracers) = .TRUE.
-      ! hydrogen tracers
-    CASE ('TOTH      ')
-      n_toth = m
-    CASE ('H2O       ')
-      nh_tracers = nh_tracers + 1
-      h_tracers(nh_tracers) = m
-      c_h_tracers(nh_tracers) = c_h2o
-      h_validity(nh_tracers) = 2.0
-    CASE ('CH4       ')
-      nh_tracers = nh_tracers + 1
-      h_tracers(nh_tracers) = m
-      c_h_tracers(nh_tracers) = c_ch4
-      h_validity(nh_tracers) = 4.0
-      do_not_change(nh_tracers) = .TRUE.
-    CASE ('H2        ')
-      nh_tracers = nh_tracers + 1
-      h_tracers(nh_tracers) = m
-      c_h_tracers(nh_tracers) = c_h2
-      h_validity(nh_tracers) = 2.0
-    CASE ('HO2NO2    ')
-      nh_tracers = nh_tracers + 1
-      h_tracers(nh_tracers) = m
-      c_h_tracers(nh_tracers) = c_ho2no2
-      do_not_change(nh_tracers) = .TRUE.
-    CASE ('HONO2     ')
-      nh_tracers = nh_tracers + 1
-      h_tracers(nh_tracers) = m
-      c_h_tracers(nh_tracers) = c_hono2
-      do_not_change(nh_tracers) = .TRUE.
-    CASE ('H2O2      ')
-      nh_tracers = nh_tracers + 1
-      h_tracers(nh_tracers) = m
-      c_h_tracers(nh_tracers) = c_h2o2
-      h_validity(nh_tracers) = 2.0
-    CASE ('HCHO      ')
-      nh_tracers = nh_tracers + 1
-      h_tracers(nh_tracers) = m
-      c_h_tracers(nh_tracers) = c_hcho
-      h_validity(nh_tracers) = 2.0
-    CASE ('MeOOH     ')
-      nh_tracers = nh_tracers + 1
-      h_tracers(nh_tracers) = m
-      c_h_tracers(nh_tracers) = c_meooh
-      h_validity(nh_tracers) = 4.0
-    CASE ('HONO      ')
-      nh_tracers = nh_tracers + 1
-      h_tracers(nh_tracers) = m
-      c_h_tracers(nh_tracers) = c_hono
-      do_not_change(nh_tracers) = .TRUE.
-    CASE ('C2H6      ')
-      nh_tracers = nh_tracers + 1
-      h_tracers(nh_tracers) = m
-      c_h_tracers(nh_tracers) = c_c2h6
-      h_validity(nh_tracers) = 6.0
-    CASE ('EtOOH     ')
-      nh_tracers = nh_tracers + 1
-      h_tracers(nh_tracers) = m
-      c_h_tracers(nh_tracers) = c_etooh
-      h_validity(nh_tracers) = 6.0
-    CASE ('MeCHO     ')
-      nh_tracers = nh_tracers + 1
-      h_tracers(nh_tracers) = m
-      c_h_tracers(nh_tracers) = c_mecho
-      h_validity(nh_tracers) = 4.0
-    CASE ('PAN       ')
-      nh_tracers = nh_tracers + 1
-      h_tracers(nh_tracers) = m
-      c_h_tracers(nh_tracers) = c_pan
-      h_validity(nh_tracers) = 3.0
-      do_not_change(nh_tracers) = .TRUE.
-    CASE ('C3H8      ')
-      nh_tracers = nh_tracers + 1
-      h_tracers(nh_tracers) = m
-      c_h_tracers(nh_tracers) = c_c3h8
-      h_validity(nh_tracers) = 8.0
-    CASE ('n-PrOOH   ','i-PrOOH   ')
-      nh_tracers = nh_tracers + 1
-      h_tracers(nh_tracers) = m
-      c_h_tracers(nh_tracers) = c_prooh
-      h_validity(nh_tracers) = 8.0
-    CASE ('EtCHO     ','Me2CO     ')
-      nh_tracers = nh_tracers + 1
-      h_tracers(nh_tracers) = m
-      c_h_tracers(nh_tracers) = c_etcho
-      h_validity(nh_tracers) = 6.0
-    CASE ('MeCOCH2OOH')
-      nh_tracers = nh_tracers + 1
-      h_tracers(nh_tracers) = m
-      c_h_tracers(nh_tracers) = c_mecoch2ooh
-      h_validity(nh_tracers) = 6.0
-    CASE ('PPAN      ')
-      nh_tracers = nh_tracers + 1
-      h_tracers(nh_tracers) = m
-      c_h_tracers(nh_tracers) = c_ppan
-      h_validity(nh_tracers) = 5.0
-      do_not_change(nh_tracers) = .TRUE.
-    CASE ('MeONO2    ')
-      nh_tracers = nh_tracers + 1
-      h_tracers(nh_tracers) = m
-      c_h_tracers(nh_tracers) = c_meono2
-      h_validity(nh_tracers) = 3.0
-      do_not_change(nh_tracers) = .TRUE.
-    CASE ('H         ')
-      nh_tracers = nh_tracers + 1
-      h_tracers(nh_tracers) = m
-      c_h_tracers(nh_tracers) = c_h
-    CASE ('OH        ')
-      nh_tracers = nh_tracers + 1
-      h_tracers(nh_tracers) = m
-      c_h_tracers(nh_tracers) = c_oh
-    CASE ('HO2       ','HOx       ')
-      nh_tracers = nh_tracers + 1
-      h_tracers(nh_tracers) = m
-      c_h_tracers(nh_tracers) = c_ho2
-    CASE ('MeOO      ')
-      nh_tracers = nh_tracers + 1
-      h_tracers(nh_tracers) = m
-      c_h_tracers(nh_tracers) = c_meoo
-      h_validity(nh_tracers) = 3.0
-    CASE ('EtOO      ')
-      nh_tracers = nh_tracers + 1
-      h_tracers(nh_tracers) = m
-      c_h_tracers(nh_tracers) = c_etoo
-      h_validity(nh_tracers) = 5.0
-    CASE ('i-PrOO    ','n-PrOO    ')
-      nh_tracers = nh_tracers + 1
-      h_tracers(nh_tracers) = m
-      c_h_tracers(nh_tracers) = c_proo
-      h_validity(nh_tracers) = 7.0
-    CASE ('EtCO3     ')
-      nh_tracers = nh_tracers + 1
-      h_tracers(nh_tracers) = m
-      c_h_tracers(nh_tracers) = c_etco3
-      h_validity(nh_tracers) = 5.0
-    CASE ('MeCOCH2OO ')
-      nh_tracers = nh_tracers + 1
-      h_tracers(nh_tracers) = m
-      c_h_tracers(nh_tracers) = c_mecoch2oo
-      h_validity(nh_tracers) = 5.0
-      ! special tracers
-    CASE ('Ox        ','O3        ')
-    CASE ('N2O       ')
-      n_n2o = m
-    CASE DEFAULT
-      IF ( PrintStatus >= PrStatus_Oper ) THEN
-        cmessage = ' CONSERVE: SPECIES '//advt(m)//                            &
-        ' not treated in CASE'
-        errcode = -1*m
-        CALL ereport('UKCA_CONSERVE_MOD:UKCA_CONSERVE',errcode,cmessage)
-      END IF
-    END SELECT
-  END DO
-
-  firstcall = .FALSE.
-
-END IF  ! if firstcall
-
-IF (direction) THEN
-  ! Calculate total chlorine and bromine vmrs.
-  IF (.NOT. ALLOCATED(total_br))                                               &
-    ALLOCATE(total_br(row_length, rows, model_levels))
-  IF (.NOT. ALLOCATED(total_cl))                                               &
-    ALLOCATE(total_cl(row_length, rows, model_levels))
-
-  total_br = 0.0
-  total_cl = 0.0
-
-  DO m=1,nbr_tracers
-    total_br = total_br + tracers(:,:,:,br_tracers(m))*                        &
-      br_validity(m) / c_br_tracers(m)
-  END DO
-  DO m=1,ncl_tracers
-    total_cl = total_cl + tracers(:,:,:,cl_tracers(m))*                        &
-      cl_validity(m) / c_cl_tracers(m)
-  END DO
-
-  ! Do not do hydrogen conservation unless at least two hydrogen
-  ! reservoirs (H2O, CH4) are defined, and water vapour feedback is on.
-  ! H conservation is currently experimental, so is normally set to be off.
-
-  IF (ukca_config%l_ukca_h2o_feedback .AND. ukca_config%l_ukca_conserve_h) THEN
-    ALLOCATE(total_h(row_length, rows, model_levels))
-    total_h = 0.0
-    DO m=1,nh_tracers
-      total_h = total_h + tracers(:,:,:,h_tracers(m))*                         &
-        h_validity(m) / c_h_tracers(m)
-    END DO
-    IF (n_toth > 0) THEN
-      ! if a seperate total hydrogen tracer is present
-      WHERE (pres > adjust_pres)                                               &
-        tracers(:,:,:,n_toth) = total_h
-      WHERE (pres <= adjust_pres)                                              &
-        total_h = tracers(:,:,:,n_toth)
-    END IF
-  END IF
-
-ELSE    ! direction = F
-  ! Set N2O to 0 at the top, to avoid initialization problem
-  ! ensure to not do this in case of box model (model_levels==1)
-  IF (n_n2o > 0 .AND. (model_levels /= 1))                                     &
-    tracers(:,:,model_levels,n_n2o) = 0.0
-
-  ! Adjust tracers to match
-  ALLOCATE(corrfac(row_length, rows, model_levels))
-  IF (nbr_tracers > 0) THEN
-    corrfac = 0.0
-
-    ! Calculate new total bromine
-    DO m=1,nbr_tracers
-      corrfac = corrfac + tracers(:,:,:,br_tracers(m))*                        &
-        br_validity(m) / c_br_tracers(m)
-    END DO
-
-    ! Adjust bromine tracers to match total bromine computed before
-    ! chemistry
-
-    corrfac = total_br / corrfac
-    DO m=1,nbr_tracers
-      DO i=1,row_length
-        DO j=1,rows
-          DO k=2,model_levels
-            IF (drain(i,j,k) + crain(i,j,k) == 0.0) THEN
-              tracers(i,j,k,br_tracers(m)) =                                   &
-                tracers(i,j,k,br_tracers(m)) * corrfac(i,j,k)
-            ELSE
-              corrfac(i,j,k) = 1.0
-            END IF
-          END DO
-        END DO
-      END DO
-    END DO
-    IF (((MINVAL(corrfac) < 0.9) .OR. (MAXVAL(corrfac) > 1.1))                 &
-      .AND. (printstatus >= prstatus_normal)) THEN
-      WRITE(umMessage,'(A,2F8.4)') 'Correct bromine ',MINVAL(corrfac),         &
-                                                      MAXVAL(corrfac)
-      CALL umPrint(umMessage,src='ukca_conserve_mod')
-    END IF
-  END IF     ! nbr_tracers > 0
-
-  ! Calculate new total chlorine, excluding BrCl and CF2ClBr
-
-  IF (ncl_tracers > 0) THEN
-    corrfac = 0.0
-
-    DO m=1,ncl_tracers
-      IF (.NOT. (contains_bromine(m))) THEN
-        corrfac = corrfac + tracers(:,:,:,cl_tracers(m))*                      &
-          cl_validity(m) / c_cl_tracers(m)
-      ELSE
-        total_cl = total_cl - tracers(:,:,:,cl_tracers(m))*                    &
-          cl_validity(m) / c_cl_tracers(m)
-      END IF
-    END DO
-
-    ! Adjust chlorine species to match total chlorine computed before.
-    ! Leave BrCl and CF2ClBr alone.
-
-    corrfac = total_cl / corrfac
-    DO m=1,ncl_tracers
-      IF (.NOT. (contains_bromine(m))) THEN
-        DO i=1,row_length
-          DO j=1,rows
-            DO k=2,model_levels
-              IF (crain(i,j,k) + drain(i,j,k) == 0.0) THEN
-                tracers(i,j,k,cl_tracers(m)) =                                 &
-                  tracers(i,j,k,cl_tracers(m)) * corrfac(i,j,k)
-              ELSE
-                corrfac(i,j,k) = 1.0
-              END IF
-            END DO
-          END DO
-        END DO
-      END IF
-    END DO
-    IF (((MINVAL(corrfac) < 0.9) .OR. (MAXVAL(corrfac) > 1.1))                 &
-      .AND. (printstatus >= prstatus_normal)) THEN
-      WRITE(umMessage,'(A,2F8.4)')'Correct chlorine ',MINVAL(corrfac),         &
-                                                      MAXVAL(corrfac)
-      CALL umPrint(umMessage,src='ukca_conserve_mod')
-    END IF
-  END IF   ! ncl_tracers > 0
-
-  IF (ukca_config%l_ukca_h2o_feedback .AND. ukca_config%l_ukca_conserve_h) THEN
-    corrfac = 0.0
-
-    ! Calculate new total hydrogen
-    DO m=1,nh_tracers
-      IF (.NOT. (do_not_change(m))) THEN
-        corrfac = corrfac + tracers(:,:,:,h_tracers(m))*                       &
-          h_validity(m) / c_h_tracers(m)
-      ELSE
-        total_h = total_h - tracers(:,:,:,h_tracers(m))*                       &
-          h_validity(m) / c_h_tracers(m)
-      END IF
-    END DO
-
-    ! adjust upper boundary for hydrogen tracers only. This is needed to
-    ! prevent model instability if too much water is present at the model
-    ! top.
-    ! Adjust hydrogen tracers to match total hydrogen computed before
-    ! chemistry
-
-    corrfac = total_h / corrfac
-
-    ! Do not enforce hydrogen conservation in the troposphere, due to
-    ! washout and dry deposition.
-
-    WHERE (pres > washout_limit) corrfac = 1.0
-
-    DO m=1,nh_tracers
-      IF (.NOT. (do_not_change(m)))                                            &
-        tracers(:,:,:,h_tracers(m)) = tracers(:,:,:,h_tracers(m))              &
-        * corrfac
-    END DO
-  END IF ! l_ukca_h2o_feedback
-
-  ! Deallocate fields
-  IF (ALLOCATED(total_br)) DEALLOCATE(total_br)
-  IF (ALLOCATED(total_cl)) DEALLOCATE(total_cl)
-  IF (ALLOCATED(total_h)) DEALLOCATE(total_h)
-  IF (ALLOCATED(corrfac)) DEALLOCATE(corrfac)
-END IF   ! direction
-
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
-RETURN
-END SUBROUTINE ukca_conserve
-
-END MODULE ukca_conserve_mod
+module ukca_conserve_mod
+  use ukca_config_specification_mod, only : ukca_config
+  use yomhook, only : dr_hook, lhook
+  use parkind1, only : jpim, jprb
+  use umPrintMgr, only : printstatus, prstatus_normal, prstatus_oper, ummessage, umprint
+  implicit none
+  character(len = *), parameter, private :: ModuleName = 'UKCA_CONSERVE_MOD'
+  public
+
+  contains
+  subroutine ukca_conserve(row_length, rows, model_levels, ntracers, tracers, pres, drain, crain, direction)
+    use asad_mod, only : advt, jpctr
+    use ukca_constants, only : c_br, c_brcl, c_bro, c_brono2, c_c2h6, c_c3h8, c_ccl4, c_cf2cl2, c_cf2clbr, c_cf2clcfcl2, c_cf3br, c_cfcl3, c_ch2br2, c_ch4, c_chf2cl, c_cl, c_cl2o2, c_clo, c_clono2, c_etcho, c_etco3, c_etoo, c_etooh, c_h, c_h2, c_h2o, c_h2o2, c_hbr, c_hcho, c_hcl, c_ho2, c_ho2no2, c_hobr, c_hocl, c_hono, c_hono2, c_mebr, c_meccl3, c_mecho, c_mecl, c_mecoch2oo, c_mecoch2ooh, c_meono2, c_meoo, c_meooh, c_oclo, c_oh, c_pan, c_ppan, c_proo, c_prooh
+    use ereport_mod, only : ereport
+    use errormessagelength_mod, only : errormessagelength
+    integer, parameter :: max_comp = 50
+    real, parameter :: adjust_pres = 500.0
+    real, parameter :: washout_limit = 10000.0
+    integer(kind=jpim), parameter :: zhook_in = 0
+    integer(kind=jpim), parameter :: zhook_out = 1
+    integer, intent(in) :: row_length
+    integer, intent(in) :: rows
+    integer, intent(in) :: model_levels
+    integer, intent(in) :: ntracers
+    logical, intent(in) :: direction
+    real, dimension(row_length,rows,model_levels), intent(in) :: pres
+    real, dimension(row_length,rows,model_levels), intent(in) :: drain
+    real, dimension(row_length,rows,model_levels), intent(in) :: crain
+    real, dimension(row_length,rows,model_levels,ntracers), intent(inout) :: tracers
+    integer :: m
+    integer :: i
+    integer :: j
+    integer :: k
+    integer, save :: n_toth = 0
+    integer, save :: n_n2o = 0
+    logical, save :: firstcall = .true.
+    integer, save :: ncl_tracers
+    integer, save :: nbr_tracers
+    integer, save :: nh_tracers
+    real, allocatable, dimension(:,:,:), save :: total_cl
+    real, allocatable, dimension(:,:,:), save :: total_br
+    real, allocatable, dimension(:,:,:), save :: total_h
+    integer, dimension(max_comp), save :: cl_tracers
+    integer, dimension(max_comp), save :: br_tracers
+    integer, dimension(max_comp), save :: h_tracers
+    real, dimension(max_comp), save :: c_cl_tracers
+    real, dimension(max_comp), save :: c_br_tracers
+    real, dimension(max_comp), save :: c_h_tracers
+    real, dimension(max_comp), save :: cl_validity
+    real, dimension(max_comp), save :: br_validity
+    real, dimension(max_comp), save :: h_validity
+    logical, dimension(max_comp), save :: contains_bromine
+    logical, dimension(max_comp), save :: do_not_change
+    real, allocatable, dimension(:,:,:) :: corrfac
+    integer :: errcode
+    CHARACTER(LEN = errormessagelength) :: cmessage
+    real(kind=jprb) :: zhook_handle
+    CHARACTER(LEN = *), PARAMETER :: RoutineName = 'UKCA_CONSERVE'
+    integer :: idx
+    integer :: idx_1
+    integer :: idx_2
+    integer :: idx_3
+    integer :: idx_4
+    integer :: idx_5
+    integer :: idx_6
+    integer :: idx_7
+    integer :: idx_8
+    integer :: idx_9
+    integer :: idx_10
+    integer :: idx_11
+    integer :: idx_12
+    integer :: idx_13
+    integer :: idx_14
+    integer :: idx_15
+    integer :: idx_16
+    integer :: idx_17
+    integer :: idx_18
+    integer :: idx_19
+    integer :: idx_20
+    integer :: idx_21
+    integer :: idx_22
+    integer :: idx_23
+    integer :: idx_24
+    integer :: idx_25
+    integer :: idx_26
+    integer :: idx_27
+    integer :: idx_28
+    integer :: idx_29
+    integer :: idx_30
+    integer :: idx_31
+    integer :: idx_32
+    integer :: idx_33
+    integer :: idx_34
+    integer :: idx_35
+    integer :: idx_36
+    integer :: idx_37
+    integer :: idx_38
+    integer :: idx_39
+    integer :: idx_40
+    integer :: idx_41
+    integer :: idx_42
+    integer :: idx_43
+    integer :: idx_44
+    integer :: idx_45
+    integer :: idx_46
+    integer :: idx_47
+    integer :: idx_48
+    integer :: idx_49
+    integer :: idx_50
+    integer :: idx_51
+    integer :: idx_52
+    integer :: idx_53
+    integer :: idx_54
+    integer :: idx_55
+    integer :: idx_56
+    integer :: idx_57
+    integer :: idx_58
+    integer :: idx_59
+    integer :: idx_60
+    integer :: idx_61
+    integer :: idx_62
+    integer :: idx_63
+    integer :: idx_64
+    integer :: idx_65
+    integer :: idx_66
+    integer :: widx3
+    integer :: widx2
+    integer :: widx1
+    integer :: widx3_1
+    integer :: widx2_1
+    integer :: widx1_1
+    integer :: widx3_2
+    integer :: widx2_2
+    integer :: widx1_2
+
+    if (lhook) then
+      call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
+    end if
+    if (firstcall) then
+      if (ntracers /= jpctr) then
+        errcode = 1
+        cmessage(:) = ' Number of tracers does not agree with jpctr'
+        ! PSyclone CodeBlock (unsupported code) reason:
+        !  - Unsupported statement: Write_Stmt
+        WRITE(umMessage, '(1X,A,1X,I4,1X,I4)') cmessage, ntracers, jpctr
+        call umprint(ummessage, src='ukca_conserve_mod')
+        call ereport('UKCA_CONSERVE_MOD:UKCA_CONSERVE', errcode, cmessage)
+      end if
+      !$acc kernels
+      ncl_tracers = 0
+      nbr_tracers = 0
+      nh_tracers = 0
+      !$acc loop gang vector independent
+      do idx = 1, max_comp, 1
+        contains_bromine(idx) = .false.
+      enddo
+      !$acc loop gang vector independent
+      do idx_1 = 1, max_comp, 1
+        do_not_change(idx_1) = .false.
+      enddo
+      !$acc loop gang vector independent
+      do idx_2 = 1, max_comp, 1
+        cl_tracers(idx_2) = 0
+      enddo
+      !$acc loop gang vector independent
+      do idx_3 = 1, max_comp, 1
+        br_tracers(idx_3) = 0
+      enddo
+      !$acc loop gang vector independent
+      do idx_4 = 1, max_comp, 1
+        h_tracers(idx_4) = 0
+      enddo
+      !$acc loop gang vector independent
+      do idx_5 = 1, max_comp, 1
+        cl_validity(idx_5) = 1.0
+      enddo
+      !$acc loop gang vector independent
+      do idx_6 = 1, max_comp, 1
+        br_validity(idx_6) = 1.0
+      enddo
+      !$acc loop gang vector independent
+      do idx_7 = 1, max_comp, 1
+        h_validity(idx_7) = 1.0
+      enddo
+      !$acc loop gang vector independent
+      do idx_8 = 1, max_comp, 1
+        c_br_tracers(idx_8) = 0.0
+      enddo
+      !$acc loop gang vector independent
+      do idx_9 = 1, max_comp, 1
+        c_cl_tracers(idx_9) = 0.0
+      enddo
+      !$acc loop gang vector independent
+      do idx_10 = 1, max_comp, 1
+        c_h_tracers(idx_10) = 0.0
+      enddo
+      !$acc end kernels
+      do m = 1, jpctr, 1
+        if (advt(m) == 'CF2Cl2    ') then
+          ncl_tracers = ncl_tracers + 1
+          cl_tracers(ncl_tracers) = m
+          c_cl_tracers(ncl_tracers) = c_cf2cl2
+          cl_validity(ncl_tracers) = 2.0
+        else
+          if (advt(m) == 'CFCl3     ') then
+            ncl_tracers = ncl_tracers + 1
+            cl_tracers(ncl_tracers) = m
+            c_cl_tracers(ncl_tracers) = c_cfcl3
+            cl_validity(ncl_tracers) = 3.0
+          else
+            if (advt(m) == 'Clx       ' .OR. advt(m) == 'ClO       ') then
+              ncl_tracers = ncl_tracers + 1
+              cl_tracers(ncl_tracers) = m
+              c_cl_tracers(ncl_tracers) = c_clo
+            else
+              if (advt(m) == 'Cl        ') then
+                ncl_tracers = ncl_tracers + 1
+                cl_tracers(ncl_tracers) = m
+                c_cl_tracers(ncl_tracers) = c_cl
+              else
+                if (advt(m) == 'Cl2O2     ') then
+                  ncl_tracers = ncl_tracers + 1
+                  cl_tracers(ncl_tracers) = m
+                  c_cl_tracers(ncl_tracers) = c_cl2o2
+                  cl_validity(ncl_tracers) = 2.0
+                else
+                  if (advt(m) == 'HCl       ') then
+                    ncl_tracers = ncl_tracers + 1
+                    cl_tracers(ncl_tracers) = m
+                    c_cl_tracers(ncl_tracers) = c_hcl
+                    nh_tracers = nh_tracers + 1
+                    h_tracers(nh_tracers) = m
+                    c_h_tracers(nh_tracers) = c_hcl
+                    do_not_change(nh_tracers) = .true.
+                  else
+                    if (advt(m) == 'HOCl      ') then
+                      ncl_tracers = ncl_tracers + 1
+                      cl_tracers(ncl_tracers) = m
+                      c_cl_tracers(ncl_tracers) = c_hocl
+                      nh_tracers = nh_tracers + 1
+                      h_tracers(nh_tracers) = m
+                      c_h_tracers(nh_tracers) = c_hocl
+                      do_not_change(nh_tracers) = .true.
+                    else
+                      if (advt(m) == 'OClO      ') then
+                        ncl_tracers = ncl_tracers + 1
+                        cl_tracers(ncl_tracers) = m
+                        c_cl_tracers(ncl_tracers) = c_oclo
+                      else
+                        if (advt(m) == 'BrCl      ') then
+                          ncl_tracers = ncl_tracers + 1
+                          cl_tracers(ncl_tracers) = m
+                          c_cl_tracers(ncl_tracers) = c_brcl
+                          contains_bromine(ncl_tracers) = .true.
+                          nbr_tracers = nbr_tracers + 1
+                          br_tracers(nbr_tracers) = m
+                          c_br_tracers(nbr_tracers) = c_brcl
+                        else
+                          if (advt(m) == 'ClONO2    ') then
+                            ncl_tracers = ncl_tracers + 1
+                            cl_tracers(ncl_tracers) = m
+                            c_cl_tracers(ncl_tracers) = c_clono2
+                          else
+                            if (advt(m) == 'CF2ClCFCl2') then
+                              ncl_tracers = ncl_tracers + 1
+                              cl_tracers(ncl_tracers) = m
+                              c_cl_tracers(ncl_tracers) = c_cf2clcfcl2
+                              cl_validity(ncl_tracers) = 3.0
+                            else
+                              if (advt(m) == 'CHF2Cl    ') then
+                                ncl_tracers = ncl_tracers + 1
+                                cl_tracers(ncl_tracers) = m
+                                c_cl_tracers(ncl_tracers) = c_chf2cl
+                                nh_tracers = nh_tracers + 1
+                                h_tracers(nh_tracers) = m
+                                c_h_tracers(nh_tracers) = c_chf2cl
+                                do_not_change(nh_tracers) = .true.
+                              else
+                                if (advt(m) == 'MeCCl3    ') then
+                                  ncl_tracers = ncl_tracers + 1
+                                  cl_tracers(ncl_tracers) = m
+                                  c_cl_tracers(ncl_tracers) = c_meccl3
+                                  cl_validity(ncl_tracers) = 3.0
+                                  nh_tracers = nh_tracers + 1
+                                  h_tracers(nh_tracers) = m
+                                  c_h_tracers(nh_tracers) = c_meccl3
+                                  do_not_change(nh_tracers) = .true.
+                                else
+                                  if (advt(m) == 'CCl4      ') then
+                                    ncl_tracers = ncl_tracers + 1
+                                    cl_tracers(ncl_tracers) = m
+                                    c_cl_tracers(ncl_tracers) = c_ccl4
+                                    cl_validity(ncl_tracers) = 4.0
+                                  else
+                                    if (advt(m) == 'MeCl      ') then
+                                      ncl_tracers = ncl_tracers + 1
+                                      cl_tracers(ncl_tracers) = m
+                                      c_cl_tracers(ncl_tracers) = c_mecl
+                                      nh_tracers = nh_tracers + 1
+                                      h_tracers(nh_tracers) = m
+                                      c_h_tracers(nh_tracers) = c_mecl
+                                      do_not_change(nh_tracers) = .true.
+                                    else
+                                      if (advt(m) == 'CF2ClBr   ') then
+                                        ncl_tracers = ncl_tracers + 1
+                                        cl_tracers(ncl_tracers) = m
+                                        c_cl_tracers(ncl_tracers) = c_cf2clbr
+                                        contains_bromine(ncl_tracers) = .true.
+                                        nbr_tracers = nbr_tracers + 1
+                                        br_tracers(nbr_tracers) = m
+                                        c_br_tracers(nbr_tracers) = c_cf2clbr
+                                      else
+                                        if (advt(m) == 'Brx       ' .OR. advt(m) == 'BrO       ') then
+                                          nbr_tracers = nbr_tracers + 1
+                                          br_tracers(nbr_tracers) = m
+                                          c_br_tracers(nbr_tracers) = c_bro
+                                        else
+                                          if (advt(m) == 'Br        ') then
+                                            nbr_tracers = nbr_tracers + 1
+                                            br_tracers(nbr_tracers) = m
+                                            c_br_tracers(nbr_tracers) = c_br
+                                          else
+                                            if (advt(m) == 'HOBr      ') then
+                                              nbr_tracers = nbr_tracers + 1
+                                              br_tracers(nbr_tracers) = m
+                                              c_br_tracers(nbr_tracers) = c_hobr
+                                              nh_tracers = nh_tracers + 1
+                                              h_tracers(nh_tracers) = m
+                                              c_h_tracers(nh_tracers) = c_hobr
+                                              do_not_change(nh_tracers) = .true.
+                                            else
+                                              if (advt(m) == 'BrONO2    ') then
+                                                nbr_tracers = nbr_tracers + 1
+                                                br_tracers(nbr_tracers) = m
+                                                c_br_tracers(nbr_tracers) = c_brono2
+                                              else
+                                                if (advt(m) == 'MeBr      ') then
+                                                  nbr_tracers = nbr_tracers + 1
+                                                  br_tracers(nbr_tracers) = m
+                                                  c_br_tracers(nbr_tracers) = c_mebr
+                                                  nh_tracers = nh_tracers + 1
+                                                  h_tracers(nh_tracers) = m
+                                                  c_h_tracers(nh_tracers) = c_mebr
+                                                  do_not_change(nh_tracers) = .true.
+                                                else
+                                                  if (advt(m) == 'HBr       ') then
+                                                    nbr_tracers = nbr_tracers + 1
+                                                    br_tracers(nbr_tracers) = m
+                                                    c_br_tracers(nbr_tracers) = c_hbr
+                                                    nh_tracers = nh_tracers + 1
+                                                    h_tracers(nh_tracers) = m
+                                                    c_h_tracers(nh_tracers) = c_hbr
+                                                    do_not_change(nh_tracers) = .true.
+                                                  else
+                                                    if (advt(m) == 'CF3Br     ') then
+                                                      nbr_tracers = nbr_tracers + 1
+                                                      br_tracers(nbr_tracers) = m
+                                                      c_br_tracers(nbr_tracers) = c_cf3br
+                                                    else
+                                                      if (advt(m) == 'CH2Br2    ') then
+                                                        nbr_tracers = nbr_tracers + 1
+                                                        br_tracers(nbr_tracers) = m
+                                                        c_br_tracers(nbr_tracers) = c_ch2br2
+                                                        br_validity(nbr_tracers) = 2.0
+                                                        nh_tracers = nh_tracers + 1
+                                                        h_tracers(nh_tracers) = m
+                                                        c_h_tracers(nh_tracers) = c_ch2br2
+                                                        h_validity(nh_tracers) = 2.0
+                                                        do_not_change(nh_tracers) = .true.
+                                                      else
+                                                        if (advt(m) == 'TOTH      ') then
+                                                          n_toth = m
+                                                        else
+                                                          if (advt(m) == 'H2O       ') then
+                                                            nh_tracers = nh_tracers + 1
+                                                            h_tracers(nh_tracers) = m
+                                                            c_h_tracers(nh_tracers) = c_h2o
+                                                            h_validity(nh_tracers) = 2.0
+                                                          else
+                                                            if (advt(m) == 'CH4       ') then
+                                                              nh_tracers = nh_tracers + 1
+                                                              h_tracers(nh_tracers) = m
+                                                              c_h_tracers(nh_tracers) = c_ch4
+                                                              h_validity(nh_tracers) = 4.0
+                                                              do_not_change(nh_tracers) = .true.
+                                                            else
+                                                              if (advt(m) == 'H2        ') then
+                                                                nh_tracers = nh_tracers + 1
+                                                                h_tracers(nh_tracers) = m
+                                                                c_h_tracers(nh_tracers) = c_h2
+                                                                h_validity(nh_tracers) = 2.0
+                                                              else
+                                                                if (advt(m) == 'HO2NO2    ') then
+                                                                  nh_tracers = nh_tracers + 1
+                                                                  h_tracers(nh_tracers) = m
+                                                                  c_h_tracers(nh_tracers) = c_ho2no2
+                                                                  do_not_change(nh_tracers) = .true.
+                                                                else
+                                                                  if (advt(m) == 'HONO2     ') then
+                                                                    nh_tracers = nh_tracers + 1
+                                                                    h_tracers(nh_tracers) = m
+                                                                    c_h_tracers(nh_tracers) = c_hono2
+                                                                    do_not_change(nh_tracers) = .true.
+                                                                  else
+                                                                    if (advt(m) == 'H2O2      ') then
+                                                                      nh_tracers = nh_tracers + 1
+                                                                      h_tracers(nh_tracers) = m
+                                                                      c_h_tracers(nh_tracers) = c_h2o2
+                                                                      h_validity(nh_tracers) = 2.0
+                                                                    else
+                                                                      if (advt(m) == 'HCHO      ') then
+                                                                        nh_tracers = nh_tracers + 1
+                                                                        h_tracers(nh_tracers) = m
+                                                                        c_h_tracers(nh_tracers) = c_hcho
+                                                                        h_validity(nh_tracers) = 2.0
+                                                                      else
+                                                                        if (advt(m) == 'MeOOH     ') then
+                                                                          nh_tracers = nh_tracers + 1
+                                                                          h_tracers(nh_tracers) = m
+                                                                          c_h_tracers(nh_tracers) = c_meooh
+                                                                          h_validity(nh_tracers) = 4.0
+                                                                        else
+                                                                          if (advt(m) == 'HONO      ') then
+                                                                            nh_tracers = nh_tracers + 1
+                                                                            h_tracers(nh_tracers) = m
+                                                                            c_h_tracers(nh_tracers) = c_hono
+                                                                            do_not_change(nh_tracers) = .true.
+                                                                          else
+                                                                            if (advt(m) == 'C2H6      ') then
+                                                                              nh_tracers = nh_tracers + 1
+                                                                              h_tracers(nh_tracers) = m
+                                                                              c_h_tracers(nh_tracers) = c_c2h6
+                                                                              h_validity(nh_tracers) = 6.0
+                                                                            else
+                                                                              if (advt(m) == 'EtOOH     ') then
+                                                                                nh_tracers = nh_tracers + 1
+                                                                                h_tracers(nh_tracers) = m
+                                                                                c_h_tracers(nh_tracers) = c_etooh
+                                                                                h_validity(nh_tracers) = 6.0
+                                                                              else
+                                                                                if (advt(m) == 'MeCHO     ') then
+                                                                                  nh_tracers = nh_tracers + 1
+                                                                                  h_tracers(nh_tracers) = m
+                                                                                  c_h_tracers(nh_tracers) = c_mecho
+                                                                                  h_validity(nh_tracers) = 4.0
+                                                                                else
+                                                                                  if (advt(m) == 'PAN       ') then
+                                                                                    nh_tracers = nh_tracers + 1
+                                                                                    h_tracers(nh_tracers) = m
+                                                                                    c_h_tracers(nh_tracers) = c_pan
+                                                                                    h_validity(nh_tracers) = 3.0
+                                                                                    do_not_change(nh_tracers) = .true.
+                                                                                  else
+                                                                                    if (advt(m) == 'C3H8      ') then
+                                                                                      nh_tracers = nh_tracers + 1
+                                                                                      h_tracers(nh_tracers) = m
+                                                                                      c_h_tracers(nh_tracers) = c_c3h8
+                                                                                      h_validity(nh_tracers) = 8.0
+                                                                                    else
+                                                                                      if (advt(m) == 'n-PrOOH   ' .OR. advt(m) == 'i-PrOOH   ') then
+                                                                                        nh_tracers = nh_tracers + 1
+                                                                                        h_tracers(nh_tracers) = m
+                                                                                        c_h_tracers(nh_tracers) = c_prooh
+                                                                                        h_validity(nh_tracers) = 8.0
+                                                                                      else
+                                                                                        if (advt(m) == 'EtCHO     ' .OR. advt(m) == 'Me2CO     ') then
+                                                                                          nh_tracers = nh_tracers + 1
+                                                                                          h_tracers(nh_tracers) = m
+                                                                                          c_h_tracers(nh_tracers) = c_etcho
+                                                                                          h_validity(nh_tracers) = 6.0
+                                                                                        else
+                                                                                          if (advt(m) == 'MeCOCH2OOH') then
+                                                                                            nh_tracers = nh_tracers + 1
+                                                                                            h_tracers(nh_tracers) = m
+                                                                                            c_h_tracers(nh_tracers) = c_mecoch2ooh
+                                                                                            h_validity(nh_tracers) = 6.0
+                                                                                          else
+                                                                                            if (advt(m) == 'PPAN      ') then
+                                                                                              nh_tracers = nh_tracers + 1
+                                                                                              h_tracers(nh_tracers) = m
+                                                                                              c_h_tracers(nh_tracers) = c_ppan
+                                                                                              h_validity(nh_tracers) = 5.0
+                                                                                              do_not_change(nh_tracers) = .true.
+                                                                                            else
+                                                                                              if (advt(m) == 'MeONO2    ') then
+                                                                                                nh_tracers = nh_tracers + 1
+                                                                                                h_tracers(nh_tracers) = m
+                                                                                                c_h_tracers(nh_tracers) = c_meono2
+                                                                                                h_validity(nh_tracers) = 3.0
+                                                                                                do_not_change(nh_tracers) = .true.
+                                                                                              else
+                                                                                                if (advt(m) == 'H         ') then
+                                                                                                  nh_tracers = nh_tracers + 1
+                                                                                                  h_tracers(nh_tracers) = m
+                                                                                                  c_h_tracers(nh_tracers) = c_h
+                                                                                                else
+                                                                                                  if (advt(m) == 'OH        ') then
+                                                                                                    nh_tracers = nh_tracers + 1
+                                                                                                    h_tracers(nh_tracers) = m
+                                                                                                    c_h_tracers(nh_tracers) = c_oh
+                                                                                                  else
+                                                                                                    if (advt(m) == 'HO2       ' .OR. advt(m) == 'HOx       ') then
+                                                                                                      nh_tracers = nh_tracers + 1
+                                                                                                      h_tracers(nh_tracers) = m
+                                                                                                      c_h_tracers(nh_tracers) = c_ho2
+                                                                                                    else
+                                                                                                      if (advt(m) == 'MeOO      ') then
+                                                                                                        nh_tracers = nh_tracers + 1
+                                                                                                        h_tracers(nh_tracers) = m
+                                                                                                        c_h_tracers(nh_tracers) = c_meoo
+                                                                                                        h_validity(nh_tracers) = 3.0
+                                                                                                      else
+                                                                                                        if (advt(m) == 'EtOO      ') then
+                                                                                                          nh_tracers = nh_tracers + 1
+                                                                                                          h_tracers(nh_tracers) = m
+                                                                                                          c_h_tracers(nh_tracers) = c_etoo
+                                                                                                          h_validity(nh_tracers) = 5.0
+                                                                                                        else
+                                                                                                          if (advt(m) == 'i-PrOO    ' .OR. advt(m) == 'n-PrOO    ') then
+                                                                                                            nh_tracers = nh_tracers + 1
+                                                                                                            h_tracers(nh_tracers) = m
+                                                                                                            c_h_tracers(nh_tracers) = c_proo
+                                                                                                            h_validity(nh_tracers) = 7.0
+                                                                                                          else
+                                                                                                            if (advt(m) == 'EtCO3     ') then
+                                                                                                              nh_tracers = nh_tracers + 1
+                                                                                                              h_tracers(nh_tracers) = m
+                                                                                                              c_h_tracers(nh_tracers) = c_etco3
+                                                                                                              h_validity(nh_tracers) = 5.0
+                                                                                                            else
+                                                                                                              if (advt(m) == 'MeCOCH2OO ') then
+                                                                                                                nh_tracers = nh_tracers + 1
+                                                                                                                h_tracers(nh_tracers) = m
+                                                                                                                c_h_tracers(nh_tracers) = c_mecoch2oo
+                                                                                                                h_validity(nh_tracers) = 5.0
+                                                                                                              else
+                                                                                                                if (advt(m) == 'Ox        ' .OR. advt(m) == 'O3        ') then
+                                                                                                                else
+                                                                                                                  if (advt(m) == 'N2O       ') then
+                                                                                                                    n_n2o = m
+                                                                                                                  else
+                                                                                                                    if (printstatus >= prstatus_oper) then
+                                                                                                                      cmessage(:) = ' CONSERVE: SPECIES ' // advt(m) // ' not treated in CASE'
+                                                                                                                      errcode = -1 * m
+                                                                                                                      call ereport('UKCA_CONSERVE_MOD:UKCA_CONSERVE', errcode, cmessage)
+                                                                                                                    end if
+                                                                                                                  end if
+                                                                                                                end if
+                                                                                                              end if
+                                                                                                            end if
+                                                                                                          end if
+                                                                                                        end if
+                                                                                                      end if
+                                                                                                    end if
+                                                                                                  end if
+                                                                                                end if
+                                                                                              end if
+                                                                                            end if
+                                                                                          end if
+                                                                                        end if
+                                                                                      end if
+                                                                                    end if
+                                                                                  end if
+                                                                                end if
+                                                                              end if
+                                                                            end if
+                                                                          end if
+                                                                        end if
+                                                                      end if
+                                                                    end if
+                                                                  end if
+                                                                end if
+                                                              end if
+                                                            end if
+                                                          end if
+                                                        end if
+                                                      end if
+                                                    end if
+                                                  end if
+                                                end if
+                                              end if
+                                            end if
+                                          end if
+                                        end if
+                                      end if
+                                    end if
+                                  end if
+                                end if
+                              end if
+                            end if
+                          end if
+                        end if
+                      end if
+                    end if
+                  end if
+                end if
+              end if
+            end if
+          end if
+        end if
+      enddo
+      firstcall = .false.
+    end if
+    if (direction) then
+      if (.NOT.ALLOCATED(total_br)) then
+        ALLOCATE(total_br(1:row_length,1:rows,1:model_levels))
+      end if
+      if (.NOT.ALLOCATED(total_cl)) then
+        ALLOCATE(total_cl(1:row_length,1:rows,1:model_levels))
+      end if
+      !$acc kernels
+      !$acc loop gang vector independent collapse(3)
+      do idx_11 = LBOUND(total_br, dim=3), UBOUND(total_br, dim=3), 1
+        do idx_12 = LBOUND(total_br, dim=2), UBOUND(total_br, dim=2), 1
+          do idx_13 = LBOUND(total_br, dim=1), UBOUND(total_br, dim=1), 1
+            total_br(idx_13,idx_12,idx_11) = 0.0
+          enddo
+        enddo
+      enddo
+      !$acc loop gang vector independent collapse(3)
+      do idx_14 = LBOUND(total_cl, dim=3), UBOUND(total_cl, dim=3), 1
+        do idx_15 = LBOUND(total_cl, dim=2), UBOUND(total_cl, dim=2), 1
+          do idx_16 = LBOUND(total_cl, dim=1), UBOUND(total_cl, dim=1), 1
+            total_cl(idx_16,idx_15,idx_14) = 0.0
+          enddo
+        enddo
+      enddo
+      !$acc loop seq
+      do m = 1, nbr_tracers, 1
+        !$acc loop gang vector independent collapse(3)
+        do idx_17 = LBOUND(total_br, dim=3), UBOUND(total_br, dim=3), 1
+          do idx_18 = LBOUND(total_br, dim=2), UBOUND(total_br, dim=2), 1
+            do idx_19 = LBOUND(total_br, dim=1), UBOUND(total_br, dim=1), 1
+              total_br(idx_19,idx_18,idx_17) = total_br(idx_19,idx_18,idx_17) + tracers(idx_19 + (LBOUND(tracers, dim=1) - LBOUND(total_br, dim=1)),idx_18 + (LBOUND(tracers, dim=2) - LBOUND(total_br, dim=2)),idx_17 + (LBOUND(tracers, dim=3) - LBOUND(total_br, dim=3)),br_tracers(m)) * br_validity(m) / c_br_tracers(m)
+            enddo
+          enddo
+        enddo
+      enddo
+      !$acc loop seq
+      do m = 1, ncl_tracers, 1
+        !$acc loop gang vector independent collapse(3)
+        do idx_20 = LBOUND(total_cl, dim=3), UBOUND(total_cl, dim=3), 1
+          do idx_21 = LBOUND(total_cl, dim=2), UBOUND(total_cl, dim=2), 1
+            do idx_22 = LBOUND(total_cl, dim=1), UBOUND(total_cl, dim=1), 1
+              total_cl(idx_22,idx_21,idx_20) = total_cl(idx_22,idx_21,idx_20) + tracers(idx_22 + (LBOUND(tracers, dim=1) - LBOUND(total_cl, dim=1)),idx_21 + (LBOUND(tracers, dim=2) - LBOUND(total_cl, dim=2)),idx_20 + (LBOUND(tracers, dim=3) - LBOUND(total_cl, dim=3)),cl_tracers(m)) * cl_validity(m) / c_cl_tracers(m)
+            enddo
+          enddo
+        enddo
+      enddo
+      !$acc end kernels
+      if (ukca_config%l_ukca_h2o_feedback .AND. ukca_config%l_ukca_conserve_h) then
+        ALLOCATE(total_h(1:row_length,1:rows,1:model_levels))
+        !$acc kernels
+        !$acc loop gang vector independent collapse(3)
+        do idx_23 = LBOUND(total_h, dim=3), UBOUND(total_h, dim=3), 1
+          do idx_24 = LBOUND(total_h, dim=2), UBOUND(total_h, dim=2), 1
+            do idx_25 = LBOUND(total_h, dim=1), UBOUND(total_h, dim=1), 1
+              total_h(idx_25,idx_24,idx_23) = 0.0
+            enddo
+          enddo
+        enddo
+        !$acc end kernels
+        !$acc kernels
+        !$acc loop seq
+        do m = 1, nh_tracers, 1
+          !$acc loop gang vector independent collapse(3)
+          do idx_26 = LBOUND(total_h, dim=3), UBOUND(total_h, dim=3), 1
+            do idx_27 = LBOUND(total_h, dim=2), UBOUND(total_h, dim=2), 1
+              do idx_28 = LBOUND(total_h, dim=1), UBOUND(total_h, dim=1), 1
+                total_h(idx_28,idx_27,idx_26) = total_h(idx_28,idx_27,idx_26) + tracers(idx_28 + (LBOUND(tracers, dim=1) - LBOUND(total_h, dim=1)),idx_27 + (LBOUND(tracers, dim=2) - LBOUND(total_h, dim=2)),idx_26 + (LBOUND(tracers, dim=3) - LBOUND(total_h, dim=3)),h_tracers(m)) * h_validity(m) / c_h_tracers(m)
+              enddo
+            enddo
+          enddo
+        enddo
+        !$acc end kernels
+        if (n_toth > 0) then
+          !$acc kernels
+          !$acc loop gang vector independent collapse(3)
+          do widx3 = 1, model_levels, 1
+            do widx2 = 1, rows, 1
+              do widx1 = 1, row_length, 1
+                if (pres(widx1,widx2,widx3) > adjust_pres) then
+                  tracers(widx1,widx2,widx3,n_toth) = total_h(LBOUND(total_h, dim=1) + widx1 - 1,LBOUND(total_h, dim=2) + widx2 - 1,LBOUND(total_h, dim=3) + widx3 - 1)
+                end if
+              enddo
+            enddo
+          enddo
+          !$acc loop gang vector independent collapse(3)
+          do widx3_1 = 1, model_levels, 1
+            do widx2_1 = 1, rows, 1
+              do widx1_1 = 1, row_length, 1
+                if (pres(widx1_1,widx2_1,widx3_1) <= adjust_pres) then
+                  total_h(LBOUND(total_h, dim=1) + widx1_1 - 1,LBOUND(total_h, dim=2) + widx2_1 - 1,LBOUND(total_h, dim=3) + widx3_1 - 1) = tracers(widx1_1,widx2_1,widx3_1,n_toth)
+                end if
+              enddo
+            enddo
+          enddo
+          !$acc end kernels
+        end if
+      end if
+    else
+      if (n_n2o > 0 .AND. model_levels /= 1) then
+        !$acc kernels
+        !$acc loop gang vector independent collapse(2)
+        do idx_29 = LBOUND(tracers, dim=2), UBOUND(tracers, dim=2), 1
+          do idx_30 = LBOUND(tracers, dim=1), UBOUND(tracers, dim=1), 1
+            tracers(idx_30,idx_29,model_levels,n_n2o) = 0.0
+          enddo
+        enddo
+        !$acc end kernels
+      end if
+      ALLOCATE(corrfac(1:row_length,1:rows,1:model_levels))
+      if (nbr_tracers > 0) then
+        !$acc kernels
+        !$acc loop gang vector independent collapse(3)
+        do idx_31 = LBOUND(corrfac, dim=3), UBOUND(corrfac, dim=3), 1
+          do idx_32 = LBOUND(corrfac, dim=2), UBOUND(corrfac, dim=2), 1
+            do idx_33 = LBOUND(corrfac, dim=1), UBOUND(corrfac, dim=1), 1
+              corrfac(idx_33,idx_32,idx_31) = 0.0
+            enddo
+          enddo
+        enddo
+        !$acc loop seq
+        do m = 1, nbr_tracers, 1
+          !$acc loop gang vector independent collapse(3)
+          do idx_34 = LBOUND(corrfac, dim=3), UBOUND(corrfac, dim=3), 1
+            do idx_35 = LBOUND(corrfac, dim=2), UBOUND(corrfac, dim=2), 1
+              do idx_36 = LBOUND(corrfac, dim=1), UBOUND(corrfac, dim=1), 1
+                corrfac(idx_36,idx_35,idx_34) = corrfac(idx_36,idx_35,idx_34) + tracers(idx_36 + (LBOUND(tracers, dim=1) - LBOUND(corrfac, dim=1)),idx_35 + (LBOUND(tracers, dim=2) - LBOUND(corrfac, dim=2)),idx_34 + (LBOUND(tracers, dim=3) - LBOUND(corrfac, dim=3)),br_tracers(m)) * br_validity(m) / c_br_tracers(m)
+              enddo
+            enddo
+          enddo
+        enddo
+        !$acc loop gang vector independent collapse(3)
+        do idx_37 = LBOUND(corrfac, dim=3), UBOUND(corrfac, dim=3), 1
+          do idx_38 = LBOUND(corrfac, dim=2), UBOUND(corrfac, dim=2), 1
+            do idx_39 = LBOUND(corrfac, dim=1), UBOUND(corrfac, dim=1), 1
+              corrfac(idx_39,idx_38,idx_37) = total_br(idx_39 + (LBOUND(total_br, dim=1) - LBOUND(corrfac, dim=1)),idx_38 + (LBOUND(total_br, dim=2) - LBOUND(corrfac, dim=2)),idx_37 + (LBOUND(total_br, dim=3) - LBOUND(corrfac, dim=3))) / corrfac(idx_39,idx_38,idx_37)
+            enddo
+          enddo
+        enddo
+        !$acc loop seq
+        do m = 1, nbr_tracers, 1
+          !$acc loop gang vector independent collapse(3)
+          do i = 1, row_length, 1
+            do j = 1, rows, 1
+              do k = 2, model_levels, 1
+                if (drain(i,j,k) + crain(i,j,k) == 0.0) then
+                  tracers(i,j,k,br_tracers(m)) = tracers(i,j,k,br_tracers(m)) * corrfac(i,j,k)
+                else
+                  corrfac(i,j,k) = 1.0
+                end if
+              enddo
+            enddo
+          enddo
+        enddo
+        !$acc end kernels
+        if ((MINVAL(corrfac) < 0.9 .OR. MAXVAL(corrfac) > 1.1) .AND. printstatus >= prstatus_normal) then
+          ! PSyclone CodeBlock (unsupported code) reason:
+          !  - Unsupported statement: Write_Stmt
+          WRITE(umMessage, '(A,2F8.4)') 'Correct bromine ', MINVAL(corrfac), MAXVAL(corrfac)
+          call umprint(ummessage, src='ukca_conserve_mod')
+        end if
+      end if
+      if (ncl_tracers > 0) then
+        !$acc kernels
+        !$acc loop gang vector independent collapse(3)
+        do idx_40 = LBOUND(corrfac, dim=3), UBOUND(corrfac, dim=3), 1
+          do idx_41 = LBOUND(corrfac, dim=2), UBOUND(corrfac, dim=2), 1
+            do idx_42 = LBOUND(corrfac, dim=1), UBOUND(corrfac, dim=1), 1
+              corrfac(idx_42,idx_41,idx_40) = 0.0
+            enddo
+          enddo
+        enddo
+        !$acc loop seq
+        do m = 1, ncl_tracers, 1
+          if (.NOT.contains_bromine(m)) then
+            !$acc loop gang vector independent collapse(3)
+            do idx_43 = LBOUND(corrfac, dim=3), UBOUND(corrfac, dim=3), 1
+              do idx_44 = LBOUND(corrfac, dim=2), UBOUND(corrfac, dim=2), 1
+                do idx_45 = LBOUND(corrfac, dim=1), UBOUND(corrfac, dim=1), 1
+                  corrfac(idx_45,idx_44,idx_43) = corrfac(idx_45,idx_44,idx_43) + tracers(idx_45 + (LBOUND(tracers, dim=1) - LBOUND(corrfac, dim=1)),idx_44 + (LBOUND(tracers, dim=2) - LBOUND(corrfac, dim=2)),idx_43 + (LBOUND(tracers, dim=3) - LBOUND(corrfac, dim=3)),cl_tracers(m)) * cl_validity(m) / c_cl_tracers(m)
+                enddo
+              enddo
+            enddo
+          else
+            !$acc loop gang vector independent collapse(3)
+            do idx_46 = LBOUND(total_cl, dim=3), UBOUND(total_cl, dim=3), 1
+              do idx_47 = LBOUND(total_cl, dim=2), UBOUND(total_cl, dim=2), 1
+                do idx_48 = LBOUND(total_cl, dim=1), UBOUND(total_cl, dim=1), 1
+                  total_cl(idx_48,idx_47,idx_46) = total_cl(idx_48,idx_47,idx_46) - tracers(idx_48 + (LBOUND(tracers, dim=1) - LBOUND(total_cl, dim=1)),idx_47 + (LBOUND(tracers, dim=2) - LBOUND(total_cl, dim=2)),idx_46 + (LBOUND(tracers, dim=3) - LBOUND(total_cl, dim=3)),cl_tracers(m)) * cl_validity(m) / c_cl_tracers(m)
+                enddo
+              enddo
+            enddo
+          end if
+        enddo
+        !$acc loop gang vector independent collapse(3)
+        do idx_49 = LBOUND(corrfac, dim=3), UBOUND(corrfac, dim=3), 1
+          do idx_50 = LBOUND(corrfac, dim=2), UBOUND(corrfac, dim=2), 1
+            do idx_51 = LBOUND(corrfac, dim=1), UBOUND(corrfac, dim=1), 1
+              corrfac(idx_51,idx_50,idx_49) = total_cl(idx_51 + (LBOUND(total_cl, dim=1) - LBOUND(corrfac, dim=1)),idx_50 + (LBOUND(total_cl, dim=2) - LBOUND(corrfac, dim=2)),idx_49 + (LBOUND(total_cl, dim=3) - LBOUND(corrfac, dim=3))) / corrfac(idx_51,idx_50,idx_49)
+            enddo
+          enddo
+        enddo
+        !$acc loop seq
+        do m = 1, ncl_tracers, 1
+          if (.NOT.contains_bromine(m)) then
+            !$acc loop gang vector independent collapse(3)
+            do i = 1, row_length, 1
+              do j = 1, rows, 1
+                do k = 2, model_levels, 1
+                  if (crain(i,j,k) + drain(i,j,k) == 0.0) then
+                    tracers(i,j,k,cl_tracers(m)) = tracers(i,j,k,cl_tracers(m)) * corrfac(i,j,k)
+                  else
+                    corrfac(i,j,k) = 1.0
+                  end if
+                enddo
+              enddo
+            enddo
+          end if
+        enddo
+        !$acc end kernels
+        if ((MINVAL(corrfac) < 0.9 .OR. MAXVAL(corrfac) > 1.1) .AND. printstatus >= prstatus_normal) then
+          ! PSyclone CodeBlock (unsupported code) reason:
+          !  - Unsupported statement: Write_Stmt
+          WRITE(umMessage, '(A,2F8.4)') 'Correct chlorine ', MINVAL(corrfac), MAXVAL(corrfac)
+          call umprint(ummessage, src='ukca_conserve_mod')
+        end if
+      end if
+      if (ukca_config%l_ukca_h2o_feedback .AND. ukca_config%l_ukca_conserve_h) then
+        !$acc kernels
+        !$acc loop gang vector independent collapse(3)
+        do idx_52 = LBOUND(corrfac, dim=3), UBOUND(corrfac, dim=3), 1
+          do idx_53 = LBOUND(corrfac, dim=2), UBOUND(corrfac, dim=2), 1
+            do idx_54 = LBOUND(corrfac, dim=1), UBOUND(corrfac, dim=1), 1
+              corrfac(idx_54,idx_53,idx_52) = 0.0
+            enddo
+          enddo
+        enddo
+        !$acc loop seq
+        do m = 1, nh_tracers, 1
+          if (.NOT.do_not_change(m)) then
+            !$acc loop gang vector independent collapse(3)
+            do idx_55 = LBOUND(corrfac, dim=3), UBOUND(corrfac, dim=3), 1
+              do idx_56 = LBOUND(corrfac, dim=2), UBOUND(corrfac, dim=2), 1
+                do idx_57 = LBOUND(corrfac, dim=1), UBOUND(corrfac, dim=1), 1
+                  corrfac(idx_57,idx_56,idx_55) = corrfac(idx_57,idx_56,idx_55) + tracers(idx_57 + (LBOUND(tracers, dim=1) - LBOUND(corrfac, dim=1)),idx_56 + (LBOUND(tracers, dim=2) - LBOUND(corrfac, dim=2)),idx_55 + (LBOUND(tracers, dim=3) - LBOUND(corrfac, dim=3)),h_tracers(m)) * h_validity(m) / c_h_tracers(m)
+                enddo
+              enddo
+            enddo
+          else
+            !$acc loop gang vector independent collapse(3)
+            do idx_58 = LBOUND(total_h, dim=3), UBOUND(total_h, dim=3), 1
+              do idx_59 = LBOUND(total_h, dim=2), UBOUND(total_h, dim=2), 1
+                do idx_60 = LBOUND(total_h, dim=1), UBOUND(total_h, dim=1), 1
+                  total_h(idx_60,idx_59,idx_58) = total_h(idx_60,idx_59,idx_58) - tracers(idx_60 + (LBOUND(tracers, dim=1) - LBOUND(total_h, dim=1)),idx_59 + (LBOUND(tracers, dim=2) - LBOUND(total_h, dim=2)),idx_58 + (LBOUND(tracers, dim=3) - LBOUND(total_h, dim=3)),h_tracers(m)) * h_validity(m) / c_h_tracers(m)
+                enddo
+              enddo
+            enddo
+          end if
+        enddo
+        !$acc loop gang vector independent collapse(3)
+        do idx_61 = LBOUND(corrfac, dim=3), UBOUND(corrfac, dim=3), 1
+          do idx_62 = LBOUND(corrfac, dim=2), UBOUND(corrfac, dim=2), 1
+            do idx_63 = LBOUND(corrfac, dim=1), UBOUND(corrfac, dim=1), 1
+              corrfac(idx_63,idx_62,idx_61) = total_h(idx_63 + (LBOUND(total_h, dim=1) - LBOUND(corrfac, dim=1)),idx_62 + (LBOUND(total_h, dim=2) - LBOUND(corrfac, dim=2)),idx_61 + (LBOUND(total_h, dim=3) - LBOUND(corrfac, dim=3))) / corrfac(idx_63,idx_62,idx_61)
+            enddo
+          enddo
+        enddo
+        !$acc loop gang vector independent collapse(3)
+        do widx3_2 = 1, model_levels, 1
+          do widx2_2 = 1, rows, 1
+            do widx1_2 = 1, row_length, 1
+              if (pres(widx1_2,widx2_2,widx3_2) > washout_limit) then
+                corrfac(LBOUND(corrfac, dim=1) + widx1_2 - 1,LBOUND(corrfac, dim=2) + widx2_2 - 1,LBOUND(corrfac, dim=3) + widx3_2 - 1) = 1.0
+              end if
+            enddo
+          enddo
+        enddo
+        !$acc loop seq
+        do m = 1, nh_tracers, 1
+          if (.NOT.do_not_change(m)) then
+            !$acc loop gang vector independent collapse(3)
+            do idx_64 = LBOUND(tracers, dim=3), UBOUND(tracers, dim=3), 1
+              do idx_65 = LBOUND(tracers, dim=2), UBOUND(tracers, dim=2), 1
+                do idx_66 = LBOUND(tracers, dim=1), UBOUND(tracers, dim=1), 1
+                  tracers(idx_66,idx_65,idx_64,h_tracers(m)) = tracers(idx_66,idx_65,idx_64,h_tracers(m)) * corrfac(idx_66 + (LBOUND(corrfac, dim=1) - LBOUND(tracers, dim=1)),idx_65 + (LBOUND(corrfac, dim=2) - LBOUND(tracers, dim=2)),idx_64 + (LBOUND(corrfac, dim=3) - LBOUND(tracers, dim=3)))
+                enddo
+              enddo
+            enddo
+          end if
+        enddo
+        !$acc end kernels
+      end if
+      if (ALLOCATED(total_br)) then
+        DEALLOCATE(total_br)
+      end if
+      if (ALLOCATED(total_cl)) then
+        DEALLOCATE(total_cl)
+      end if
+      if (ALLOCATED(total_h)) then
+        DEALLOCATE(total_h)
+      end if
+      if (ALLOCATED(corrfac)) then
+        DEALLOCATE(corrfac)
+      end if
+    end if
+    if (lhook) then
+      call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
+    end if
+    return
+
+  end subroutine ukca_conserve
+
+end module ukca_conserve_mod

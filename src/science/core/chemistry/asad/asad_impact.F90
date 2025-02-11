@@ -86,7 +86,7 @@ module asad_impact_mod
         if (ej(jl,jtr) > 0.0) then
           f(jl,jtr) = zf(jl,jtr) + cdt * fdot(jl,jtr)
         else
-          f(jl,jtr) = zf(jl,jtr) + cdt * fdot(jl,jtr) / (1.0 - cdt * ej(jl,jtr))
+          f(jl,jtr) = zf(jl,jtr) + (cdt * fdot(jl,jtr)) / (1.0 - cdt * ej(jl,jtr))
         end if
         if (linfam(jl,jtr)) then
           f(jl,jtr) = y(jl,isp)
@@ -111,7 +111,7 @@ module asad_impact_mod
         do jl = 1, n_points, 1
           zprf(jl,jtr) = f(jl,jtr)
           binv(jl,jtr) = 1.0 / (1.0 - cdt * ej(jl,jtr))
-          dely(jl,jtr) = binv(jl,jtr) * (zf(jl,jtr) - f(jl,jtr) + cdt * fdot(jl,jtr))
+          dely(jl,jtr) = binv(jl,jtr) * ((zf(jl,jtr) - f(jl,jtr)) + cdt * fdot(jl,jtr))
           f(jl,jtr) = f(jl,jtr) + dely(jl,jtr)
           if (linfam(jl,jtr)) then
             f(jl,jtr) = y(jl,isp)

@@ -1,826 +1,932 @@
-! *****************************COPYRIGHT*******************************
-! (C) Crown copyright Met Office. All rights reserved.
-! For further details please refer to the file COPYRIGHT.txt
-! which you should have received as part of this distribution.
-! *****************************COPYRIGHT*******************************
-!
-! Description:
-!  Module for offline oxidants chemistry with the Backward-Euler solver.
-!
-!  Part of the UKCA model, a community model supported by
-!  The Met Office and NCAS, with components provided initially
-!  by The University of Cambridge, University of Leeds,
-!  University of Oxford and The Met. Office.  See www.ukca.ac.uk
-!
-! Contained subroutines:
-!   ukca_chemistry_ctl_be
-!   ukca_chemco_be_offline
-!   ukca_deriv_be_offline
-!
-! Code Owner: Please refer to the UM file CodeOwners.txt
-! This file belongs in section: UKCA
-!
-! Code description:
-!   Language: FORTRAN 95
-!   This code is written to UMDP3 programming standards.
-!
-!------------------------------------------------------------------
-!
-MODULE ukca_chemistry_ctl_be_mod
-
-IMPLICIT NONE
-PRIVATE
-
-REAL, ALLOCATABLE :: rc(:,:)                ! 1-D Rate coefficient array
-
-INTEGER, ALLOCATABLE, SAVE :: ibimol(:)     ! index array for bimolecular rxns
-INTEGER, ALLOCATABLE, SAVE :: itrimol(:)    ! index array for termolecular rxns
-INTEGER, ALLOCATABLE, SAVE :: ihetero(:)    ! index array for heterogeneous rxns
-
-REAL, SAVE    :: frac_dms_so2      ! product yield DMS + OH => SO2 + DMSO
-REAL, SAVE    :: frac_dms_dmso     ! product yield DMS + OH => SO2 + DMSO
-REAL, SAVE    :: frac_dmso_so2     ! product yield DMSO + OH => SO2
-REAL, SAVE    :: frac_monoterp_sec_org(3)
-                                   ! product yield Monoterp + X => Sec_Org
-
-PUBLIC ukca_chemistry_ctl_be
-
-CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName='UKCA_CHEMISTRY_CTL_BE_MOD'
-
-CONTAINS
-
-! ##############################################################################
-
-SUBROUTINE ukca_chemistry_ctl_be(                                              &
-  row_length, rows, model_levels,                                              &
-  theta_field_size, tot_n_pnts,                                                &
-  ntracers,                                                                    &
-  chem_timestep,                                                               &
-  k_be_top,                                                                    &
-  p_theta_levels, temp, q,                                                     &
-  qcl,                                                                         &
-  tracer,                                                                      &
-  cloud_frac,                                                                  &
-  volume,                                                                      &
-  uph2so4inaer,                                                                &
-  delso2_wet_h2o2,                                                             &
-  delso2_wet_o3,                                                               &
-  delh2so4_chem,                                                               &
-  delso2_drydep,                                                               &
-  delso2_wetdep,                                                               &
-  H_plus, h2o2_offline,                                                        &
-  dryrt, wetrt, nlev_with_ddep,                                                &
-  firstcall                                                                    &
-  )
-
-USE ukca_um_legacy_mod,   ONLY: deposition_from_ukca_chemistry
-USE asad_mod,             ONLY: speci, y, tnd, ndepd, ndepw, advt, prk,        &
-                                nitfg, lvmr, f, jpctr, jpspec,                 &
-                                jpbk, jptk, jphk, jpnr, jpdd, jpdw, nldepd
-USE asad_chem_flux_diags, ONLY: asad_chemical_diagnostics,                     &
-                                l_asad_use_chem_diags, l_asad_use_flux_rxns,   &
-                                l_asad_use_wetdep, l_asad_use_drydep
-USE asad_ftoy_mod,        ONLY: asad_ftoy
-USE ukca_cspecies,        ONLY: c_species, nn_h2so4, nn_so2, n_h2o2
-USE ukca_constants,       ONLY: c_h2o
-USE ukca_environment_fields_mod,   ONLY: surf_wetness
-USE ukca_config_specification_mod, ONLY: ukca_config
-
-USE yomhook,              ONLY: lhook, dr_hook
-USE parkind1,             ONLY: jprb, jpim
-USE ereport_mod,          ONLY: ereport
-USE umPrintMgr,           ONLY: umMessage, umPrint, PrintStatus, PrStatus_Oper
-
-USE ukca_be_drydep_mod,   ONLY: ukca_be_drydep
-USE ukca_be_wetdep_mod,   ONLY: ukca_be_wetdep
-USE ukca_ddepctl_mod,     ONLY: ukca_ddepctl
-USE ukca_ddeprt_mod,      ONLY: ukca_ddeprt
-USE ukca_wdeprt_mod,      ONLY: ukca_wdeprt
-USE ukca_drydep_mod,      ONLY: ukca_drydep
-USE ukca_wetdep_mod,      ONLY: ukca_wetdep
-
-IMPLICIT NONE
-
-INTEGER, INTENT(IN) :: row_length        ! size of UKCA x dimension
-INTEGER, INTENT(IN) :: rows              ! size of UKCA y dimension
-INTEGER, INTENT(IN) :: model_levels      ! size of UKCA z dimension
-INTEGER, INTENT(IN) :: theta_field_size  ! no. of points in horizontal
-INTEGER, INTENT(IN) :: tot_n_pnts        ! no. of points in full domain
-INTEGER, INTENT(IN) :: ntracers          ! no. of tracers
-INTEGER, INTENT(IN) :: uph2so4inaer      ! flag for H2SO4 updating
-INTEGER, INTENT(IN) :: k_be_top          ! top level for integration
-INTEGER, INTENT(IN) :: nlev_with_ddep(row_length,rows) ! No levs in bl
-
-INTEGER, INTENT(IN) :: chem_timestep   ! chemical timestep
-
-REAL, INTENT(IN) :: p_theta_levels(tot_n_pnts)           ! pressure
-REAL, INTENT(IN) :: temp(tot_n_pnts)                     ! actual temperature
-REAL, INTENT(IN) :: volume(row_length,rows,model_levels) ! cell volume
-REAL, INTENT(IN) :: qcl(tot_n_pnts)
-REAL, INTENT(IN) :: cloud_frac(tot_n_pnts)
-REAL, INTENT(IN) :: dryrt(theta_field_size,jpdd)         ! dry dep rate
-REAL, INTENT(IN) :: wetrt(theta_field_size,model_levels,jpdw) ! wet dep rate
-
-REAL, INTENT(IN OUT) :: q(tot_n_pnts)               ! water vapour
-REAL, INTENT(IN OUT) :: tracer(tot_n_pnts,ntracers) ! tracer MMR
-
-! SO2 increments
-REAL, INTENT(IN OUT) :: delso2_wet_h2o2(tot_n_pnts)
-REAL, INTENT(IN OUT) :: delso2_wet_o3(tot_n_pnts)
-REAL, INTENT(IN OUT) :: delh2so4_chem(tot_n_pnts)
-REAL, INTENT(IN OUT) :: delso2_drydep(tot_n_pnts)
-REAL, INTENT(IN OUT) :: delso2_wetdep(tot_n_pnts)
-
-REAL, INTENT(IN) :: H_plus(tot_n_pnts)   ! pH array
-REAL, INTENT(IN) :: h2o2_offline(tot_n_pnts)
-
-! Flag for determining if this is the first chemistry call
-LOGICAL, INTENT(IN) :: firstcall
-
-! Chemical fluxes
-LOGICAL             :: lflux             ! true when flux requests found
-REAL, ALLOCATABLE   :: dflux(:,:)        ! chemical fluxes on each level
-                                         ! (molecules / (cm3.s) )
-
-! Local variables
-INTEGER :: nlev_with_ddep2(theta_field_size) ! No levs in bl
-
-INTEGER, SAVE :: nr         ! no of rxns for BE
-INTEGER, SAVE :: n_be_calls ! no of call to BE solver
-
-INTEGER :: ix               ! dummy variable
-INTEGER :: jy               ! dummy variable
-INTEGER :: i                ! loop variable
-INTEGER :: j                ! loop variable
-INTEGER :: js               ! loop variable
-INTEGER :: k                ! loop variable for model levels
-INTEGER :: l                ! loop variable
-INTEGER :: jit              ! dummy iteration count
-
-INTEGER :: kcs              ! start index of current model level
-INTEGER :: kce              ! end index of current model level
-
-INTEGER           :: ierr                     ! Error code: asad diags routines
-INTEGER           :: errcode                  ! Error code: ereport
-CHARACTER(LEN=72) :: cmessage                 ! Error message
-LOGICAL           :: blmask(theta_field_size) ! mask
-LOGICAL, SAVE     :: ofirst = .TRUE.          ! True for first call of asad_ftoy
-                                              ! in current timestep
-REAL, SAVE      :: dts                        ! Backward Euler timestep
-
-REAL :: secs_per_step                         ! chemical time step
-
-! Dummy variables to satisfy expected numbers of arguments for
-! ASAD_CHEMICAL_DIAGNOSTICS
-REAL :: dpd_dummy(model_levels,jpspec)
-REAL :: dpw_dummy(model_levels,jpspec)
-REAL :: prk_dummy(model_levels,jpnr)
-REAL :: y_dummy(model_levels,jpspec)
-
-! SO2 increments in molecules/cm^3
-REAL :: so2_wetox_h2o2(theta_field_size)
-REAL :: so2_wetox_o3(theta_field_size)
-REAL :: so2_dryox_oh(theta_field_size)
-
-REAL, ALLOCATABLE :: ystore(:)        ! to store H2SO4 when updated in MODE
-REAL :: zftr(theta_field_size,jpctr)  ! 1-D array of tracers
-REAL :: zp(theta_field_size)          ! 1-D pressure
-REAL :: zt(theta_field_size)          ! 1-D temperature
-REAL :: zq(theta_field_size)          ! 1-D water vapour
-REAL :: zclw(theta_field_size)        ! 1-D cloud liquid water
-REAL :: zfcloud(theta_field_size)     ! 1-D cloud fraction
-REAL :: zdryrt2(theta_field_size,jpdd)              ! dry dep rate
-REAL :: zwetrt2(theta_field_size,model_levels,jpdw) ! wet dep rate
-REAL :: zwetrt(theta_field_size,jpspec)             ! wet dep rates (s-1)
-REAL :: zdryrt(theta_field_size,jpspec)             ! dry dep rates (s-1)
-
-INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
-INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
-REAL(KIND=jprb)               :: zhook_handle
-
-CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_CHEMISTRY_CTL_BE'
-
-
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-
-nr = jpbk + jptk + jphk
-secs_per_step = REAL(chem_timestep)
-
-IF (.NOT. ALLOCATED(dflux)) ALLOCATE(dflux(theta_field_size,nr))
-
-! ystore is required when H2SO4 (gas-phase) is updated in MODE
-IF (.NOT. ALLOCATED(ystore) .AND. uph2so4inaer == 1)                           &
-  ALLOCATE(ystore(theta_field_size))
-
-! Dummy variables to satisfy expected numbers of arguments for
-! ASAD_CHEMICAL_DIAGNOSTICS
-ix=0
-jy=0
-dpd_dummy=0.0
-dpw_dummy=0.0
-prk_dummy=0.0
-y_dummy=0.0
-
-IF (firstcall) THEN
-
-  ! Backward Euler timestep variables
-
-  n_be_calls = INT(secs_per_step/ukca_config%dts0)
-  ! Ensure we call BE at least once
-  IF (n_be_calls == 0) n_be_calls = 1
-  ! Calculate the BE Timestep
-  dts = secs_per_step/n_be_calls
-
-  IF ( printstatus >= prstatus_oper ) THEN
-    WRITE(umMessage,'(A12,I7,A6,E10.1)') 'n_be_calls: ',n_be_calls,' dts: ',dts
-    CALL umPrint(umMessage,src='ukca_chemistry_ctl_be')
-  END IF
-
-  IF (.NOT. lvmr) THEN
-    errcode = 1
-    cmessage = ' lvmr must be set to true for BE offline chemistry'
-    CALL ereport(ModuleName//':'//RoutineName,errcode,cmessage)
-  END IF
-
-END IF  ! of initialization of chemistry subroutine (firstcall)
-
-! Need this line here for interactive dry deposition.
-nlev_with_ddep2(:) = RESHAPE(nlev_with_ddep(:,:),[theta_field_size])
-
-IF (.NOT. ALLOCATED(rc)) ALLOCATE(rc(theta_field_size,nr))
-
-! Model levels loop
-DO k=1,k_be_top
-
-  ! Determine the indices for extracting the slice of data which corresponds to
-  ! the k-th model level
-  kcs = (k - 1) * theta_field_size + 1
-  kce = k * theta_field_size
-
-  zdryrt2(:,:) = 0.0e0
-  IF (ukca_config%l_ukca_intdd) THEN
-    ! Interactive scheme extracts from levels in boundary layer
-    blmask(:) = (k <= nlev_with_ddep2(:))
-    DO l=1,jpdd
-      WHERE (blmask(:))
-        zdryrt2(:,l) = dryrt(:,l)
-      END WHERE
-    END DO
-  ELSE    ! non-interactive
-    IF (k == 1) THEN
-      zdryrt2(:,:) = dryrt(:,:)
-    END IF
-  END IF
-
-  ! Put pressure, temperature and tracer mmr into 1-D arrays
-  ! for use in ASAD chemical solver
-
-  zp(:) = p_theta_levels(kcs:kce)
-  zt(:) = temp(kcs:kce)
-
-  IF (ukca_config%l_fix_ukca_offox_h2o_fac) THEN
-    ! convert q from mmr to vmr as required by chemical solver
-    zq(:) = q(kcs:kce)/c_h2o
-  ELSE
-    zq(:) = q(kcs:kce)
-  END IF
-
-  IF (k <= model_levels) THEN
-    zclw(:) = qcl(kcs:kce)
-    zfcloud(:) = cloud_frac(kcs:kce)
-  ELSE
-    zclw(:) = 0.0
-    zfcloud(:) = 0.0
-  END IF
-
-  ! Convert mmr into vmr for tracers and set f array
-  DO js=1,jpctr
-    zftr(:,js) = tracer(kcs:kce,js)/c_species(js)
-  END DO
-
-  ! Backward Euler with non-families
-
-  ! Calculate total number  density, o2, h2o, and tracer
-  !  concentrations for Backward Euler solver
-
-  ! Assign wet and dry deposition rates to species
-
-  CALL ukca_be_wetdep(theta_field_size, wetrt(:,k,:), zwetrt)
-
-  CALL ukca_be_drydep(k, theta_field_size, nlev_with_ddep2, zdryrt2, zdryrt)
-
-  ! Fill the asad arrays for wet and dry deposition diagnostics
-  IF ( ndepw /= 0 ) CALL ukca_wetdep(wetrt(:,k,:), theta_field_size)
-
-  IF ( ndepd /= 0 ) CALL ukca_drydep(k, zdryrt2, theta_field_size)
-
-
-  ! Calculate reaction rate coefficients (rc)
-
-  CALL ukca_chemco_be_offline(theta_field_size, zt, zp, zq, zfcloud, zclw,     &
-                              H_plus(kcs:kce))
-
-  ! Convert tracers to concentration
-  DO js=1,jpctr
-    f(:,js) = zftr(:,js) * tnd(:)
-  END DO
-
-  ! Initialise y array, including the offline oxidants
-  jit = 0
-  CALL asad_ftoy(ofirst, nitfg, jit, theta_field_size, ix, jy, k)
-
-  !  Call Backward Euler solver
-  !   N.B. Emissions already added, via call to TR_MIX from UKCA_EMISSION_CTL
-
-  ! Set the flux logical according to the STASH requests found previously
-  lflux = (l_asad_use_chem_diags .AND. (l_asad_use_flux_rxns  .OR.             &
-           l_asad_use_wetdep .OR. l_asad_use_drydep))
-
-  ! Store H2SO4 tracer if it will be updated in MODE using delh2so4_chem
-  IF (uph2so4inaer == 1) ystore(:) = y(:,nn_h2so4)
-
-  CALL ukca_deriv_offline(nr, n_be_calls, theta_field_size, dts, y, zdryrt,    &
-                          zwetrt, so2_wetox_h2o2, so2_wetox_o3, so2_dryox_oh,  &
-                          lflux, dflux)
-
-  ! Restore H2SO4 tracer as it will be updated in MODE using delh2so4_chem
-  IF (uph2so4inaer == 1) y(:,nn_h2so4) = ystore(:)
-
-  ! Retrieve tracer concentrations
-  DO j = 1,jpctr
-    i_loop: DO i = 1,jpspec
-      IF (advt(j) == speci(i)) THEN
-        tracer(kcs:kce,j) = y(:,i)/tnd(:)*c_species(j)
-        EXIT i_loop
-      END IF
-    END DO i_loop
-  END DO
-
-  ! Update the 3-D SO2 flux arrays (molecules cm-3 per timestep)
-  delso2_wet_h2o2(kcs:kce) = so2_wetox_h2o2(:)
-  delso2_wet_o3(kcs:kce)   = so2_wetox_o3(:)
-  delh2so4_chem(kcs:kce)   = so2_dryox_oh(:)
-  delso2_drydep(kcs:kce)   = zdryrt(:,nn_so2)*y(:,nn_so2)*dts
-  delso2_wetdep(kcs:kce)   = zwetrt(:,nn_so2)*y(:,nn_so2)*dts
-
-  ! Fill the prk array from the flux array
-  IF (lflux) THEN
-    DO i = 1,jpbk
-      prk(:,ibimol(i)) = dflux(:,i)
-    END DO
-
+module ukca_chemistry_ctl_be_mod
+  implicit none
+  real, allocatable, dimension(:,:), private :: rc
+  integer, allocatable, dimension(:), save, private :: ibimol
+  integer, allocatable, dimension(:), save, private :: itrimol
+  integer, allocatable, dimension(:), save, private :: ihetero
+  real, save, private :: frac_dms_so2
+  real, save, private :: frac_dms_dmso
+  real, save, private :: frac_dmso_so2
+  real, dimension(3), save, private :: frac_monoterp_sec_org
+  character(len = *), parameter, private :: ModuleName = 'UKCA_CHEMISTRY_CTL_BE_MOD'
+  private
+
+  public :: ukca_chemistry_ctl_be
+
+  contains
+  subroutine ukca_chemistry_ctl_be(row_length, rows, model_levels, theta_field_size, tot_n_pnts, ntracers, chem_timestep, k_be_top, p_theta_levels, temp, q, qcl, tracer, cloud_frac, volume, uph2so4inaer, delso2_wet_h2o2, delso2_wet_o3, delh2so4_chem, delso2_drydep, delso2_wetdep, h_plus, h2o2_offline, dryrt, wetrt, nlev_with_ddep, firstcall)
+    use ukca_um_legacy_mod, only : deposition_from_ukca_chemistry
+    use asad_mod, only : advt, f, jpbk, jpctr, jpdd, jpdw, jphk, jpnr, jpspec, jptk, lvmr, ndepd, ndepw, nitfg, nldepd, prk, speci, tnd, y
+    use asad_chem_flux_diags, only : asad_chemical_diagnostics, l_asad_use_chem_diags, l_asad_use_drydep, l_asad_use_flux_rxns, l_asad_use_wetdep
+    use asad_ftoy_mod, only : asad_ftoy
+    use ukca_cspecies, only : c_species, n_h2o2, nn_h2so4, nn_so2
+    use ukca_constants, only : c_h2o
+    use ukca_environment_fields_mod, only : surf_wetness
+    use ukca_config_specification_mod, only : ukca_config
+    use yomhook, only : dr_hook, lhook
+    use parkind1, only : jpim, jprb
+    use ereport_mod, only : ereport
+    use umPrintMgr, only : printstatus, prstatus_oper, ummessage, umprint
+    use ukca_be_drydep_mod, only : ukca_be_drydep
+    use ukca_be_wetdep_mod, only : ukca_be_wetdep
+    use ukca_ddepctl_mod, only : ukca_ddepctl
+    use ukca_ddeprt_mod, only : ukca_ddeprt
+    use ukca_wdeprt_mod, only : ukca_wdeprt
+    use ukca_drydep_mod, only : ukca_drydep
+    use ukca_wetdep_mod, only : ukca_wetdep
+    integer(kind=jpim), parameter :: zhook_in = 0
+    integer(kind=jpim), parameter :: zhook_out = 1
+    integer, intent(in) :: row_length
+    integer, intent(in) :: rows
+    integer, intent(in) :: model_levels
+    integer, intent(in) :: theta_field_size
+    integer, intent(in) :: tot_n_pnts
+    integer, intent(in) :: ntracers
+    integer, intent(in) :: uph2so4inaer
+    integer, intent(in) :: k_be_top
+    integer, dimension(row_length,rows), intent(in) :: nlev_with_ddep
+    integer, intent(in) :: chem_timestep
+    real, dimension(tot_n_pnts), intent(in) :: p_theta_levels
+    real, dimension(tot_n_pnts), intent(in) :: temp
+    real, dimension(row_length,rows,model_levels), intent(in) :: volume
+    real, dimension(tot_n_pnts), intent(in) :: qcl
+    real, dimension(tot_n_pnts), intent(in) :: cloud_frac
+    real, dimension(theta_field_size,jpdd), intent(in) :: dryrt
+    real, dimension(theta_field_size,model_levels,jpdw), intent(in) :: wetrt
+    real, dimension(tot_n_pnts), intent(inout) :: q
+    real, dimension(tot_n_pnts,ntracers), intent(inout) :: tracer
+    real, dimension(tot_n_pnts), intent(inout) :: delso2_wet_h2o2
+    real, dimension(tot_n_pnts), intent(inout) :: delso2_wet_o3
+    real, dimension(tot_n_pnts), intent(inout) :: delh2so4_chem
+    real, dimension(tot_n_pnts), intent(inout) :: delso2_drydep
+    real, dimension(tot_n_pnts), intent(inout) :: delso2_wetdep
+    real, dimension(tot_n_pnts), intent(in) :: h_plus
+    real, dimension(tot_n_pnts), intent(in) :: h2o2_offline
+    logical, intent(in) :: firstcall
+    logical :: lflux
+    real, allocatable, dimension(:,:) :: dflux
+    integer, dimension(theta_field_size) :: nlev_with_ddep2
+    integer, save :: nr
+    integer, save :: n_be_calls
+    integer :: ix
+    integer :: jy
+    integer :: i
+    integer :: j
+    integer :: js
+    integer :: k
+    integer :: l
+    integer :: jit
+    integer :: kcs
+    integer :: kce
+    integer :: ierr
+    integer :: errcode
+    CHARACTER(LEN = 72) :: cmessage
+    logical, dimension(theta_field_size) :: blmask
+    logical, save :: ofirst = .true.
+    real, save :: dts
+    real :: secs_per_step
+    real, dimension(model_levels,jpspec) :: dpd_dummy
+    real, dimension(model_levels,jpspec) :: dpw_dummy
+    real, dimension(model_levels,jpnr) :: prk_dummy
+    real, dimension(model_levels,jpspec) :: y_dummy
+    real, dimension(theta_field_size) :: so2_wetox_h2o2
+    real, dimension(theta_field_size) :: so2_wetox_o3
+    real, dimension(theta_field_size) :: so2_dryox_oh
+    real, allocatable, dimension(:) :: ystore
+    real, dimension(theta_field_size,jpctr) :: zftr
+    real, dimension(theta_field_size) :: zp
+    real, dimension(theta_field_size) :: zt
+    real, dimension(theta_field_size) :: zq
+    real, dimension(theta_field_size) :: zclw
+    real, dimension(theta_field_size) :: zfcloud
+    real, dimension(theta_field_size,jpdd) :: zdryrt2
+    real, dimension(theta_field_size,model_levels,jpdw) :: zwetrt2
+    real, dimension(theta_field_size,jpspec) :: zwetrt
+    real, dimension(theta_field_size,jpspec) :: zdryrt
+    real(kind=jprb) :: zhook_handle
+    CHARACTER(LEN = *), PARAMETER :: RoutineName = 'UKCA_CHEMISTRY_CTL_BE'
+    integer :: idx
+    integer :: idx_1
+    integer :: idx_2
+    integer :: idx_3
+    integer :: idx_4
+    integer :: idx_5
+    integer :: idx_6
+    integer :: idx_7
+    integer :: idx_8
+    integer :: idx_9
+    integer :: idx_10
+    integer :: idx_11
+    integer :: idx_12
+    integer :: idx_13
+    integer :: idx_14
+    integer :: idx_15
+    integer :: idx_16
+    integer :: idx_17
+    integer :: idx_18
+    integer :: idx_19
+    integer :: idx_20
+    integer :: idx_21
+    integer :: idx_22
+    integer :: idx_23
+    integer :: idx_24
+    integer :: idx_25
+    integer :: idx_26
+    integer :: idx_27
+    integer :: idx_28
+    integer :: idx_29
+    integer :: idx_30
+    integer :: widx1
+
+    if (lhook) then
+      call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
+    end if
+    nr = jpbk + jptk + jphk
+    secs_per_step = REAL(chem_timestep)
+    if (.NOT.ALLOCATED(dflux)) then
+      ALLOCATE(dflux(1:theta_field_size,1:nr))
+    end if
+    if (.NOT.ALLOCATED(ystore) .AND. uph2so4inaer == 1) then
+      ALLOCATE(ystore(1:theta_field_size))
+    end if
+    !$acc kernels
+    ix = 0
+    jy = 0
+    !$acc loop gang vector independent collapse(2)
+    do idx = 1, jpspec, 1
+      do idx_1 = 1, model_levels, 1
+        dpd_dummy(idx_1,idx) = 0.0
+      enddo
+    enddo
+    !$acc loop gang vector independent collapse(2)
+    do idx_2 = 1, jpspec, 1
+      do idx_3 = 1, model_levels, 1
+        dpw_dummy(idx_3,idx_2) = 0.0
+      enddo
+    enddo
+    !$acc loop gang vector independent collapse(2)
+    do idx_4 = 1, jpnr, 1
+      do idx_5 = 1, model_levels, 1
+        prk_dummy(idx_5,idx_4) = 0.0
+      enddo
+    enddo
+    !$acc loop gang vector independent collapse(2)
+    do idx_6 = 1, jpspec, 1
+      do idx_7 = 1, model_levels, 1
+        y_dummy(idx_7,idx_6) = 0.0
+      enddo
+    enddo
+    !$acc end kernels
+    if (firstcall) then
+      n_be_calls = INT(secs_per_step / ukca_config%dts0)
+      if (n_be_calls == 0) then
+        n_be_calls = 1
+      end if
+      dts = secs_per_step / n_be_calls
+      if (printstatus >= prstatus_oper) then
+        ! PSyclone CodeBlock (unsupported code) reason:
+        !  - Unsupported statement: Write_Stmt
+        WRITE(umMessage, '(A12,I7,A6,E10.1)') 'n_be_calls: ', n_be_calls, ' dts: ', dts
+        call umprint(ummessage, src='ukca_chemistry_ctl_be')
+      end if
+      if (.NOT.lvmr) then
+        errcode = 1
+        cmessage(:) = ' lvmr must be set to true for BE offline chemistry'
+        call ereport(ModuleName // ':' // RoutineName, errcode, cmessage)
+      end if
+    end if
+    nlev_with_ddep2(:) = RESHAPE(nlev_with_ddep(:,:), [theta_field_size])
+    if (.NOT.ALLOCATED(rc)) then
+      ALLOCATE(rc(1:theta_field_size,1:nr))
+    end if
+    do k = 1, k_be_top, 1
+      !$acc kernels
+      kcs = (k - 1) * theta_field_size + 1
+      kce = k * theta_field_size
+      !$acc loop gang vector independent collapse(2)
+      do idx_8 = LBOUND(zdryrt2, dim=2), UBOUND(zdryrt2, dim=2), 1
+        do idx_9 = LBOUND(zdryrt2, dim=1), UBOUND(zdryrt2, dim=1), 1
+          zdryrt2(idx_9,idx_8) = 0.0e0
+        enddo
+      enddo
+      !$acc end kernels
+      if (ukca_config%l_ukca_intdd) then
+        !$acc kernels
+        !$acc loop gang vector independent
+        do idx_10 = LBOUND(blmask, dim=1), UBOUND(blmask, dim=1), 1
+          blmask(idx_10) = k <= nlev_with_ddep2(idx_10)
+        enddo
+        !$acc loop gang vector independent collapse(2)
+        do l = 1, jpdd, 1
+          do widx1 = 1, theta_field_size, 1
+            if (blmask(widx1)) then
+              zdryrt2(widx1,l) = dryrt(widx1,l)
+            end if
+          enddo
+        enddo
+        !$acc end kernels
+      else
+        if (k == 1) then
+          !$acc kernels
+          !$acc loop gang vector independent collapse(2)
+          do idx_11 = LBOUND(zdryrt2, dim=2), UBOUND(zdryrt2, dim=2), 1
+            do idx_12 = LBOUND(zdryrt2, dim=1), UBOUND(zdryrt2, dim=1), 1
+              zdryrt2(idx_12,idx_11) = dryrt(idx_12,idx_11)
+            enddo
+          enddo
+          !$acc end kernels
+        end if
+      end if
+      !$acc kernels
+      !$acc loop gang vector independent
+      do idx_13 = LBOUND(zp, dim=1), UBOUND(zp, dim=1), 1
+        zp(idx_13) = p_theta_levels(idx_13 + (kcs - LBOUND(zp, dim=1)))
+      enddo
+      !$acc loop gang vector independent
+      do idx_14 = LBOUND(zt, dim=1), UBOUND(zt, dim=1), 1
+        zt(idx_14) = temp(idx_14 + (kcs - LBOUND(zt, dim=1)))
+      enddo
+      !$acc end kernels
+      if (ukca_config%l_fix_ukca_offox_h2o_fac) then
+        zq(:) = q(kcs:kce) / c_h2o
+      else
+        !$acc kernels
+        !$acc loop gang vector independent
+        do idx_15 = LBOUND(zq, dim=1), UBOUND(zq, dim=1), 1
+          zq(idx_15) = q(idx_15 + (kcs - LBOUND(zq, dim=1)))
+        enddo
+        !$acc end kernels
+      end if
+      if (k <= model_levels) then
+        !$acc kernels
+        !$acc loop gang vector independent
+        do idx_16 = LBOUND(zclw, dim=1), UBOUND(zclw, dim=1), 1
+          zclw(idx_16) = qcl(idx_16 + (kcs - LBOUND(zclw, dim=1)))
+        enddo
+        !$acc loop gang vector independent
+        do idx_17 = LBOUND(zfcloud, dim=1), UBOUND(zfcloud, dim=1), 1
+          zfcloud(idx_17) = cloud_frac(idx_17 + (kcs - LBOUND(zfcloud, dim=1)))
+        enddo
+        !$acc end kernels
+      else
+        !$acc kernels
+        !$acc loop gang vector independent
+        do idx_18 = LBOUND(zclw, dim=1), UBOUND(zclw, dim=1), 1
+          zclw(idx_18) = 0.0
+        enddo
+        !$acc loop gang vector independent
+        do idx_19 = LBOUND(zfcloud, dim=1), UBOUND(zfcloud, dim=1), 1
+          zfcloud(idx_19) = 0.0
+        enddo
+        !$acc end kernels
+      end if
+      !$acc kernels
+      !$acc loop gang vector independent
+      do js = 1, jpctr, 1
+        zftr(:,js) = tracer(kcs:kce,js) / c_species(js)
+      enddo
+      !$acc end kernels
+      call ukca_be_wetdep(theta_field_size, wetrt(:,k,:), zwetrt)
+      call ukca_be_drydep(k, theta_field_size, nlev_with_ddep2, zdryrt2, zdryrt)
+      if (ndepw /= 0) then
+        call ukca_wetdep(wetrt(:,k,:), theta_field_size)
+      end if
+      if (ndepd /= 0) then
+        call ukca_drydep(k, zdryrt2, theta_field_size)
+      end if
+      call ukca_chemco_be_offline(theta_field_size, zt, zp, zq, zfcloud, zclw, h_plus(kcs:kce))
+      !$acc kernels
+      !$acc loop gang vector independent collapse(2)
+      do js = 1, jpctr, 1
+        do idx_20 = LBOUND(f, dim=1), UBOUND(f, dim=1), 1
+          f(idx_20,js) = zftr(idx_20 + (LBOUND(zftr, dim=1) - LBOUND(f, dim=1)),js) * tnd(idx_20 + (LBOUND(tnd, dim=1) - LBOUND(f, dim=1)))
+        enddo
+      enddo
+      !$acc end kernels
+      jit = 0
+      call asad_ftoy(ofirst, nitfg, jit, theta_field_size, ix, jy, k)
+      lflux = l_asad_use_chem_diags .AND. (l_asad_use_flux_rxns .OR. l_asad_use_wetdep .OR. l_asad_use_drydep)
+      if (uph2so4inaer == 1) then
+        !$acc kernels
+        !$acc loop gang vector independent
+        do idx_21 = LBOUND(ystore, dim=1), UBOUND(ystore, dim=1), 1
+          ystore(idx_21) = y(idx_21 + (LBOUND(y, dim=1) - LBOUND(ystore, dim=1)),nn_h2so4)
+        enddo
+        !$acc end kernels
+      end if
+      call ukca_deriv_offline(nr, n_be_calls, theta_field_size, dts, y, zdryrt, zwetrt, so2_wetox_h2o2, so2_wetox_o3, so2_dryox_oh, lflux, dflux)
+      if (uph2so4inaer == 1) then
+        !$acc kernels
+        !$acc loop gang vector independent
+        do idx_22 = LBOUND(y, dim=1), UBOUND(y, dim=1), 1
+          y(idx_22,nn_h2so4) = ystore(idx_22 + (LBOUND(ystore, dim=1) - LBOUND(y, dim=1)))
+        enddo
+        !$acc end kernels
+      end if
+      do j = 1, jpctr, 1
+        do i = 1, jpspec, 1
+          if (advt(j) == speci(i)) then
+            tracer(kcs:kce,j) = y(:,i) / tnd(:) * c_species(j)
+            ! PSyclone CodeBlock (unsupported code) reason:
+            !  - Unsupported statement: Exit_Stmt
+            EXIT
+          end if
+        enddo
+      enddo
+      !$acc kernels
+      !$acc loop gang vector independent
+      do idx_23 = kcs, kce, 1
+        delso2_wet_h2o2(idx_23) = so2_wetox_h2o2(idx_23 + (LBOUND(so2_wetox_h2o2, dim=1) - kcs))
+      enddo
+      !$acc loop gang vector independent
+      do idx_24 = kcs, kce, 1
+        delso2_wet_o3(idx_24) = so2_wetox_o3(idx_24 + (LBOUND(so2_wetox_o3, dim=1) - kcs))
+      enddo
+      !$acc loop gang vector independent
+      do idx_25 = kcs, kce, 1
+        delh2so4_chem(idx_25) = so2_dryox_oh(idx_25 + (LBOUND(so2_dryox_oh, dim=1) - kcs))
+      enddo
+      !$acc loop gang vector independent
+      do idx_26 = kcs, kce, 1
+        delso2_drydep(idx_26) = zdryrt(idx_26 + (LBOUND(zdryrt, dim=1) - kcs),nn_so2) * y(idx_26 + (LBOUND(y, dim=1) - kcs),nn_so2) * dts
+      enddo
+      !$acc loop gang vector independent
+      do idx_27 = kcs, kce, 1
+        delso2_wetdep(idx_27) = zwetrt(idx_27 + (LBOUND(zwetrt, dim=1) - kcs),nn_so2) * y(idx_27 + (LBOUND(y, dim=1) - kcs),nn_so2) * dts
+      enddo
+      !$acc end kernels
+      if (lflux) then
+        !$acc kernels
+        !$acc loop seq
+        do i = 1, jpbk, 1
+          !$acc loop gang vector independent
+          do idx_28 = LBOUND(prk, dim=1), UBOUND(prk, dim=1), 1
+            prk(idx_28,ibimol(i)) = dflux(idx_28 + (LBOUND(dflux, dim=1) - LBOUND(prk, dim=1)),i)
+          enddo
+        enddo
+        j = jpbk
+        !$acc loop seq
+        do i = 1, jptk, 1
+          !$acc loop gang vector independent
+          do idx_29 = LBOUND(prk, dim=1), UBOUND(prk, dim=1), 1
+            prk(idx_29,itrimol(i)) = dflux(idx_29 + (LBOUND(dflux, dim=1) - LBOUND(prk, dim=1)),i + j)
+          enddo
+        enddo
+        j = jpbk + jptk
+        !$acc loop seq
+        do i = 1, jphk, 1
+          !$acc loop gang vector independent
+          do idx_30 = LBOUND(prk, dim=1), UBOUND(prk, dim=1), 1
+            prk(idx_30,ihetero(i)) = dflux(idx_30 + (LBOUND(dflux, dim=1) - LBOUND(prk, dim=1)),i + j)
+          enddo
+        enddo
+        !$acc end kernels
+        call asad_chemical_diagnostics(row_length, rows, model_levels, theta_field_size, dpd_dummy, dpw_dummy, prk_dummy, y_dummy, ix, jy, k, volume, ierr)
+      end if
+    enddo
+    if (ALLOCATED(rc)) then
+      DEALLOCATE(rc)
+    end if
+    if (ALLOCATED(dflux)) then
+      DEALLOCATE(dflux)
+    end if
+    if (ALLOCATED(ystore)) then
+      DEALLOCATE(ystore)
+    end if
+    ! PSyclone CodeBlock (unsupported code) reason:
+    !  - PSyclone doesn't yet support reference to imported symbols inside WHERE clauses.
+    WHERE (tracer(:, n_h2o2) > h2o2_offline(:)) tracer(:, n_h2o2) = h2o2_offline(:)
+    if (lhook) then
+      call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
+    end if
+    return
+
+  end subroutine ukca_chemistry_ctl_be
+  subroutine ukca_chemco_be_offline(theta_field_size, zt, zp, zq, zfcloud, zclw, h_plus_1d_arr)
+    use asad_bimol_mod, only : asad_bimol
+    use asad_findreaction_mod, only : asad_findreaction
+    use asad_hetero_mod, only : asad_hetero
+    use asad_totnud_mod, only : asad_totnud
+    use asad_trimol_mod, only : asad_trimol
+    use ukca_chem_defs_mod, only : ratb_defs, rath_defs, ratt_defs
+    use asad_mod, only : jpbk, jphk, jpspb, jpsph, jpspt, jptk, nbrkx, nhrkx, ntrkx, p, rk, spb, sph, spt, t, wp
+    use ukca_missing_data_mod, only : imdi, rmdi
+    use umPrintMgr, only : ummessage, umprint
+    use ereport_mod, only : ereport
+    use yomhook, only : dr_hook, lhook
+    use parkind1, only : jpim, jprb
+    integer(kind=jpim), parameter :: zhook_in = 0
+    integer(kind=jpim), parameter :: zhook_out = 1
+    integer, intent(in) :: theta_field_size
+    real, dimension(theta_field_size), intent(in) :: zt
+    real, dimension(theta_field_size), intent(in) :: zp
+    real, dimension(theta_field_size), intent(in) :: zq
+    real, dimension(theta_field_size), intent(in) :: zfcloud
+    real, dimension(theta_field_size), intent(in) :: zclw
+    real, dimension(theta_field_size), intent(in) :: h_plus_1d_arr
+    integer :: i
+    integer :: j
+    integer :: npnts
+    integer :: errcode
+    real, dimension(theta_field_size,2) :: dummy
+    CHARACTER(LEN = 10) :: r1
+    CHARACTER(LEN = 10) :: r2
+    CHARACTER(LEN = 10) :: p1
+    CHARACTER(LEN = 10) :: p2
+    CHARACTER(LEN = 10) :: prods(2)
+    CHARACTER(LEN = 72) :: cmessage
+    logical, save :: first = .true.
+    real(kind=jprb) :: zhook_handle
+    CHARACTER(LEN = *), PARAMETER :: RoutineName = 'UKCA_CHEMCO_BE_OFFLINE'
+    integer :: idx
+    integer :: idx_1
+    integer :: idx_2
+    integer :: idx_3
+    integer :: idx_4
+    integer :: idx_5
+
+    if (lhook) then
+      call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
+    end if
+    !$acc kernels
+    npnts = theta_field_size
+    !$acc loop gang vector independent
+    do idx = 1, npnts, 1
+      p(idx) = zp(idx)
+    enddo
+    !$acc loop gang vector independent
+    do idx_1 = 1, npnts, 1
+      t(idx_1) = zt(idx_1)
+    enddo
+    !$acc loop gang vector independent
+    do idx_2 = 1, npnts, 1
+      wp(idx_2) = zq(idx_2)
+    enddo
+    !$acc end kernels
+    call asad_totnud(npnts)
+    call asad_bimol(npnts)
+    call asad_trimol(npnts)
+    call asad_hetero(npnts, zfcloud, zclw, dummy, h_plus_1d_arr)
+    if (first) then
+      if (.NOT.ALLOCATED(ibimol)) then
+        ALLOCATE(ibimol(1:jpbk))
+      end if
+      if (.NOT.ALLOCATED(itrimol)) then
+        ALLOCATE(itrimol(1:jptk))
+      end if
+      if (.NOT.ALLOCATED(ihetero)) then
+        ALLOCATE(ihetero(1:jphk))
+      end if
+      ibimol(:) = imdi
+      itrimol(:) = imdi
+      ihetero(:) = imdi
+      frac_dms_so2 = rmdi
+      frac_dms_dmso = rmdi
+      frac_dmso_so2 = rmdi
+      frac_monoterp_sec_org(3) = rmdi
+      rc(:,:) = rmdi
+      errcode = 0
+      do i = 1, jpbk, 1
+        r1(:) = ratb_defs(i)%react1
+        r2(:) = ratb_defs(i)%react2
+        p1(:) = ratb_defs(i)%prod1
+        p2(:) = ratb_defs(i)%prod2
+        prods(:) = [p1, p2]
+        ibimol(i) = asad_findreaction(r1,r2,prods,2,spb,nbrkx,jpbk + 1,jpspb)
+        if (ibimol(i) == imdi) then
+          errcode = i
+        end if
+        if (p1(1:4) == 'SO2 ' .AND. p2(1:4) == 'DMSO') then
+          frac_dms_so2 = ratb_defs(i)%pyield1
+          frac_dms_dmso = ratb_defs(i)%pyield2
+        end if
+        if (r1(1:4) == 'DMSO') then
+          frac_dmso_so2 = ratb_defs(i)%pyield1
+        end if
+        if (r1(1:8) == 'Monoterp' .AND. r2(1:4) == 'OH  ') then
+          frac_monoterp_sec_org(1) = ratb_defs(i)%pyield1
+        end if
+        if (r1(1:8) == 'Monoterp' .AND. r2(1:4) == 'O3  ') then
+          frac_monoterp_sec_org(2) = ratb_defs(i)%pyield1
+        end if
+        if (r1(1:8) == 'Monoterp' .AND. r2(1:4) == 'NO3 ') then
+          frac_monoterp_sec_org(3) = ratb_defs(i)%pyield1
+        end if
+      enddo
+      if (errcode /= 0) then
+        cmessage(:) = 'Unidentified reaction: ' // ratb_defs(errcode) % react1 // ratb_defs(errcode) % react2
+        call ereport(ModuleName // ':' // RoutineName, errcode, cmessage)
+      end if
+      if (ABS(frac_dms_so2 - rmdi) < EPSILON(0.0) .OR. ABS(frac_dms_dmso - rmdi) < EPSILON(0.0) .OR. ABS(frac_dmso_so2 - rmdi) < EPSILON(0.0) .OR. ANY(ABS(frac_monoterp_sec_org - rmdi) < EPSILON(0.0))) then
+        errcode = 1
+        cmessage(:) = ' One or more product yields are undefined'
+        call ereport(ModuleName // ':' // RoutineName, errcode, cmessage)
+      end if
+      errcode = 0
+      do i = 1, jptk, 1
+        r1(:) = ratt_defs(i)%react1
+        r2(:) = ratt_defs(i)%react2
+        p1(:) = ratt_defs(i)%prod1
+        p2(:) = ratt_defs(i)%prod2
+        prods(:) = [p1, p2]
+        itrimol(i) = asad_findreaction(r1,r2,prods,2,spt,ntrkx,jptk + 1,jpspt)
+        if (itrimol(i) == imdi) then
+          errcode = i
+        end if
+      enddo
+      if (errcode /= 0) then
+        cmessage(:) = 'Unidentified reaction: ' // ratt_defs(errcode) % react1 // ratt_defs(errcode) % react2
+        call ereport(ModuleName // ':' // RoutineName, errcode, cmessage)
+      end if
+      errcode = 0
+      do i = 1, jphk, 1
+        r1(:) = rath_defs(i)%react1
+        r2(:) = rath_defs(i)%react2
+        p1(:) = rath_defs(i)%prod1
+        p2(:) = rath_defs(i)%prod2
+        prods(:) = [p1, p2]
+        ihetero(i) = asad_findreaction(r1,r2,prods,2,sph,nhrkx,jphk + 1,jpsph)
+        if (ihetero(i) == imdi) then
+          errcode = i
+        end if
+      enddo
+      if (errcode /= 0) then
+        cmessage(:) = 'Unidentified reaction: ' // rath_defs(errcode) % react1 // rath_defs(errcode) % react2
+        call ereport(ModuleName // ':' // RoutineName, errcode, cmessage)
+      end if
+    end if
+    !$acc kernels
+    !$acc loop gang vector independent collapse(2)
+    do i = 1, jpbk, 1
+      do idx_3 = LBOUND(rc, dim=1), UBOUND(rc, dim=1), 1
+        rc(idx_3,i) = rk(idx_3 + (LBOUND(rk, dim=1) - LBOUND(rc, dim=1)),ibimol(i))
+      enddo
+    enddo
     j = jpbk
-    DO i = 1,jptk
-      prk(:,itrimol(i)) = dflux(:,i+j)
-    END DO
-
+    !$acc loop gang vector independent collapse(2)
+    do i = 1, jptk, 1
+      do idx_4 = LBOUND(rc, dim=1), UBOUND(rc, dim=1), 1
+        rc(idx_4,i + j) = rk(idx_4 + (LBOUND(rk, dim=1) - LBOUND(rc, dim=1)),itrimol(i))
+      enddo
+    enddo
     j = jpbk + jptk
-    DO i = 1,jphk
-      prk(:,ihetero(i)) = dflux(:,i+j)
-    END DO
-
-    ! 3D flux diagnostics
-    CALL asad_chemical_diagnostics(row_length, rows, model_levels,             &
-    theta_field_size, dpd_dummy, dpw_dummy, prk_dummy, y_dummy, ix, jy, k,     &
-                                   volume, ierr)
-
-  END IF    ! lflux
-
-END DO    ! level loop (k)
-
-IF (ALLOCATED(rc)) DEALLOCATE(rc)
-IF (ALLOCATED(dflux)) DEALLOCATE(dflux)
-IF (ALLOCATED(ystore)) DEALLOCATE(ystore)
-
-! Reduce over-prediction of H2O2 using ancillary value.
-WHERE (tracer(:,n_h2o2) > h2o2_offline(:))                                     &
-       tracer(:,n_h2o2) = h2o2_offline(:)
-
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
-RETURN
-END SUBROUTINE ukca_chemistry_ctl_be
-
-! ##############################################################################
-
-SUBROUTINE ukca_chemco_be_offline(theta_field_size, zt, zp, zq, zfcloud,       &
-                                  zclw, H_plus_1d_arr)
-
-USE asad_bimol_mod,      ONLY: asad_bimol
-USE asad_findreaction_mod, ONLY: asad_findreaction
-USE asad_hetero_mod,     ONLY: asad_hetero
-USE asad_totnud_mod,     ONLY: asad_totnud
-USE asad_trimol_mod,     ONLY: asad_trimol
-USE ukca_chem_defs_mod,  ONLY: ratb_defs, ratt_defs, rath_defs
-USE asad_mod,            ONLY: p, t, wp, spb, spt, sph, nbrkx, ntrkx, nhrkx,   &
-                               rk, jpspb, jpspt, jpsph, jpbk, jptk, jphk
-USE ukca_missing_data_mod, ONLY: rmdi, imdi
-USE umPrintMgr,          ONLY: umPrint, umMessage
-USE ereport_mod,         ONLY: ereport
-USE yomhook,             ONLY: lhook, dr_hook
-USE parkind1,            ONLY: jprb, jpim
-IMPLICIT NONE
-
-INTEGER, INTENT(IN) :: theta_field_size  ! No of points
-
-REAL, INTENT(IN)  :: zt(1:theta_field_size)         ! Temperature (K)
-REAL, INTENT(IN)  :: zp(1:theta_field_size)         ! Pressure (Pa)
-REAL, INTENT(IN)  :: zq(1:theta_field_size)         ! Water vapour
-REAL, INTENT(IN)  :: zfcloud(1:theta_field_size)    ! Cloud fraction
-REAL, INTENT(IN)  :: zclw(1:theta_field_size)       ! Cloud liquid water (kg/kg)
-! 1-D pH array to be passed to asad_hetero
-REAL, INTENT(IN) :: H_plus_1d_arr(1:theta_field_size)
-
-! Local variables
-
-INTEGER :: i                             ! counter
-INTEGER :: j                             ! counter
-INTEGER :: npnts                         ! no of points
-INTEGER :: errcode                       ! error code
-
-REAL :: dummy(theta_field_size,2)        ! dummy variable for asad_hetero call
-
-CHARACTER(LEN=10) :: r1                  ! 1st reactant name
-CHARACTER(LEN=10) :: r2                  ! 2nd reactant name
-CHARACTER(LEN=10) :: p1                  ! 1st product name
-CHARACTER(LEN=10) :: p2                  ! 2nd product name
-CHARACTER(LEN=10) :: prods(2)            ! product names
-
-CHARACTER(LEN=72) :: cmessage            ! Error message
-
-LOGICAL, SAVE     :: first = .TRUE.      ! True for first call to routine
-
-INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
-INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
-REAL(KIND=jprb)               :: zhook_handle
-
-CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_CHEMCO_BE_OFFLINE'
-
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-
-! Copy pressure, temperature and water vapour into module variables
-npnts = theta_field_size
-
-p(1:npnts) = zp(1:npnts)
-t(1:npnts) = zt(1:npnts)
-wp(1:npnts) = zq(1:npnts)
-
-! Calculate total number density (tnd)
-
-CALL asad_totnud(npnts)
-
-! Calculate rate coefficients
-
-CALL asad_bimol(npnts)
-
-CALL asad_trimol(npnts)
-
-CALL asad_hetero(npnts, zfcloud, zclw, dummy, H_plus_1d_arr)
-
-IF (first) THEN
-
-  IF (.NOT. ALLOCATED(ibimol)) ALLOCATE(ibimol(jpbk))
-  IF (.NOT. ALLOCATED(itrimol)) ALLOCATE(itrimol(jptk))
-  IF (.NOT. ALLOCATED(ihetero)) ALLOCATE(ihetero(jphk))
-
-  ibimol(:) = imdi
-  itrimol(:) = imdi
-  ihetero(:) = imdi
-
-  frac_dms_so2 = rmdi
-  frac_dms_dmso = rmdi
-  frac_dmso_so2 = rmdi
-  frac_monoterp_sec_org(3) = rmdi
-  rc(:,:) = rmdi
-
-  ! Locate reactions and read product yields
-  errcode = 0
-  DO i = 1,jpbk
-    r1 = ratb_defs(i)%react1
-    r2 = ratb_defs(i)%react2
-    p1 = ratb_defs(i)%prod1
-    p2 = ratb_defs(i)%prod2
-    prods = [p1,p2]
-    ibimol(i) = asad_findreaction(r1, r2, prods, 2, spb, nbrkx, jpbk+1, jpspb)
-
-    IF (ibimol(i) == imdi) errcode = i
-
-    IF (p1(1:4) == 'SO2 ' .AND. p2(1:4) == 'DMSO') THEN
-      ! DMS + OH => SO2 + DMSO
-      frac_dms_so2 = ratb_defs(i)%pyield1
-      frac_dms_dmso = ratb_defs(i)%pyield2
-    END IF
-    IF (r1(1:4) == 'DMSO') THEN
-      frac_dmso_so2 = ratb_defs(i)%pyield1
-    END IF
-    IF (r1(1:8) == 'Monoterp' .AND. r2(1:4) == 'OH  ') THEN
-      frac_monoterp_sec_org(1) = ratb_defs(i)%pyield1
-    END IF
-    IF (r1(1:8) == 'Monoterp' .AND. r2(1:4) == 'O3  ') THEN
-      frac_monoterp_sec_org(2) = ratb_defs(i)%pyield1
-    END IF
-    IF (r1(1:8) == 'Monoterp' .AND. r2(1:4) == 'NO3 ') THEN
-      frac_monoterp_sec_org(3) = ratb_defs(i)%pyield1
-    END IF
-  END DO
-
-  IF (errcode /= 0) THEN
-    cmessage = 'Unidentified reaction: '//ratb_defs(errcode)%react1//          &
-               ratb_defs(errcode)%react2
-    CALL ereport(ModuleName//':'//RoutineName,errcode,cmessage)
-  END IF
-
-  IF (ABS(frac_dms_so2 - rmdi) < EPSILON(0.0) .OR.                             &
-      ABS(frac_dms_dmso - rmdi) < EPSILON(0.0) .OR.                            &
-      ABS(frac_dmso_so2 - rmdi) < EPSILON(0.0) .OR.                            &
-      ANY(ABS(frac_monoterp_sec_org - rmdi) < EPSILON(0.0))) THEN
-    errcode = 1
-    cmessage = ' One or more product yields are undefined'
-    CALL ereport(ModuleName//':'//RoutineName,errcode,cmessage)
-  END IF
-
-  errcode = 0
-  DO i = 1,jptk
-    r1 = ratt_defs(i)%react1
-    r2 = ratt_defs(i)%react2
-    p1 = ratt_defs(i)%prod1
-    p2 = ratt_defs(i)%prod2
-    prods = [p1,p2]
-    itrimol(i) = asad_findreaction(r1, r2, prods, 2, spt, ntrkx, jptk+1, jpspt)
-
-    IF (itrimol(i) == imdi) errcode = i
-  END DO
-
-  IF (errcode /= 0) THEN
-    cmessage = 'Unidentified reaction: '//ratt_defs(errcode)%react1//          &
-               ratt_defs(errcode)%react2
-    CALL ereport(ModuleName//':'//RoutineName,errcode,cmessage)
-  END IF
-
-  errcode = 0
-  DO i = 1,jphk
-    r1 = rath_defs(i)%react1
-    r2 = rath_defs(i)%react2
-    p1 = rath_defs(i)%prod1
-    p2 = rath_defs(i)%prod2
-    prods = [p1,p2]
-    ihetero(i) = asad_findreaction(r1, r2, prods, 2, sph, nhrkx, jphk+1, jpsph)
-
-    IF (ihetero(i) == imdi) errcode = i
-  END DO
-
-  IF (errcode /= 0) THEN
-    cmessage = 'Unidentified reaction: '//rath_defs(errcode)%react1//          &
-               rath_defs(errcode)%react2
-    CALL ereport(ModuleName//':'//RoutineName,errcode,cmessage)
-  END IF
-
-END IF     ! first
-
-! Fill the backward-Euler rate coefficient array from rk, using the
-!  addressing arrays
-
-DO i = 1,jpbk
-  rc(:,i) = rk(:,ibimol(i))
-END DO
-
-j = jpbk
-DO i = 1,jptk
-  rc(:,i+j) = rk(:,itrimol(i))
-END DO
-
-j = jpbk + jptk
-DO i = 1,jphk
-  rc(:,i+j) = rk(:,ihetero(i))
-END DO
-
-IF (first .AND. ANY(ABS(rc - rmdi) < EPSILON(0.0))) THEN
-  errcode = 1
-  cmessage = 'Missing rate coefficient data in array rc'
-  WRITE(umMessage,'(A55,I2)') cmessage//' at location: ',MAXLOC(rc)
-  CALL umPrint(umMessage,src='ukca_chemco_be_offline')
-  CALL ereport(ModuleName//':'//RoutineName,errcode,cmessage)
-END IF
-
-IF (first) THEN
-  IF (frac_dms_so2 > 1.0 .OR. frac_dms_dmso > 1.0 .OR.                         &
-      frac_dmso_so2 > 1.0 .OR. ANY(frac_monoterp_sec_org(:) > 1.0)) THEN
-    errcode = 1
-    cmessage = 'A yield fraction > 1.0 was encountered'
-    CALL ereport(ModuleName//':'//RoutineName,errcode,cmessage)
-  END IF
-END IF
-
-first = .FALSE.
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
-RETURN
-END SUBROUTINE ukca_chemco_be_offline
-
-! ##############################################################################
-
-! Description:
-!  To perform a chemical integration using the Backward Euler solver
-!   for the offline chemistry mechanism
-!
-! Method:
-!  Backward-Euler integration (no iterations are required)
-!
-! ----------------------------------------------------------------------
-
-SUBROUTINE ukca_deriv_offline(nr, n_be_calls, theta_field_size, dts, y,        &
-                              dryrt, wetrt, so2_wetox_h2o2, so2_wetox_o3,      &
-                              so2_dryox_oh, lflux, dflux)
-
-! This solver uses the following equations from module UKCA_CHEM_OFFLINE:
-
-! rc(1) : DMS + OH => SO2
-! rc(2) : DMS + OH => f1*SO2 + f2*DMSO
-! rc(3) : DMS + NO3 => SO2
-! rc(4) : DMSO + OH => f3*SO2
-! rc(5) : Monoterpene + OH => Sec_Org
-! rc(6) : Monoterpene + O3 => Sec_Org
-! rc(7) : Monoterpene + NO3 => Sec_Org
-! rc(8) : HO2 + HO2 => H2O2
-! rc(9) : H2O2 + OH => H2O
-! rc(10) : SO2 + OH => H2SO4
-! rc(11) : SO2 + H2O2(aq) => NULL0  (HSO3- + H2O2(aq) => SO4)
-! rc(12) : SO2 + O3(aq) => NULL1  (HSO3- + O3(aq) => SO4)
-! rc(13) : SO2 + O3(aq) => NULL2  (SO3= + O3(aq) => SO4)
-
-! where f1 = frac_dms_so2
-!       f2 = frac_dms_dmso
-!       f3 = frac_dmso_so2
-
-USE asad_mod, ONLY: jpspec
-USE ukca_um_legacy_mod, ONLY: oneover_v
-USE yomhook,         ONLY: lhook, dr_hook
-USE parkind1,        ONLY: jprb, jpim
-IMPLICIT NONE
-
-INTEGER, INTENT(IN) :: nr                            ! No. reactions
-INTEGER, INTENT(IN) :: n_be_calls                    ! No. chemical steps
-INTEGER, INTENT(IN) :: theta_field_size              ! No. of points
-
-REAL, INTENT(IN)    :: dts                           ! timestep
-REAL, INTENT(IN)    :: dryrt(theta_field_size,jpspec) ! dry deposition rates
-REAL, INTENT(IN)    :: wetrt(theta_field_size,jpspec) ! dry deposition rates
-LOGICAL, INTENT(IN) :: lflux                         ! true for chemical fluxes
-! SO2 increments in molecules/cm^3
-REAL, INTENT(OUT)   :: so2_wetox_h2o2(theta_field_size)
-REAL, INTENT(OUT)   :: so2_wetox_o3(theta_field_size)
-REAL, INTENT(OUT)   :: so2_dryox_oh(theta_field_size)
-REAL, INTENT(OUT)   :: dflux(theta_field_size,nr)    ! reaction fluxes in
-                                                     ! molecules/(cm3.s)
-
-REAL, INTENT(IN OUT) :: y(theta_field_size,jpspec)    ! species concentrations
-
-!     Local variables
-
-INTEGER :: j                               ! loop counter
-INTEGER :: n                               ! loop counter for chemical timestep
-INTEGER :: npnts                           ! number of points
-
-REAL :: p(theta_field_size)                ! production rate
-REAL :: l(theta_field_size)                ! loss rate
-REAL :: yp(theta_field_size,jpspec)        ! concentrations at iteration start
-REAL :: tmp1(theta_field_size)             ! work array for vector reciprocal
-REAL :: tmp2(theta_field_size)             ! work array for vector reciprocal
-
-REAL :: f_inv                              ! inverse of n_be_calls
-
-INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
-INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
-REAL(KIND=jprb)               :: zhook_handle
-
-CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_DERIV_OFFLINE'
-
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-
-npnts = theta_field_size
-
-! Initialise the flux terms
-so2_wetox_h2o2(:) = 0.0
-so2_wetox_o3(:) = 0.0
-so2_dryox_oh(:) = 0.0
-dflux(:,:) = 0.0
-
-DO n = 1, n_be_calls           ! loop over chemical timesteps
-
-  DO j = 1,jpspec
-    yp(:,j) = y(:,j)
-  END DO
-
-
-  ! Note that there is no need for iterations in this mechanism
-
-  ! DMS          Y( 2)
-  p(:) = 0.0
-  l(:) = dryrt(:,2) + wetrt(:,2) +                                             &
-         ((rc(:,1) + rc(:,2)) * y(:,9)) + (rc(:,3) * y(:,10))
-  y(:, 3) = (yp(:, 3)+dts*p(:))/(1.0+dts*l(:))
-
-  tmp2(:) = 1.0+dts*l(:)
-  CALL oneover_v(npnts, tmp2, tmp1)
-
-  y(:, 2) = (yp(:, 2)+dts*p(:))*tmp1
-
-  ! DMSO         Y( 5)
-  p(:) = (rc(:,2) * y(:,2) * y(:,9) * frac_dms_dmso)
-  l(:) = dryrt(:,5) + wetrt(:,5) +                                             &
-         (rc(:,4) * y(:,9))
-
-  tmp2(:) = 1.0+dts*l(:)
-  CALL oneover_v(npnts, tmp2, tmp1)
-
-  y(:, 5) = (yp(:, 5)+dts*p(:))*tmp1
-
-  ! SO2          Y( 3)
-  p(:) = ((rc(:,1) + rc(:,2) * frac_dms_so2) * y(:,2) * y(:,9)) +              &
-         (rc(:,3) * y(:,2) * y(:,10)) +                                        &
-         (rc(:,4) * y(:,5) * y(:,9) * frac_dmso_so2)
-  l(:) = dryrt(:,3) + wetrt(:,3) +                                             &
-         (rc(:,10) * y(:,9)) + (rc(:,11) * y(:,1)) +                           &
-         ((rc(:,12) + rc(:,13)) * y(:,8))
-
-  tmp2(:) = 1.0+dts*l(:)
-  CALL oneover_v(npnts, tmp2, tmp1)
-
-  y(:, 3) = (yp(:, 3)+dts*p(:))*tmp1
-
-  ! H2SO4        Y( 4)
-  p(:) = (rc(:,10) * y(:,3) * y(:,9))
-  l(:) = dryrt(:,4) + wetrt(:,4)
-
-  tmp2(:) = 1.0+dts*l(:)
-  CALL oneover_v(npnts, tmp2, tmp1)
-
-  y(:, 4) = (yp(:, 4)+dts*p(:))*tmp1
-
-  ! Monoterp     Y( 6)
-  p(:) = 0.0
-  l(:) = dryrt(:,6) + wetrt(:,6) +                                             &
-         (rc(:,5) * y(:,9)) + (rc(:,6) * y(:,8)) + (rc(:,7) * y(:,10))
-
-  tmp2(:) = 1.0+dts*l(:)
-  CALL oneover_v(npnts, tmp2, tmp1)
-
-  y(:, 6) = (yp(:, 6)+dts*p(:))*tmp1
-
-  ! Sec_org      Y( 7)
-  p(:) = (rc(:,5) * y(:,6) * y(:,9) * frac_monoterp_sec_org(1)) +              &
-         (rc(:,6) * y(:,6) * y(:,8) * frac_monoterp_sec_org(2)) +              &
-         (rc(:,7) * y(:,6) * y(:,10) * frac_monoterp_sec_org(3))
-  l(:) = dryrt(:,7) + wetrt(:,7)
-
-  tmp2(:) = 1.0+dts*l(:)
-  CALL oneover_v(npnts, tmp2, tmp1)
-
-  y(:, 7) = (yp(:, 7)+dts*p(:))*tmp1
-
-  ! H2O2         Y( 1)
-  p(:) = rc(:,8) * y(:,11) * y(:,11)
-  l(:) = dryrt(:,1) + wetrt(:,1) + (rc(:,9) * y(:,9)) + (rc(:,11) * y(:,3))
-
-  tmp2(:) = 1.0+dts*l(:)
-  CALL oneover_v(npnts, tmp2, tmp1)
-
-  y(:, 1) = (yp(:, 1)+dts*p(:))*tmp1
-
-
-  ! Calculate flux terms at end of iteration.
-
-  ! Fluxes to aqueous sulphate (always required for MODE):
-  so2_wetox_h2o2(:)= so2_wetox_h2o2(:) +                                       &
-                                 rc(:,11) * y(:,3) * y(:,1) * dts
-  so2_wetox_o3(:)  = so2_wetox_o3(:) +                                         &
-                               ((rc(:,12) + rc(:,13)) * y(:,3) * y(:,8)) * dts
-  so2_dryox_oh(:)  = so2_dryox_oh(:) +                                         &
-                                 rc(:,10) * y(:,3) * y(:,9) * dts
-
-  ! Chemical fluxes (only required if flux diagnostics are requested)
-  IF (lflux) THEN
-    f_inv = 1.0/n_be_calls
-    dflux(:,1) = dflux(:,1) + rc(:,1)*y(:,2)*y(:,9)*f_inv      ! DMS + OH
-    dflux(:,2) = dflux(:,1) + rc(:,2)*y(:,2)*y(:,9)*f_inv      ! DMS + OH
-    dflux(:,3) = dflux(:,3) + rc(:,3)*y(:,2)*y(:,10)*f_inv     ! DMS + NO3
-    dflux(:,4) = dflux(:,4) + rc(:,4)*y(:,5)*y(:,9)*f_inv      ! DMSO + OH
-    dflux(:,5) = dflux(:,5) + rc(:,5)*y(:,6)*y(:,9)*f_inv      ! MonoTerp + OH
-    dflux(:,6) = dflux(:,6) + rc(:,6)*y(:,6)*y(:,8)*f_inv      ! MonoTerp + O3
-    dflux(:,7) = dflux(:,7) + rc(:,7)*y(:,6)*y(:,10)*f_inv     ! MonoTerp + NO3
-    dflux(:,8) = dflux(:,8) + rc(:,8)*y(:,11)*y(:,11)*f_inv    ! HO2 + HO2
-    dflux(:,9) = dflux(:,9) + rc(:,9)*y(:,1)*y(:,9)*f_inv      ! H2O2 + OH
-    dflux(:,10) = dflux(:,10) + rc(:,10)*y(:,3)*y(:,9)*f_inv   ! SO2 + OH
-    dflux(:,11) = dflux(:,11) + rc(:,11)*y(:,3)*y(:,1)*f_inv   ! SO2 + H2O2(aq)
-    dflux(:,12) = dflux(:,12) + rc(:,12)*y(:,3)*y(:,8)*f_inv   ! SO2 + O3(aq)
-    dflux(:,13) = dflux(:,13) + rc(:,13)*y(:,3)*y(:,8)*f_inv   ! SO2 + O3(aq)
-
-  END IF    ! lflux
-
-END DO  ! n_be_calls
-
-
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
-
-RETURN
-END SUBROUTINE ukca_deriv_offline
-
-END MODULE ukca_chemistry_ctl_be_mod
+    !$acc loop gang vector independent collapse(2)
+    do i = 1, jphk, 1
+      do idx_5 = LBOUND(rc, dim=1), UBOUND(rc, dim=1), 1
+        rc(idx_5,i + j) = rk(idx_5 + (LBOUND(rk, dim=1) - LBOUND(rc, dim=1)),ihetero(i))
+      enddo
+    enddo
+    !$acc end kernels
+    if (first .AND. ANY(ABS(rc - rmdi) < EPSILON(0.0))) then
+      errcode = 1
+      cmessage(:) = 'Missing rate coefficient data in array rc'
+      ! PSyclone CodeBlock (unsupported code) reason:
+      !  - Unsupported statement: Write_Stmt
+      WRITE(umMessage, '(A55,I2)') cmessage // ' at location: ', MAXLOC(rc)
+      call umprint(ummessage, src='ukca_chemco_be_offline')
+      call ereport(ModuleName // ':' // RoutineName, errcode, cmessage)
+    end if
+    if (first) then
+      if (frac_dms_so2 > 1.0 .OR. frac_dms_dmso > 1.0 .OR. frac_dmso_so2 > 1.0 .OR. ANY(frac_monoterp_sec_org(:) > 1.0)) then
+        errcode = 1
+        cmessage(:) = 'A yield fraction > 1.0 was encountered'
+        call ereport(ModuleName // ':' // RoutineName, errcode, cmessage)
+      end if
+    end if
+    first = .false.
+    if (lhook) then
+      call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
+    end if
+    return
+
+  end subroutine ukca_chemco_be_offline
+  subroutine ukca_deriv_offline(nr, n_be_calls, theta_field_size, dts, y, dryrt, wetrt, so2_wetox_h2o2, so2_wetox_o3, so2_dryox_oh, lflux, dflux)
+    use asad_mod, only : jpspec
+    use ukca_um_legacy_mod, only : oneover_v
+    use yomhook, only : dr_hook, lhook
+    use parkind1, only : jpim, jprb
+    integer(kind=jpim), parameter :: zhook_in = 0
+    integer(kind=jpim), parameter :: zhook_out = 1
+    integer, intent(in) :: nr
+    integer, intent(in) :: n_be_calls
+    integer, intent(in) :: theta_field_size
+    real, intent(in) :: dts
+    real, dimension(theta_field_size,jpspec), intent(in) :: dryrt
+    real, dimension(theta_field_size,jpspec), intent(in) :: wetrt
+    logical, intent(in) :: lflux
+    real, dimension(theta_field_size), intent(out) :: so2_wetox_h2o2
+    real, dimension(theta_field_size), intent(out) :: so2_wetox_o3
+    real, dimension(theta_field_size), intent(out) :: so2_dryox_oh
+    real, dimension(theta_field_size,nr), intent(out) :: dflux
+    real, dimension(theta_field_size,jpspec), intent(inout) :: y
+    integer :: j
+    integer :: n
+    integer :: npnts
+    real, dimension(theta_field_size) :: p
+    real, dimension(theta_field_size) :: l
+    real, dimension(theta_field_size,jpspec) :: yp
+    real, dimension(theta_field_size) :: tmp1
+    real, dimension(theta_field_size) :: tmp2
+    real :: f_inv
+    real(kind=jprb) :: zhook_handle
+    CHARACTER(LEN = *), PARAMETER :: RoutineName = 'UKCA_DERIV_OFFLINE'
+    integer :: idx
+    integer :: idx_1
+    integer :: idx_2
+    integer :: idx_3
+    integer :: idx_4
+    integer :: idx_5
+    integer :: idx_6
+    integer :: idx_7
+    integer :: idx_8
+    integer :: idx_9
+    integer :: idx_10
+    integer :: idx_11
+    integer :: idx_12
+    integer :: idx_13
+    integer :: idx_14
+    integer :: idx_15
+    integer :: idx_16
+    integer :: idx_17
+    integer :: idx_18
+    integer :: idx_19
+    integer :: idx_20
+    integer :: idx_21
+    integer :: idx_22
+    integer :: idx_23
+    integer :: idx_24
+    integer :: idx_25
+    integer :: idx_26
+    integer :: idx_27
+    integer :: idx_28
+    integer :: idx_29
+    integer :: idx_30
+    integer :: idx_31
+    integer :: idx_32
+    integer :: idx_33
+    integer :: idx_34
+    integer :: idx_35
+    integer :: idx_36
+    integer :: idx_37
+    integer :: idx_38
+    integer :: idx_39
+    integer :: idx_40
+    integer :: idx_41
+    integer :: idx_42
+    integer :: idx_43
+    integer :: idx_44
+    integer :: idx_45
+    integer :: idx_46
+    integer :: idx_47
+    integer :: idx_48
+    integer :: idx_49
+    integer :: idx_50
+
+    if (lhook) then
+      call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
+    end if
+    !$acc kernels
+    npnts = theta_field_size
+    !$acc loop gang vector independent
+    do idx = LBOUND(so2_wetox_h2o2, dim=1), UBOUND(so2_wetox_h2o2, dim=1), 1
+      so2_wetox_h2o2(idx) = 0.0
+    enddo
+    !$acc loop gang vector independent
+    do idx_1 = LBOUND(so2_wetox_o3, dim=1), UBOUND(so2_wetox_o3, dim=1), 1
+      so2_wetox_o3(idx_1) = 0.0
+    enddo
+    !$acc loop gang vector independent
+    do idx_2 = LBOUND(so2_dryox_oh, dim=1), UBOUND(so2_dryox_oh, dim=1), 1
+      so2_dryox_oh(idx_2) = 0.0
+    enddo
+    !$acc loop gang vector independent collapse(2)
+    do idx_3 = LBOUND(dflux, dim=2), UBOUND(dflux, dim=2), 1
+      do idx_4 = LBOUND(dflux, dim=1), UBOUND(dflux, dim=1), 1
+        dflux(idx_4,idx_3) = 0.0
+      enddo
+    enddo
+    !$acc end kernels
+    do n = 1, n_be_calls, 1
+      !$acc kernels
+      !$acc loop gang vector independent collapse(2)
+      do j = 1, jpspec, 1
+        do idx_5 = LBOUND(yp, dim=1), UBOUND(yp, dim=1), 1
+          yp(idx_5,j) = y(idx_5,j)
+        enddo
+      enddo
+      !$acc loop gang vector independent
+      do idx_6 = LBOUND(p, dim=1), UBOUND(p, dim=1), 1
+        p(idx_6) = 0.0
+      enddo
+      !$acc loop gang vector independent
+      do idx_7 = LBOUND(l, dim=1), UBOUND(l, dim=1), 1
+        l(idx_7) = dryrt(idx_7,2) + wetrt(idx_7,2) + (rc(idx_7 + (LBOUND(rc, dim=1) - LBOUND(l, dim=1)),1) + rc(idx_7 + (LBOUND(rc, dim=1) - LBOUND(l, dim=1)),2)) * y(idx_7,9) + rc(idx_7 + (LBOUND(rc, dim=1) - LBOUND(l, dim=1)),3) * y(idx_7,10)
+      enddo
+      !$acc loop gang vector independent
+      do idx_8 = LBOUND(y, dim=1), UBOUND(y, dim=1), 1
+        y(idx_8,3) = (yp(idx_8,3) + dts * p(idx_8)) / (1.0 + dts * l(idx_8))
+      enddo
+      !$acc loop gang vector independent
+      do idx_9 = LBOUND(tmp2, dim=1), UBOUND(tmp2, dim=1), 1
+        tmp2(idx_9) = 1.0 + dts * l(idx_9)
+      enddo
+      !$acc end kernels
+      call oneover_v(npnts, tmp2, tmp1)
+      !$acc kernels
+      !$acc loop gang vector independent
+      do idx_10 = LBOUND(y, dim=1), UBOUND(y, dim=1), 1
+        y(idx_10,2) = (yp(idx_10,2) + dts * p(idx_10)) * tmp1(idx_10)
+      enddo
+      !$acc loop gang vector independent
+      do idx_11 = LBOUND(p, dim=1), UBOUND(p, dim=1), 1
+        p(idx_11) = rc(idx_11 + (LBOUND(rc, dim=1) - LBOUND(p, dim=1)),2) * y(idx_11,2) * y(idx_11,9) * frac_dms_dmso
+      enddo
+      !$acc loop gang vector independent
+      do idx_12 = LBOUND(l, dim=1), UBOUND(l, dim=1), 1
+        l(idx_12) = dryrt(idx_12,5) + wetrt(idx_12,5) + rc(idx_12 + (LBOUND(rc, dim=1) - LBOUND(l, dim=1)),4) * y(idx_12,9)
+      enddo
+      !$acc loop gang vector independent
+      do idx_13 = LBOUND(tmp2, dim=1), UBOUND(tmp2, dim=1), 1
+        tmp2(idx_13) = 1.0 + dts * l(idx_13)
+      enddo
+      !$acc end kernels
+      call oneover_v(npnts, tmp2, tmp1)
+      !$acc kernels
+      !$acc loop gang vector independent
+      do idx_14 = LBOUND(y, dim=1), UBOUND(y, dim=1), 1
+        y(idx_14,5) = (yp(idx_14,5) + dts * p(idx_14)) * tmp1(idx_14)
+      enddo
+      !$acc loop gang vector independent
+      do idx_15 = LBOUND(p, dim=1), UBOUND(p, dim=1), 1
+        p(idx_15) = (rc(idx_15 + (LBOUND(rc, dim=1) - LBOUND(p, dim=1)),1) + rc(idx_15 + (LBOUND(rc, dim=1) - LBOUND(p, dim=1)),2) * frac_dms_so2) * y(idx_15,2) * y(idx_15,9) + rc(idx_15 + (LBOUND(rc, dim=1) - LBOUND(p, dim=1)),3) * y(idx_15,2) * y(idx_15,10) + rc(idx_15 + (LBOUND(rc, dim=1) - LBOUND(p, dim=1)),4) * y(idx_15,5) * y(idx_15,9) * frac_dmso_so2
+      enddo
+      !$acc loop gang vector independent
+      do idx_16 = LBOUND(l, dim=1), UBOUND(l, dim=1), 1
+        l(idx_16) = dryrt(idx_16,3) + wetrt(idx_16,3) + rc(idx_16 + (LBOUND(rc, dim=1) - LBOUND(l, dim=1)),10) * y(idx_16,9) + rc(idx_16 + (LBOUND(rc, dim=1) - LBOUND(l, dim=1)),11) * y(idx_16,1) + (rc(idx_16 + (LBOUND(rc, dim=1) - LBOUND(l, dim=1)),12) + rc(idx_16 + (LBOUND(rc, dim=1) - LBOUND(l, dim=1)),13)) * y(idx_16,8)
+      enddo
+      !$acc loop gang vector independent
+      do idx_17 = LBOUND(tmp2, dim=1), UBOUND(tmp2, dim=1), 1
+        tmp2(idx_17) = 1.0 + dts * l(idx_17)
+      enddo
+      !$acc end kernels
+      call oneover_v(npnts, tmp2, tmp1)
+      !$acc kernels
+      !$acc loop gang vector independent
+      do idx_18 = LBOUND(y, dim=1), UBOUND(y, dim=1), 1
+        y(idx_18,3) = (yp(idx_18,3) + dts * p(idx_18)) * tmp1(idx_18)
+      enddo
+      !$acc loop gang vector independent
+      do idx_19 = LBOUND(p, dim=1), UBOUND(p, dim=1), 1
+        p(idx_19) = rc(idx_19 + (LBOUND(rc, dim=1) - LBOUND(p, dim=1)),10) * y(idx_19,3) * y(idx_19,9)
+      enddo
+      !$acc loop gang vector independent
+      do idx_20 = LBOUND(l, dim=1), UBOUND(l, dim=1), 1
+        l(idx_20) = dryrt(idx_20,4) + wetrt(idx_20,4)
+      enddo
+      !$acc loop gang vector independent
+      do idx_21 = LBOUND(tmp2, dim=1), UBOUND(tmp2, dim=1), 1
+        tmp2(idx_21) = 1.0 + dts * l(idx_21)
+      enddo
+      !$acc end kernels
+      call oneover_v(npnts, tmp2, tmp1)
+      !$acc kernels
+      !$acc loop gang vector independent
+      do idx_22 = LBOUND(y, dim=1), UBOUND(y, dim=1), 1
+        y(idx_22,4) = (yp(idx_22,4) + dts * p(idx_22)) * tmp1(idx_22)
+      enddo
+      !$acc loop gang vector independent
+      do idx_23 = LBOUND(p, dim=1), UBOUND(p, dim=1), 1
+        p(idx_23) = 0.0
+      enddo
+      !$acc loop gang vector independent
+      do idx_24 = LBOUND(l, dim=1), UBOUND(l, dim=1), 1
+        l(idx_24) = dryrt(idx_24,6) + wetrt(idx_24,6) + rc(idx_24 + (LBOUND(rc, dim=1) - LBOUND(l, dim=1)),5) * y(idx_24,9) + rc(idx_24 + (LBOUND(rc, dim=1) - LBOUND(l, dim=1)),6) * y(idx_24,8) + rc(idx_24 + (LBOUND(rc, dim=1) - LBOUND(l, dim=1)),7) * y(idx_24,10)
+      enddo
+      !$acc loop gang vector independent
+      do idx_25 = LBOUND(tmp2, dim=1), UBOUND(tmp2, dim=1), 1
+        tmp2(idx_25) = 1.0 + dts * l(idx_25)
+      enddo
+      !$acc end kernels
+      call oneover_v(npnts, tmp2, tmp1)
+      !$acc kernels
+      !$acc loop gang vector independent
+      do idx_26 = LBOUND(y, dim=1), UBOUND(y, dim=1), 1
+        y(idx_26,6) = (yp(idx_26,6) + dts * p(idx_26)) * tmp1(idx_26)
+      enddo
+      !$acc loop gang vector independent
+      do idx_27 = LBOUND(p, dim=1), UBOUND(p, dim=1), 1
+        p(idx_27) = rc(idx_27 + (LBOUND(rc, dim=1) - LBOUND(p, dim=1)),5) * y(idx_27,6) * y(idx_27,9) * frac_monoterp_sec_org(1) + rc(idx_27 + (LBOUND(rc, dim=1) - LBOUND(p, dim=1)),6) * y(idx_27,6) * y(idx_27,8) * frac_monoterp_sec_org(2) + rc(idx_27 + (LBOUND(rc, dim=1) - LBOUND(p, dim=1)),7) * y(idx_27,6) * y(idx_27,10) * frac_monoterp_sec_org(3)
+      enddo
+      !$acc loop gang vector independent
+      do idx_28 = LBOUND(l, dim=1), UBOUND(l, dim=1), 1
+        l(idx_28) = dryrt(idx_28,7) + wetrt(idx_28,7)
+      enddo
+      !$acc loop gang vector independent
+      do idx_29 = LBOUND(tmp2, dim=1), UBOUND(tmp2, dim=1), 1
+        tmp2(idx_29) = 1.0 + dts * l(idx_29)
+      enddo
+      !$acc end kernels
+      call oneover_v(npnts, tmp2, tmp1)
+      !$acc kernels
+      !$acc loop gang vector independent
+      do idx_30 = LBOUND(y, dim=1), UBOUND(y, dim=1), 1
+        y(idx_30,7) = (yp(idx_30,7) + dts * p(idx_30)) * tmp1(idx_30)
+      enddo
+      !$acc loop gang vector independent
+      do idx_31 = LBOUND(p, dim=1), UBOUND(p, dim=1), 1
+        p(idx_31) = rc(idx_31 + (LBOUND(rc, dim=1) - LBOUND(p, dim=1)),8) * y(idx_31,11) * y(idx_31,11)
+      enddo
+      !$acc loop gang vector independent
+      do idx_32 = LBOUND(l, dim=1), UBOUND(l, dim=1), 1
+        l(idx_32) = dryrt(idx_32,1) + wetrt(idx_32,1) + rc(idx_32 + (LBOUND(rc, dim=1) - LBOUND(l, dim=1)),9) * y(idx_32,9) + rc(idx_32 + (LBOUND(rc, dim=1) - LBOUND(l, dim=1)),11) * y(idx_32,3)
+      enddo
+      !$acc loop gang vector independent
+      do idx_33 = LBOUND(tmp2, dim=1), UBOUND(tmp2, dim=1), 1
+        tmp2(idx_33) = 1.0 + dts * l(idx_33)
+      enddo
+      !$acc end kernels
+      call oneover_v(npnts, tmp2, tmp1)
+      !$acc kernels
+      !$acc loop gang vector independent
+      do idx_34 = LBOUND(y, dim=1), UBOUND(y, dim=1), 1
+        y(idx_34,1) = (yp(idx_34,1) + dts * p(idx_34)) * tmp1(idx_34)
+      enddo
+      !$acc loop gang vector independent
+      do idx_35 = LBOUND(so2_wetox_h2o2, dim=1), UBOUND(so2_wetox_h2o2, dim=1), 1
+        so2_wetox_h2o2(idx_35) = so2_wetox_h2o2(idx_35) + rc(idx_35 + (LBOUND(rc, dim=1) - LBOUND(so2_wetox_h2o2, dim=1)),11) * y(idx_35,3) * y(idx_35,1) * dts
+      enddo
+      !$acc loop gang vector independent
+      do idx_36 = LBOUND(so2_wetox_o3, dim=1), UBOUND(so2_wetox_o3, dim=1), 1
+        so2_wetox_o3(idx_36) = so2_wetox_o3(idx_36) + (rc(idx_36 + (LBOUND(rc, dim=1) - LBOUND(so2_wetox_o3, dim=1)),12) + rc(idx_36 + (LBOUND(rc, dim=1) - LBOUND(so2_wetox_o3, dim=1)),13)) * y(idx_36,3) * y(idx_36,8) * dts
+      enddo
+      !$acc loop gang vector independent
+      do idx_37 = LBOUND(so2_dryox_oh, dim=1), UBOUND(so2_dryox_oh, dim=1), 1
+        so2_dryox_oh(idx_37) = so2_dryox_oh(idx_37) + rc(idx_37 + (LBOUND(rc, dim=1) - LBOUND(so2_dryox_oh, dim=1)),10) * y(idx_37,3) * y(idx_37,9) * dts
+      enddo
+      !$acc end kernels
+      if (lflux) then
+        !$acc kernels
+        f_inv = 1.0 / n_be_calls
+        !$acc loop gang vector independent
+        do idx_38 = LBOUND(dflux, dim=1), UBOUND(dflux, dim=1), 1
+          dflux(idx_38,1) = dflux(idx_38,1) + rc(idx_38 + (LBOUND(rc, dim=1) - LBOUND(dflux, dim=1)),1) * y(idx_38,2) * y(idx_38,9) * f_inv
+        enddo
+        !$acc loop gang vector independent
+        do idx_39 = LBOUND(dflux, dim=1), UBOUND(dflux, dim=1), 1
+          dflux(idx_39,2) = dflux(idx_39,1) + rc(idx_39 + (LBOUND(rc, dim=1) - LBOUND(dflux, dim=1)),2) * y(idx_39,2) * y(idx_39,9) * f_inv
+        enddo
+        !$acc loop gang vector independent
+        do idx_40 = LBOUND(dflux, dim=1), UBOUND(dflux, dim=1), 1
+          dflux(idx_40,3) = dflux(idx_40,3) + rc(idx_40 + (LBOUND(rc, dim=1) - LBOUND(dflux, dim=1)),3) * y(idx_40,2) * y(idx_40,10) * f_inv
+        enddo
+        !$acc loop gang vector independent
+        do idx_41 = LBOUND(dflux, dim=1), UBOUND(dflux, dim=1), 1
+          dflux(idx_41,4) = dflux(idx_41,4) + rc(idx_41 + (LBOUND(rc, dim=1) - LBOUND(dflux, dim=1)),4) * y(idx_41,5) * y(idx_41,9) * f_inv
+        enddo
+        !$acc loop gang vector independent
+        do idx_42 = LBOUND(dflux, dim=1), UBOUND(dflux, dim=1), 1
+          dflux(idx_42,5) = dflux(idx_42,5) + rc(idx_42 + (LBOUND(rc, dim=1) - LBOUND(dflux, dim=1)),5) * y(idx_42,6) * y(idx_42,9) * f_inv
+        enddo
+        !$acc loop gang vector independent
+        do idx_43 = LBOUND(dflux, dim=1), UBOUND(dflux, dim=1), 1
+          dflux(idx_43,6) = dflux(idx_43,6) + rc(idx_43 + (LBOUND(rc, dim=1) - LBOUND(dflux, dim=1)),6) * y(idx_43,6) * y(idx_43,8) * f_inv
+        enddo
+        !$acc loop gang vector independent
+        do idx_44 = LBOUND(dflux, dim=1), UBOUND(dflux, dim=1), 1
+          dflux(idx_44,7) = dflux(idx_44,7) + rc(idx_44 + (LBOUND(rc, dim=1) - LBOUND(dflux, dim=1)),7) * y(idx_44,6) * y(idx_44,10) * f_inv
+        enddo
+        !$acc loop gang vector independent
+        do idx_45 = LBOUND(dflux, dim=1), UBOUND(dflux, dim=1), 1
+          dflux(idx_45,8) = dflux(idx_45,8) + rc(idx_45 + (LBOUND(rc, dim=1) - LBOUND(dflux, dim=1)),8) * y(idx_45,11) * y(idx_45,11) * f_inv
+        enddo
+        !$acc loop gang vector independent
+        do idx_46 = LBOUND(dflux, dim=1), UBOUND(dflux, dim=1), 1
+          dflux(idx_46,9) = dflux(idx_46,9) + rc(idx_46 + (LBOUND(rc, dim=1) - LBOUND(dflux, dim=1)),9) * y(idx_46,1) * y(idx_46,9) * f_inv
+        enddo
+        !$acc loop gang vector independent
+        do idx_47 = LBOUND(dflux, dim=1), UBOUND(dflux, dim=1), 1
+          dflux(idx_47,10) = dflux(idx_47,10) + rc(idx_47 + (LBOUND(rc, dim=1) - LBOUND(dflux, dim=1)),10) * y(idx_47,3) * y(idx_47,9) * f_inv
+        enddo
+        !$acc loop gang vector independent
+        do idx_48 = LBOUND(dflux, dim=1), UBOUND(dflux, dim=1), 1
+          dflux(idx_48,11) = dflux(idx_48,11) + rc(idx_48 + (LBOUND(rc, dim=1) - LBOUND(dflux, dim=1)),11) * y(idx_48,3) * y(idx_48,1) * f_inv
+        enddo
+        !$acc loop gang vector independent
+        do idx_49 = LBOUND(dflux, dim=1), UBOUND(dflux, dim=1), 1
+          dflux(idx_49,12) = dflux(idx_49,12) + rc(idx_49 + (LBOUND(rc, dim=1) - LBOUND(dflux, dim=1)),12) * y(idx_49,3) * y(idx_49,8) * f_inv
+        enddo
+        !$acc loop gang vector independent
+        do idx_50 = LBOUND(dflux, dim=1), UBOUND(dflux, dim=1), 1
+          dflux(idx_50,13) = dflux(idx_50,13) + rc(idx_50 + (LBOUND(rc, dim=1) - LBOUND(dflux, dim=1)),13) * y(idx_50,3) * y(idx_50,8) * f_inv
+        enddo
+        !$acc end kernels
+      end if
+    enddo
+    if (lhook) then
+      call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
+    end if
+    return
+
+  end subroutine ukca_deriv_offline
+
+end module ukca_chemistry_ctl_be_mod

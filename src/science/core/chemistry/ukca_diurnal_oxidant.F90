@@ -1,359 +1,341 @@
-! *****************************COPYRIGHT*******************************
-! (C) Crown copyright Met Office. All rights reserved.
-! For further details please refer to the file COPYRIGHT.txt
-! which you should have received as part of this distribution.
-! *****************************COPYRIGHT*******************************
-!
-!
-! Description:
-!  The routine UKCA_SET_DIURNAL_OX distributes the mean oxidant concentrations
-!  read in from external files to give a diurnally varying concentration.
-!  Part of the offline oxidant chemistry scheme. A routine to calculate the time
-!  integral of cos(zenith angle) is also included (UKCA_INT_COSZ).
-!
-!  Part of the UKCA model, a community model supported by
-!  The Met Office and NCAS, with components provided initially
-!  by The University of Cambridge, University of Leeds, University of Oxford,
-!  and The Met. Office.  See www.ukca.ac.uk
-!
-! Code Owner: Please refer to the UM file CodeOwners.txt
-! This file belongs in section: UKCA
-!
-! Code description:
-!   Language: FORTRAN 95
-!   This code is written to UMDP3 programming standards.
-!
-! Contained subroutines:
-!   ukca_set_diurnal_ox
-!   ukca_int_cosz
-!
-!-----------------------------------------------------------------------
-!
-MODULE ukca_diurnal_oxidant
-
-USE yomhook,           ONLY: lhook, dr_hook
-USE parkind1,          ONLY: jprb, jpim
-
-IMPLICIT NONE
-PRIVATE
-
-! cos (zenith angle) and integral of cos(zenith angle) for diurnal variation
-REAL, PUBLIC, ALLOCATABLE, SAVE :: cosza(:)          ! cos(za)
-REAL, PUBLIC, ALLOCATABLE, SAVE :: intcosza(:)       ! integral cos(za)
-REAL, PUBLIC, ALLOCATABLE, SAVE :: daylength1d(:)    ! radians
-
-PUBLIC ukca_set_diurnal_ox                ! called from asad_fyinit
-PUBLIC ukca_set_diurnal_ox_col            ! called from asad_fyinit
-PUBLIC ukca_int_cosz                      ! called from ukca_main1
-PUBLIC dealloc_diurnal_oxidant            ! called from ukca_main1
-
-INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
-INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
-
-CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName='UKCA_DIURNAL_OXIDANT'
-
-CONTAINS
-
-! #############################################################################
-
-SUBROUTINE ukca_set_diurnal_ox(species, field, n_points, nlev)
-
-! This routine provides code to add a diurnal profile to oxidants provided
-! as mean fields. This varies with each oxidant. In the case of OH and HO2
-! the diurnal profile is proportional to cos(zenith angle).
-
-USE ukca_chem_offline,        ONLY: o3_offline_diag, oh_offline_diag,          &
-                                    no3_offline_diag, ho2_offline_diag
-USE ukca_constants,           ONLY: rsec_per_day, pi
-USE ereport_mod,              ONLY: ereport
-
-USE errormessagelength_mod,   ONLY: errormessagelength
-IMPLICIT NONE
-
-INTEGER, INTENT(IN)  :: n_points                ! field dimension
-INTEGER, INTENT(IN)  :: nlev                    ! model level
-CHARACTER (LEN=10), INTENT(IN)  :: species      ! Species char strng
-
-REAL,    INTENT(IN OUT) :: field(n_points)       ! field to be scaled
-
-! Local variables
-
-REAL, PARAMETER :: daylen_cutoff = 3600.0
-REAL            :: daylen_secs(n_points)        ! daylength (s)
-
-CHARACTER (LEN=errormessagelength) :: cmessage                  ! Error message
-INTEGER            :: errcode                   ! Variable passed to ereport
-
-REAL(KIND=jprb)    :: zhook_handle
-
-CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_SET_DIURNAL_OX'
-
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-
-SELECT CASE(species(1:4))
-CASE ('OH  ','HO2 ')
-
-  ! Scale the field according to cos(zenith angle)/integral(cos(zenith_angle))
-  ! Night time values are zero
-  WHERE ((cosza > 0.0) .AND. (intcosza > 1.0e-1))
-    field(:) = field(:)*rsec_per_day*(cosza(:)/intcosza(:))
-  ELSE WHERE
-    field(:) = 0.0
-  END WHERE
-
-CASE ('NO3 ')
-
-  ! convert from radians to seconds
-  daylen_secs = daylength1d*rsec_per_day/(2.0*pi)
-
-  ! With short day length ensures no NO3 diurnal variation done
-  WHERE (daylen_secs < daylen_cutoff)
-    daylen_secs = rsec_per_day
-  END WHERE
-
-  ! Restrict NO3 to nightime
-  WHERE ((cosza > 0.0) .AND. (intcosza > 1.0e-1) .AND.                         &
-    (daylen_secs < rsec_per_day))
-    field(:) = 0.0
-  END WHERE
-
-CASE ('O3  ')
-  ! No diurnal profile for O3
-
-CASE DEFAULT
-
-  cmessage = 'ukca_set_diurnal_ox: Species: '//species//' not found'
-  errcode = 1
-  CALL ereport('ukca_set_diurnal_ox',errcode,cmessage)
-
-END SELECT
-
-! Get rid of any negative values
-WHERE (field < 0.0)
-  field = 0.0
-END WHERE
-
-! Set diagnostic fields
-SELECT CASE(species(1:4))
-CASE ('O3  ')
-  o3_offline_diag(:,nlev) = field(:)
-CASE ('OH  ')
-  oh_offline_diag(:,nlev) = field(:)
-CASE ('NO3 ')
-  no3_offline_diag(:,nlev) = field(:)
-CASE ('HO2 ')
-  ho2_offline_diag(:,nlev) = field(:)
-END SELECT
-
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
-RETURN
-END SUBROUTINE ukca_set_diurnal_ox
-
-! ######################################################################
-
-SUBROUTINE ukca_set_diurnal_ox_col(species, field, n_points, ix, jy)
-
-! This routine provides code to add a diurnal profile to oxidants provided
-! as mean fields. This varies with each oxidant. In the case of OH and HO2
-! the diurnal profile is proportional to cos(zenith angle).
-
-USE ukca_config_specification_mod, ONLY: ukca_config
-USE ukca_chem_offline,      ONLY: o3_offline_diag, oh_offline_diag,            &
-                                  no3_offline_diag, ho2_offline_diag
-USE ukca_constants,         ONLY: rsec_per_day, pi
-USE ereport_mod,            ONLY: ereport
-
-USE errormessagelength_mod, ONLY: errormessagelength
-
-IMPLICIT NONE
-
-INTEGER, INTENT(IN)  :: n_points                ! field dimension
-INTEGER, INTENT(IN) :: ix                       ! i counter
-INTEGER, INTENT(IN) :: jy                       ! j counter
-CHARACTER (LEN=10), INTENT(IN)  :: species      ! Species char strng
-
-REAL,    INTENT(IN OUT) :: field(n_points)       ! field to be scaled
-
-! Local variables
-
-REAL, PARAMETER :: daylen_cutoff = 3600.0
-REAL            :: daylen_secs        ! daylength (s)
-
-CHARACTER (LEN=errormessagelength) :: cmessage                  ! Error message
-INTEGER            :: errcode                   ! Variable passed to ereport
-
-INTEGER :: location ! mapping to theta_field
-
-REAL(KIND=jprb)    :: zhook_handle
-
-CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_SET_DIURNAL_OX_COL'
-
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-
-! get mapping from theta_field to proper x*y. Field is 1 column here!
-location = ix + ((jy - 1)*ukca_config%row_length)
-
-SELECT CASE(species(1:4))
-CASE ('OH  ','HO2 ')
-
-  ! Scale the field according to cos(zenith angle)/integral(cos(zenith_angle))
-  ! Night time values are zero
-  IF ((cosza(location) > 0.0) .AND. (intcosza(location) > 1.0e-1)) THEN
-    field(:) = field(:)*rsec_per_day*(cosza(location) / intcosza(location))
-  ELSE
-    field(:) = 0.0
-  END IF
-
-CASE ('NO3 ')
-
-  ! convert from radians to seconds
-  daylen_secs = daylength1d(location)*rsec_per_day / (2.0*pi)
-
-  ! With short day length ensures no NO3 diurnal variation done
-  IF (daylen_secs < daylen_cutoff) daylen_secs = rsec_per_day
-
-  ! Restrict NO3 to nightime
-  IF (((cosza(location) > 0.0) .AND. (intcosza(location) > 1.0e-1)) .AND.      &
-       (daylen_secs < rsec_per_day)) THEN
-    field(:) = 0.0
-  END IF
-
-CASE ('O3  ')
-  ! No diurnal profile for O3
-
-CASE DEFAULT
-
-  cmessage = 'ukca_set_diurnal_ox: Species: '//species//' not found'
-  errcode = 1
-  CALL ereport('ukca_set_diurnal_ox',errcode,cmessage)
-
-END SELECT
-
-! Get rid of any negative values
-WHERE (field < 0.0)
-  field = 0.0
-END WHERE
-
-! Set diagnostic fields
-SELECT CASE(species(1:4))
-CASE ('O3  ')
-  o3_offline_diag(location,:) = field(:)
-CASE ('OH  ')
-  oh_offline_diag(location,:) = field(:)
-CASE ('NO3 ')
-  no3_offline_diag(location,:) = field(:)
-CASE ('HO2 ')
-  ho2_offline_diag(location,:) = field(:)
-END SELECT
-
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
-RETURN
-END SUBROUTINE ukca_set_diurnal_ox_col
-
-! ######################################################################
-
-SUBROUTINE ukca_int_cosz(row_length, rows,                                     &
-                         sin_latitude, cos_latitude, tan_latitude, sindec,     &
-                         cos_zenith_angle, int_zenith_angle)
-
-!  Description:
-!   Calculate integral of cos(solar zenith angle) dt over a period of
-!   one day multiplied by seconds per day.
-!   See Gates, D.M. (1980) Biophysical Ecology, Springer-Verlag, p103-4
-!   Only depends on latitude and solar declination:
-!   int_za = (daysecs/pi)*(hs*sin(phi)*sin(decls)+cos(phi)*cos(decls)*sin(hs)),
-!   where hs is day length / 2.0.
-!
-! ######################################################################
-
-USE ukca_constants, ONLY: rsec_per_day, pi
-
-IMPLICIT NONE
-
-INTEGER, INTENT(IN) ::  row_length       ! field dimension
-INTEGER, INTENT(IN) ::  rows             ! field dimension
-
-REAL, INTENT(IN)    :: sin_latitude(row_length, rows)    ! SIN(latitude)
-REAL, INTENT(IN)    :: cos_latitude(row_length, rows)    ! COS(latitude)
-REAL, INTENT(IN)    :: tan_latitude(row_length, rows)    ! TAN(latitude)
-REAL, INTENT(IN)    :: sindec            ! Sin(solar declination)
-REAL, INTENT(IN)    :: cos_zenith_angle(row_length, rows)
-! Cosine of zenith angle
-
-REAL, INTENT(OUT)   :: int_zenith_angle(row_length, rows)
-! Integral of zenith angle
-
-! Local variables
-REAL            :: daylength(row_length,rows)  ! Daylength
-REAL            :: decls                       ! solar declination
-REAL            :: tan_decls                   ! TAN(solar declination)
-REAL            :: hs(row_length,rows)         ! half day length (radians)
-REAL            :: cos_hs(row_length,rows)     ! cos of hs
-
-REAL(KIND=jprb) :: zhook_handle
-
-CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_INT_COSZ'
-
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-
-decls = ASIN(sindec)
-
-tan_decls = TAN(decls)
-IF (ABS(tan_decls) < EPSILON(0.0)) THEN
-  cos_hs = 0.0
-ELSE
-  cos_hs = -tan_latitude*tan_decls
-END IF
-
-! Polar summer, set cos_hs ~ -1
-WHERE (ABS(cos_hs) > 1.0 .AND. sin_latitude*decls > 0.0)
-  cos_hs = -0.99999999
-END WHERE
-
-WHERE (ABS(cos_hs) < 1.0)
-  hs = ACOS(cos_hs)
-  int_zenith_angle = (rsec_per_day/pi) *                                       &
-    (hs * sin_latitude * sindec + cos_latitude * COS(decls) * SIN(hs))
-  daylength = 2.0*hs
-ELSE WHERE
-  ! Polar night
-  int_zenith_angle = 0.0
-  daylength = 0.0
-END WHERE
-
-! Make 1-D arays for set_ukca_diurnal_ox routine
-IF (.NOT. ALLOCATED(intcosza))    ALLOCATE(intcosza(row_length*rows))
-IF (.NOT. ALLOCATED(cosza))       ALLOCATE(cosza(row_length*rows))
-IF (.NOT. ALLOCATED(daylength1d)) ALLOCATE(daylength1d(row_length*rows))
-
-intcosza = RESHAPE(int_zenith_angle,[row_length*rows])
-cosza = RESHAPE(cos_zenith_angle,[row_length*rows])
-daylength1d = RESHAPE(daylength,[row_length*rows])
-
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
-RETURN
-END SUBROUTINE ukca_int_cosz
-
-! ######################################################################
-
-SUBROUTINE dealloc_diurnal_oxidant()
-! ----------------------------------------------------------------------
-! Description:
-! Deallocate the saved cosza, intcosza and daylength1d arrays
-! ----------------------------------------------------------------------
-
-IMPLICIT NONE
-
-CHARACTER(LEN=*), PARAMETER :: RoutineName = 'DEALLOC_DIURNAL_OXIDANT'
-REAL(KIND=jprb) :: zhook_handle
-
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-
-IF (ALLOCATED(daylength1d)) DEALLOCATE(daylength1d)
-IF (ALLOCATED(cosza))       DEALLOCATE(cosza)
-IF (ALLOCATED(intcosza))    DEALLOCATE(intcosza)
-
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
-
-END SUBROUTINE dealloc_diurnal_oxidant
-END MODULE ukca_diurnal_oxidant
+module ukca_diurnal_oxidant
+  use yomhook, only : dr_hook, lhook
+  use parkind1, only : jpim, jprb
+  implicit none
+  integer(kind=jpim), parameter, private :: zhook_in = 0
+  integer(kind=jpim), parameter, private :: zhook_out = 1
+  real, allocatable, dimension(:), save, public :: cosza
+  real, allocatable, dimension(:), save, public :: intcosza
+  real, allocatable, dimension(:), save, public :: daylength1d
+  character(len = *), parameter, private :: ModuleName = 'UKCA_DIURNAL_OXIDANT'
+  private
+
+  public :: ukca_set_diurnal_ox, ukca_set_diurnal_ox_col, ukca_int_cosz, dealloc_diurnal_oxidant
+
+  contains
+  subroutine ukca_set_diurnal_ox(species, field, n_points, nlev)
+    use ukca_chem_offline, only : ho2_offline_diag, no3_offline_diag, o3_offline_diag, oh_offline_diag
+    use ukca_constants, only : pi, rsec_per_day
+    use ereport_mod, only : ereport
+    use errormessagelength_mod, only : errormessagelength
+    real, parameter :: daylen_cutoff = 3600.0
+    integer, intent(in) :: n_points
+    integer, intent(in) :: nlev
+    CHARACTER(LEN = 10), INTENT(IN) :: species
+    real, dimension(n_points), intent(inout) :: field
+    real, dimension(n_points) :: daylen_secs
+    CHARACTER(LEN = errormessagelength) :: cmessage
+    integer :: errcode
+    real(kind=jprb) :: zhook_handle
+    CHARACTER(LEN = *), PARAMETER :: RoutineName = 'UKCA_SET_DIURNAL_OX'
+    integer :: widx1
+    integer :: idx
+    integer :: idx_1
+    integer :: idx_2
+    integer :: idx_3
+    integer :: widx1_1
+    integer :: widx1_2
+
+    if (lhook) then
+      call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
+    end if
+    if (species(1:4) == 'OH  ' .OR. species(1:4) == 'HO2 ') then
+      ! PSyclone CodeBlock (unsupported code) reason:
+      !  - PSyclone doesn't yet support reference to imported symbols inside WHERE clauses.
+      WHERE ((cosza > 0.0) .AND. (intcosza > 1.0E-1))
+        field(:) = field(:) * rsec_per_day * (cosza(:) / intcosza(:))
+      ELSEWHERE
+        field(:) = 0.0
+      END WHERE
+    else
+      if (species(1:4) == 'NO3 ') then
+        daylen_secs(:) = daylength1d(:) * rsec_per_day / (2.0 * pi)
+        ! PSyclone CodeBlock (unsupported code) reason:
+        !  - PSyclone doesn't yet support reference to imported symbols inside WHERE clauses.
+        !  - PSyclone doesn't yet support reference to imported symbols inside WHERE clauses.
+        WHERE (daylen_secs < daylen_cutoff)
+          daylen_secs = rsec_per_day
+        END WHERE
+        WHERE ((cosza > 0.0) .AND. (intcosza > 1.0E-1) .AND. (daylen_secs < rsec_per_day))
+          field(:) = 0.0
+        END WHERE
+      else
+        if (species(1:4) == 'O3  ') then
+        else
+          cmessage(:) = 'ukca_set_diurnal_ox: Species: ' // species // ' not found'
+          errcode = 1
+          call ereport('ukca_set_diurnal_ox', errcode, cmessage)
+        end if
+      end if
+    end if
+    !$acc kernels
+    !$acc loop gang vector independent
+    do widx1 = 1, n_points, 1
+      if (field(widx1) < 0.0) then
+        field(widx1) = 0.0
+      end if
+    enddo
+    !$acc end kernels
+    if (species(1:4) == 'O3  ') then
+      !$acc kernels
+      !$acc loop gang vector independent
+      do idx = LBOUND(o3_offline_diag, dim=1), UBOUND(o3_offline_diag, dim=1), 1
+        o3_offline_diag(idx,nlev) = field(idx + (LBOUND(field, dim=1) - LBOUND(o3_offline_diag, dim=1)))
+      enddo
+      !$acc end kernels
+    else
+      if (species(1:4) == 'OH  ') then
+        !$acc kernels
+        !$acc loop gang vector independent
+        do idx_1 = LBOUND(oh_offline_diag, dim=1), UBOUND(oh_offline_diag, dim=1), 1
+          oh_offline_diag(idx_1,nlev) = field(idx_1 + (LBOUND(field, dim=1) - LBOUND(oh_offline_diag, dim=1)))
+        enddo
+        !$acc end kernels
+      else
+        if (species(1:4) == 'NO3 ') then
+          !$acc kernels
+          !$acc loop gang vector independent
+          do idx_2 = LBOUND(no3_offline_diag, dim=1), UBOUND(no3_offline_diag, dim=1), 1
+            no3_offline_diag(idx_2,nlev) = field(idx_2 + (LBOUND(field, dim=1) - LBOUND(no3_offline_diag, dim=1)))
+          enddo
+          !$acc end kernels
+        else
+          if (species(1:4) == 'HO2 ') then
+            !$acc kernels
+            !$acc loop gang vector independent
+            do idx_3 = LBOUND(ho2_offline_diag, dim=1), UBOUND(ho2_offline_diag, dim=1), 1
+              ho2_offline_diag(idx_3,nlev) = field(idx_3 + (LBOUND(field, dim=1) - LBOUND(ho2_offline_diag, dim=1)))
+            enddo
+            !$acc end kernels
+          end if
+        end if
+      end if
+    end if
+    if (lhook) then
+      call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
+    end if
+    return
+
+  end subroutine ukca_set_diurnal_ox
+  subroutine ukca_set_diurnal_ox_col(species, field, n_points, ix, jy)
+    use ukca_config_specification_mod, only : ukca_config
+    use ukca_chem_offline, only : ho2_offline_diag, no3_offline_diag, o3_offline_diag, oh_offline_diag
+    use ukca_constants, only : pi, rsec_per_day
+    use ereport_mod, only : ereport
+    use errormessagelength_mod, only : errormessagelength
+    real, parameter :: daylen_cutoff = 3600.0
+    integer, intent(in) :: n_points
+    integer, intent(in) :: ix
+    integer, intent(in) :: jy
+    CHARACTER(LEN = 10), INTENT(IN) :: species
+    real, dimension(n_points), intent(inout) :: field
+    real :: daylen_secs
+    CHARACTER(LEN = errormessagelength) :: cmessage
+    integer :: errcode
+    integer :: location
+    real(kind=jprb) :: zhook_handle
+    CHARACTER(LEN = *), PARAMETER :: RoutineName = 'UKCA_SET_DIURNAL_OX_COL'
+    integer :: widx1
+    integer :: idx
+    integer :: idx_1
+    integer :: idx_2
+    integer :: idx_3
+    integer :: idx_4
+    integer :: idx_5
+
+    if (lhook) then
+      call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
+    end if
+    location = ix + (jy - 1) * ukca_config%row_length
+    if (species(1:4) == 'OH  ' .OR. species(1:4) == 'HO2 ') then
+      if (cosza(location) > 0.0 .AND. intcosza(location) > 1.0e-1) then
+        field(:) = field(:) * rsec_per_day * (cosza(location) / intcosza(location))
+      else
+        !$acc kernels
+        !$acc loop gang vector independent
+        do idx = LBOUND(field, dim=1), UBOUND(field, dim=1), 1
+          field(idx) = 0.0
+        enddo
+        !$acc end kernels
+      end if
+    else
+      if (species(1:4) == 'NO3 ') then
+        daylen_secs = daylength1d(location) * rsec_per_day / (2.0 * pi)
+        if (daylen_secs < daylen_cutoff) then
+          daylen_secs = rsec_per_day
+        end if
+        if (cosza(location) > 0.0 .AND. intcosza(location) > 1.0e-1 .AND. daylen_secs < rsec_per_day) then
+          !$acc kernels
+          !$acc loop gang vector independent
+          do idx_1 = LBOUND(field, dim=1), UBOUND(field, dim=1), 1
+            field(idx_1) = 0.0
+          enddo
+          !$acc end kernels
+        end if
+      else
+        if (species(1:4) == 'O3  ') then
+        else
+          cmessage(:) = 'ukca_set_diurnal_ox: Species: ' // species // ' not found'
+          errcode = 1
+          call ereport('ukca_set_diurnal_ox', errcode, cmessage)
+        end if
+      end if
+    end if
+    !$acc kernels
+    !$acc loop gang vector independent
+    do widx1 = 1, n_points, 1
+      if (field(widx1) < 0.0) then
+        field(widx1) = 0.0
+      end if
+    enddo
+    !$acc end kernels
+    if (species(1:4) == 'O3  ') then
+      !$acc kernels
+      !$acc loop gang vector independent
+      do idx_2 = LBOUND(o3_offline_diag, dim=2), UBOUND(o3_offline_diag, dim=2), 1
+        o3_offline_diag(location,idx_2) = field(idx_2 + (LBOUND(field, dim=1) - LBOUND(o3_offline_diag, dim=2)))
+      enddo
+      !$acc end kernels
+    else
+      if (species(1:4) == 'OH  ') then
+        !$acc kernels
+        !$acc loop gang vector independent
+        do idx_3 = LBOUND(oh_offline_diag, dim=2), UBOUND(oh_offline_diag, dim=2), 1
+          oh_offline_diag(location,idx_3) = field(idx_3 + (LBOUND(field, dim=1) - LBOUND(oh_offline_diag, dim=2)))
+        enddo
+        !$acc end kernels
+      else
+        if (species(1:4) == 'NO3 ') then
+          !$acc kernels
+          !$acc loop gang vector independent
+          do idx_4 = LBOUND(no3_offline_diag, dim=2), UBOUND(no3_offline_diag, dim=2), 1
+            no3_offline_diag(location,idx_4) = field(idx_4 + (LBOUND(field, dim=1) - LBOUND(no3_offline_diag, dim=2)))
+          enddo
+          !$acc end kernels
+        else
+          if (species(1:4) == 'HO2 ') then
+            !$acc kernels
+            !$acc loop gang vector independent
+            do idx_5 = LBOUND(ho2_offline_diag, dim=2), UBOUND(ho2_offline_diag, dim=2), 1
+              ho2_offline_diag(location,idx_5) = field(idx_5 + (LBOUND(field, dim=1) - LBOUND(ho2_offline_diag, dim=2)))
+            enddo
+            !$acc end kernels
+          end if
+        end if
+      end if
+    end if
+    if (lhook) then
+      call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
+    end if
+    return
+
+  end subroutine ukca_set_diurnal_ox_col
+  subroutine ukca_int_cosz(row_length, rows, sin_latitude, cos_latitude, tan_latitude, sindec, cos_zenith_angle, int_zenith_angle)
+    use ukca_constants, only : pi, rsec_per_day
+    integer, intent(in) :: row_length
+    integer, intent(in) :: rows
+    real, dimension(row_length,rows), intent(in) :: sin_latitude
+    real, dimension(row_length,rows), intent(in) :: cos_latitude
+    real, dimension(row_length,rows), intent(in) :: tan_latitude
+    real, intent(in) :: sindec
+    real, dimension(row_length,rows), intent(in) :: cos_zenith_angle
+    real, dimension(row_length,rows), intent(out) :: int_zenith_angle
+    real, dimension(row_length,rows) :: daylength
+    real :: decls
+    real :: tan_decls
+    real, dimension(row_length,rows) :: hs
+    real, dimension(row_length,rows) :: cos_hs
+    real(kind=jprb) :: zhook_handle
+    CHARACTER(LEN = *), PARAMETER :: RoutineName = 'UKCA_INT_COSZ'
+    integer :: widx2
+    integer :: widx1
+    integer :: idx
+    integer :: idx_1
+    integer :: idx_2
+    integer :: idx_3
+
+    if (lhook) then
+      call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
+    end if
+    decls = ASIN(sindec)
+    tan_decls = TAN(decls)
+    if (ABS(tan_decls) < EPSILON(0.0)) then
+      !$acc kernels
+      !$acc loop gang vector independent collapse(2)
+      do idx = 1, rows, 1
+        do idx_1 = 1, row_length, 1
+          cos_hs(idx_1,idx) = 0.0
+        enddo
+      enddo
+      !$acc end kernels
+    else
+      !$acc kernels
+      !$acc loop gang vector independent collapse(2)
+      do idx_2 = 1, rows, 1
+        do idx_3 = 1, row_length, 1
+          cos_hs(idx_3,idx_2) = -tan_latitude(idx_3,idx_2) * tan_decls
+        enddo
+      enddo
+      !$acc end kernels
+    end if
+    !$acc kernels
+    !$acc loop gang vector independent collapse(2)
+    do widx2 = 1, rows, 1
+      do widx1 = 1, row_length, 1
+        if (ABS(cos_hs(widx1,widx2)) > 1.0 .AND. sin_latitude(widx1,widx2) * decls > 0.0) then
+          cos_hs(widx1,widx2) = -0.99999999
+        end if
+      enddo
+    enddo
+    !$acc end kernels
+    ! PSyclone CodeBlock (unsupported code) reason:
+    !  - Only WHERE constructs using explicit array notation including ranges (e.g. 'my_array(1,:)') are supported but found '(Level_4_Expr(Intrinsic_Function_Reference(Intrinsic_Name('ABS'), Actual_Arg_Spec_List(',', (Name('cos_hs'),))), '<', Real_Literal_Constant('1.0', None)),)'
+    WHERE (ABS(cos_hs) < 1.0)
+      hs = ACOS(cos_hs)
+      int_zenith_angle = (rsec_per_day / pi) * (hs * sin_latitude * sindec + cos_latitude * COS(decls) * SIN(hs))
+      daylength = 2.0 * hs
+    ELSEWHERE
+      int_zenith_angle = 0.0
+      daylength = 0.0
+    END WHERE
+    if (.NOT.ALLOCATED(intcosza)) then
+      ALLOCATE(intcosza(1:row_length * rows))
+    end if
+    if (.NOT.ALLOCATED(cosza)) then
+      ALLOCATE(cosza(1:row_length * rows))
+    end if
+    if (.NOT.ALLOCATED(daylength1d)) then
+      ALLOCATE(daylength1d(1:row_length * rows))
+    end if
+    intcosza(:) = RESHAPE(int_zenith_angle, [row_length * rows])
+    cosza(:) = RESHAPE(cos_zenith_angle, [row_length * rows])
+    daylength1d(:) = RESHAPE(daylength, [row_length * rows])
+    if (lhook) then
+      call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
+    end if
+    return
+
+  end subroutine ukca_int_cosz
+  subroutine dealloc_diurnal_oxidant()
+    CHARACTER(LEN = *), PARAMETER :: RoutineName = 'DEALLOC_DIURNAL_OXIDANT'
+    real(kind=jprb) :: zhook_handle
+
+    if (lhook) then
+      call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
+    end if
+    if (ALLOCATED(daylength1d)) then
+      DEALLOCATE(daylength1d)
+    end if
+    if (ALLOCATED(cosza)) then
+      DEALLOCATE(cosza)
+    end if
+    if (ALLOCATED(intcosza)) then
+      DEALLOCATE(intcosza)
+    end if
+    if (lhook) then
+      call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
+    end if
+
+  end subroutine dealloc_diurnal_oxidant
+
+end module ukca_diurnal_oxidant

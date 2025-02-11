@@ -136,7 +136,7 @@ module asad_trimol_mod
                 end if
               end if
               zr = zo / zi
-              rk(jl,jr) = zo / (1.0 + zr) * zfc ** (1.0 / (1.0 + (LOG10(zr) / nf2) ** 2))
+              rk(jl,jr) = (zo / (1.0 + zr)) * zfc ** (1.0 / (1.0 + (LOG10(zr) / nf2) ** 2))
             end if
           end if
         end if

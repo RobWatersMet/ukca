@@ -40,14 +40,12 @@ module asad_findreaction_mod
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
     call nvtxStartRange(ModuleName // ':' // RoutineName)
-    !$acc kernels
     asad_findreaction = 0
     empty_ten(:) = '         '
     nreacts = SIZE(reactions, 1)
     nprods = SIZE(reactions, 2) - 2
     ipargs = 0
     inprods(:) = empty_ten(:)
-    !$acc loop seq
     do j = 1, np, 1
       if (products(j) /= empty_ten(:)) then
         ipargs = ipargs + 1
@@ -55,25 +53,23 @@ module asad_findreaction_mod
       end if
     enddo
     j = 1
-    !$acc end kernels
     do while (.true.)
       jr = idx_in(j)
       if (reactions(j,1) == react1(:) .AND. reactions(j,2) == react2(:) .OR. reactions(j,1) == react2(:) .AND. reactions(j,2) == react1(:)) then
-        !$acc kernels
         prods(:) = empty_ten(:)
+        !$acc kernels
         !$acc loop gang vector independent
         do idx = 1, ns - 2, 1
           found(idx) = .false.
         enddo
+        !$acc end kernels
         iprods = 0
-        !$acc loop seq
         do jp = 1, nprods, 1
           if (reactions(j,2 + jp) /= empty_ten(:)) then
             iprods = iprods + 1
             prods(iprods) = reactions(j,2 + jp)
           end if
         enddo
-        !$acc end kernels
         if (iprods /= ipargs) then
           j = j + 1
           if (j > nreacts) then
@@ -85,10 +81,7 @@ module asad_findreaction_mod
           !  - Unsupported statement: Cycle_Stmt
           CYCLE
         end if
-        !$acc kernels
-        !$acc loop seq
         do jp = 1, iprods, 1
-          !$acc loop seq
           do jp2 = 1, iprods, 1
             if (.NOT.found(jp) .AND. inprods(jp) == prods(jp2)) then
               found(jp) = .true.
@@ -97,6 +90,7 @@ module asad_findreaction_mod
           enddo
         enddo
         thelast = .true.
+        !$acc kernels
         !$acc loop seq
         do jp = 1, iprods, 1
           thelast = thelast .AND. found(jp)

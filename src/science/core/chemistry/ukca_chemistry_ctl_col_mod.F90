@@ -1,870 +1,904 @@
-! *****************************COPYRIGHT*******************************
-!
-! (c) [University of Cambridge] [2008]. All rights reserved.
-! This routine has been licensed to the Met Office for use and
-! distribution under the UKCA collaboration agreement, subject
-! to the terms and conditions set out therein.
-! [Met Office Ref SC138]
-!
-! *****************************COPYRIGHT*******************************
-!
-! Description:
-!  Main driver routine for chemistry using column-wise mode.
-!
-!  Part of the UKCA model, a community model supported by
-!  The Met Office and NCAS, with components provided initially
-!  by The University of Cambridge, University of Leeds and
-!  The Met. Office.  See www.ukca.ac.uk
-!
-!   Called from UKCA_MAIN1.
-!
-! Code Owner: Please refer to the UM file CodeOwners.txt
-! This file belongs in section: UKCA
-!
-! Code description:
-!   Language: FORTRAN 90
-!   This code is written to UMDP3 v6 programming standards.
-!
-!------------------------------------------------------------------
-!
-MODULE ukca_chemistry_ctl_col_mod
-
-IMPLICIT NONE
-
-CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName=                            &
-                                     'UKCA_CHEMISTRY_CTL_COL_MOD'
-
-CONTAINS
-
-SUBROUTINE ukca_chemistry_ctl_col(                                             &
-                row_length, rows, model_levels, theta_field_size, ntracers,    &
-                istore_h2so4,                                                  &
-                pres, temp, q,                                                 &
-                qcf, qcl,                                                      &
-                tracer,                                                        &
-                all_ntp,                                                       &
-                cloud_frac,                                                    &
-                photol_rates,                                                  &
-                shno3_3d,                                                      &
-                volume,                                                        &
-                have_nat3d,                                                    &
-                uph2so4inaer,                                                  &
-                delso2_wet_h2o2,                                               &
-                delso2_wet_o3,                                                 &
-                delh2so4_chem,                                                 &
-                so4_sa,                                                        &
-                atm_ch4_mol,                                                   &
-                atm_co_mol,                                                    &
-                atm_n2o_mol,                                                   &
-                atm_cf2cl2_mol,                                                &
-                atm_cfcl3_mol,                                                 &
-                atm_mebr_mol,                                                  &
-                atm_h2_mol,                                                    &
-                H_plus_3d_arr,                                                 &
-                zdryrt, zwetrt, nlev_with_ddep                                 &
-                )
-
-USE asad_mod,             ONLY: advt, cdt, ctype,                              &
-                                dpd, dpw, fpsc1, fpsc2,                        &
-                                ihso3_h2o2, ihso3_o3, ih2so4_hv, iso2_oh,      &
-                                iso3_o3, jpctr, jpcspf, jpdd, jpdw, jpnr,      &
-                                jppj, jpro2, jpspec, nadvt, nlnaro2, nprkx,    &
-                                o1d_in_ss, o3p_in_ss, prk, rk,                 &
-                                specf, speci, sph2o, sphno3, spro2, tnd, y, za
-USE asad_chem_flux_diags, ONLY: l_asad_use_chem_diags,                         &
-                                l_asad_use_drydep,                             &
-                                l_asad_use_flux_rxns,                          &
-                                l_asad_use_psc_diagnostic,                     &
-                                l_asad_use_rxn_rates,                          &
-                                l_asad_use_wetdep,                             &
-                                asad_psc_diagnostic,                           &
-                                asad_chemical_diagnostics
-USE ukca_cspecies,        ONLY: c_species, c_na_species, n_cf2cl2, n_cfcl3,    &
-                                n_ch4, n_co, n_h2, n_h2so4, n_mebr, n_n2o,     &
-                                nn_h2o2, nn_h2so4, nn_o1d, nn_o3, nn_o3p,      &
-                                nn_oh, nn_so2
-USE ukca_tropopause,      ONLY: L_stratosphere
-USE ukca_constants,       ONLY: c_h2o, c_hono2, c_o1d, c_o3p, c_co2
-
-USE ukca_config_constants_mod, ONLY: avogadro
-USE ukca_config_specification_mod, ONLY: ukca_config
-
-USE ukca_ntp_mod,       ONLY: ntp_type, dim_ntp, name2ntpindex
-USE ukca_environment_fields_mod, ONLY: co2_interactive
-
-USE yomhook, ONLY: lhook, dr_hook
-USE parkind1, ONLY: jprb, jpim
-USE ereport_mod, ONLY: ereport
-USE umPrintMgr, ONLY: umMessage, umPrint
-
-USE ukca_missing_data_mod, ONLY: rmdi
-
-USE errormessagelength_mod, ONLY: errormessagelength
-
-USE asad_cdrive_mod, ONLY: asad_cdrive
-
-!!!! Note: LFRIC-specific pre-processor directives used in this module are
-!!!! inappropriate in UKCA and should be removed but must be retained while
-!!!! LFRic uses the UM version of ukca_um_legacy_mod which does not contain
-!!!! dummy versions of autotune routines.
-
-#if !defined(LFRIC)
-USE ukca_um_legacy_mod, ONLY:                                                  &
-    l_autotune_segments,                                                       &
-    autotune_type,                                                             &
-    autotune_init,                                                             &
-    autotune_entry,                                                            &
-    autotune_return,                                                           &
-    autotune_start_region,                                                     &
-    autotune_stop_region
-#endif
-
-IMPLICIT NONE
-
-INTEGER, INTENT(IN) :: row_length        ! size of UKCA x dimension
-INTEGER, INTENT(IN) :: rows              ! size of UKCA y dimension
-INTEGER, INTENT(IN) :: model_levels      ! size of UKCA z dimension
-INTEGER, INTENT(IN) :: theta_field_size  ! no. of points in horizontal
-INTEGER, INTENT(IN) :: ntracers          ! no. of tracers
-INTEGER, INTENT(IN) :: uph2so4inaer      ! flag for H2SO4 updating
-INTEGER, INTENT(IN) :: istore_h2so4      ! location of H2SO4 in f array
-INTEGER, INTENT(IN) :: nlev_with_ddep(row_length,rows) ! No levs in bl
-
-REAL, INTENT(IN) :: pres(row_length,rows,model_levels) ! pressure
-REAL, INTENT(IN) :: temp(row_length,rows,model_levels) ! actual temp
-REAL, INTENT(IN) :: volume(row_length,rows,model_levels) ! cell vol.
-REAL, INTENT(IN) :: H_plus_3d_arr(row_length,rows,model_levels) ! 3D pH array
-REAL, INTENT(IN) :: qcf(row_length,rows,model_levels)  ! qcf
-REAL, INTENT(IN) :: qcl(row_length,rows,model_levels)  ! qcl
-REAL, INTENT(IN) :: cloud_frac(row_length,rows,model_levels)
-REAL, INTENT(IN) :: so4_sa(row_length,rows,model_levels) ! aerosol surface area
-REAL, INTENT(IN) :: zdryrt(row_length,rows,jpdd)              ! dry dep rate
-REAL, INTENT(IN) :: zwetrt(row_length,rows,model_levels,jpdw) ! wet dep rate
-REAL, INTENT(IN) :: photol_rates(row_length,rows,model_levels,jppj)
-REAL, INTENT(OUT)    :: shno3_3d(row_length,rows,model_levels)
-REAL, INTENT(IN OUT) :: q(row_length,rows,model_levels)  ! water vapour
-REAL, INTENT(IN OUT) :: tracer(row_length,rows,model_levels,                   &
-                               ntracers)                 ! tracer MMR
-
-! SO2 increments
-REAL, INTENT(IN OUT) :: delSO2_wet_H2O2(row_length,rows,model_levels)
-REAL, INTENT(IN OUT) :: delSO2_wet_O3(row_length,rows,model_levels)
-REAL, INTENT(IN OUT) :: delh2so4_chem(row_length,rows,model_levels)
-
-! Atmospheric Burden of CH4
-REAL, INTENT(IN OUT) :: atm_ch4_mol(row_length,rows,model_levels)
-
-! Atmospheric Burden of CO
-REAL, INTENT(IN OUT) :: atm_co_mol(row_length,rows,model_levels)
-
-! Atmospheric Burden of Nitrous Oxide (N2O)
-REAL, INTENT(IN OUT) :: atm_n2o_mol(row_length,rows,model_levels)
-
-! Atmospheric Burden of CFC-12
-REAL, INTENT(IN OUT) :: atm_cf2cl2_mol(row_length,rows,model_levels)
-
-! Atmospheric Burden of CFC-11
-REAL, INTENT(IN OUT) :: atm_cfcl3_mol(row_length,rows,model_levels)
-
-! Atmospheric Burden of CH3Br
-REAL, INTENT(IN OUT) :: atm_mebr_mol(row_length,rows,model_levels)
-
-! Atmospheric Burden of H2
-REAL, INTENT(IN OUT) :: atm_h2_mol(row_length,rows,model_levels)
-
-! Non transported prognostics
-TYPE(ntp_type), INTENT(IN OUT) :: all_ntp(dim_ntp)
-
-! Mask to limit formation of Nat below specified height
-LOGICAL, INTENT(IN) :: have_nat3d(row_length,rows,model_levels)
-
-! Local variables
-INTEGER :: i             ! Loop variable
-INTEGER :: j             ! loop variable
-INTEGER :: js            ! loop variable
-INTEGER :: jtr           ! loop variable - transported tracers
-INTEGER :: jro2          ! loop variable - NTP RO2 species
-INTEGER :: jna           ! loop variable, non-advected species
-INTEGER :: jspf          ! loop variable - all active chemical species in f
-INTEGER :: k             ! loop variable
-INTEGER :: klevel        ! dummy variable
-INTEGER :: l             ! loop variable
-
-INTEGER :: kcs           ! loop variable, start level of current segment/chunk
-INTEGER :: kce           ! loop variable, end level of current segment/chunk
-INTEGER :: chunk_size    ! Number of points within the current segment/chunk
-
-INTEGER           :: ierr                     ! Error code: asad diags routines
-INTEGER           :: errcode                  ! Error code: ereport
-CHARACTER(LEN=errormessagelength) :: cmessage         ! Error message
-CHARACTER(LEN=10)      :: prods(2)                 ! Products
-CHARACTER(LEN=10)      :: prods3(3)                ! Products
-
-! array to store H2SO4 when updated in MODE
-REAL, ALLOCATABLE :: ystore(:)
-REAL :: zftr(model_levels,jpcspf)  ! 1-D array of tracers, including RO2
-REAL :: zp  (model_levels)        ! 1-D pressure
-REAL :: zt  (model_levels)        ! 1-D temperature
-REAL :: zclw(model_levels)        ! 1-D cloud liquid water
-REAL :: zfcloud(model_levels)     ! 1-D cloud fraction
-REAL :: cdot(model_levels,jpcspf) ! 1-D chem. tendency
-REAL :: zq(model_levels)          ! 1-D water vapour vmr
-REAL :: co2_1d(model_levels)      ! 1-D CO2 vmr
-REAL :: zprt1d(model_levels,jppj) ! 1-D photolysis rates for ASAD
-REAL :: zdryrt2(model_levels, jpdd)               ! dry dep rate
-REAL :: zwetrt2(model_levels, jpdw)               ! wet dep rat
-REAL :: rc_het(model_levels,2)                ! heterog rates for trop chem
-REAL :: H_plus_2d_arr(theta_field_size,model_levels) ! 2-D pH array to use in
-                                                     ! wet deposition
-REAL :: H_plus_1d_arr(model_levels)  ! 1-D pH array to use in chemical solvers
-
-! Local arrays to store full column values of selected asad_mod variables
-! to pass to chemical_diagnostics and psc_diagnotics subroutines
-REAL :: dpd_full(model_levels,jpspec)
-REAL :: dpw_full(model_levels,jpspec)
-REAL :: fpsc1_full(model_levels)
-REAL :: fpsc2_full(model_levels)
-REAL :: prk_full(model_levels,jpnr)
-REAL :: y_full(model_levels,jpspec)
-
-LOGICAL :: l_autotune_local
-LOGICAL :: stratflag(model_levels)
-LOGICAL :: have_nat1d(model_levels)
-
-INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
-INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
-REAL(KIND=jprb)               :: zhook_handle
-
-CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_CHEMISTRY_CTL_COL'
-
-#if !defined(LFRIC)
-TYPE(autotune_type), ALLOCATABLE, SAVE :: autotune_state
-#endif
-
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-
-#if !defined(LFRIC)
-! Set up automatic segment size tuning
-IF (l_autotune_segments) THEN
-  IF (.NOT. ALLOCATED(autotune_state)) THEN
-    ALLOCATE(autotune_state)
-    CALL autotune_init(                                                        &
-      autotune_state,                                                          &
-      region_name    = 'ukca_chem_seg_size',                                   &
-      tag            = 'UKCA-CHEM',                                            &
-      start_size     = ukca_config%ukca_chem_seg_size)
-  END IF
-
-  CALL autotune_entry(autotune_state, ukca_config%ukca_chem_seg_size)
-END IF
-#endif
-
-! Dummy variables to satisfy expected numbers of arguments for ASAD_CDRIVE,
-! ASAD_CHEMICAL_DIAGNOSTICS and ASAD_PSC_DIAGNOSTIC
-klevel=0
-
-! if heterogeneous chemistry is selected, allocate solid HNO3 array
-IF (ukca_config%l_ukca_het_psc) THEN
-  shno3_3d = 0.0
-END IF
-
-#if defined(LFRIC)
-! No autotuning in LFRic
-l_autotune_local = .FALSE.
-#else
-l_autotune_local = l_autotune_segments
-IF (l_autotune_segments) THEN
-  CALL autotune_start_region(autotune_state, row_length*rows)
-END IF
-#endif
-
-! Model levels loop
-!$OMP PARALLEL DEFAULT(NONE)                                                   &
-!$OMP PRIVATE(cdot, cmessage, errcode, i, ierr,                                &
-!$OMP         j, js, l, rc_het, stratflag,                                     &
-!$OMP         ystore, zclw, zdryrt2, zfcloud, zftr, have_nat1d,                &
-!$OMP         zp, zprt1d, zq, zt, co2_1d, zwetrt2,                             &
-!$OMP         kcs, kce, chunk_size, dpd_full, dpw_full,                        &
-!$OMP         fpsc1_full, fpsc2_full, prk_full, y_full, jspf, jna,             &
-!$OMP         H_plus_1d_arr)                                                   &
-!$OMP SHARED(advt, all_ntp, atm_cf2cl2_mol, atm_cfcl3_mol, atm_ch4_mol,        &
-!$OMP        atm_co_mol, atm_h2_mol, atm_mebr_mol, atm_n2o_mol, avogadro,      &
-!$OMP        c_species, c_na_species, cloud_frac,                              &
-!$OMP        delh2so4_chem, delSO2_wet_H2O2, delSO2_wet_O3, have_nat3d,        &
-!$OMP        ih2so4_hv, ihso3_h2o2, ihso3_o3, iso2_oh, iso3_o3,                &
-!$OMP        jpctr, jpdd, jpspec, jpcspf, jpro2, klevel, speci, specf,         &
-!$OMP        spro2, nlnaro2, ctype, co2_interactive, istore_h2so4,             &
-!$OMP        l_asad_use_chem_diags, l_asad_use_drydep,                         &
-!$OMP        l_asad_use_flux_rxns, l_asad_use_psc_diagnostic,                  &
-!$OMP        l_asad_use_rxn_rates, l_asad_use_wetdep, l_stratosphere,          &
-!$OMP        ukca_config,                                                      &
-!$OMP        l_autotune_local,                                                 &
-!$OMP        model_levels, n_cf2cl2, n_cfcl3, n_ch4, n_co, n_h2,               &
-!$OMP        n_mebr, n_n2o, nadvt, nlev_with_ddep,                             &
-!$OMP        nn_h2o2, nn_h2so4, nn_o1d, nn_o3, nn_o3p, nn_oh, nn_so2,          &
-!$OMP        o1d_in_ss, o3p_in_ss, photol_rates, pres, q, qcf, qcl,            &
-!$OMP        row_length, rows, so4_sa, shno3_3d,                               &
-!$OMP        temp, tracer, uph2so4inaer, volume, zdryrt, zwetrt,               &
-!$OMP        H_plus_3d_arr)
-
-IF (.NOT. ALLOCATED(ystore) .AND. uph2so4inaer == 1)                           &
-                             ALLOCATE(ystore(model_levels))
-
-! With autotuning, the segment size will - in general - have changed since
-! the previous call. Since this routine allocates THREADPRIVATE arrays,
-! we need to reallocate inside the parallel region.
-IF (l_autotune_local) THEN
-  CALL ukca_reallocate_asad_arrays(ukca_config%ukca_chem_seg_size)
-END IF
-
-!$OMP DO SCHEDULE(STATIC)
-DO i=1,rows
-  DO j=1,row_length
-
-    zdryrt2 = 0.0
-    IF (ukca_config%l_ukca_intdd) THEN
-      ! Interactive scheme extracts from levels in boundary layer
-      DO l=1,jpdd
-        zdryrt2(1:nlev_with_ddep(j,i),l) = zdryrt(j,i,l)
-      END DO
-    ELSE    ! non-interactive
-      zdryrt2(1,:) = zdryrt(j,i,:)
-    END IF
-
-    !       Put pressure, temperature and tracer mmr into 1-D arrays
-    !       for use in ASAD chemical solver
-
-    zp(:) = pres(j,i,:)
-    zt(:) = temp(j,i,:)
-    zq(:) = q(j,i,:)/c_h2o
-
-    ! collate 1-D H_plus values to use in asad NR solver
-    H_plus_1d_arr(:) = H_plus_3d_arr(j,i,:)
-
-    IF (ANY(speci(:) == 'CO2       ')) THEN
-      ! Copy the CO2 concentration into the asad module as VMR
-      IF (ukca_config%l_chem_environ_co2_fld) THEN
-        co2_1d(:) = co2_interactive(j,i,:)/c_co2
-      ELSE
-        co2_1d(:) = rmdi
-      END IF
-    END IF
-
-    ! Put cloud liquid water and cloud fraction into 1-D arrays
-    ! for use in ASAD chemical solver
-    zclw(:) = qcl(j,i,:)
-    zfcloud(:) = cloud_frac(j,i,:)
-
-    ! Convert mmr into vmr for tracers. Pass data from the tracer 3D array,
-    ! unwrap it and pass into the 1D zftr array before calling ASAD_CDRIVE.
-    ! If running with nontransport RO2 species, data for the RO2 species
-    ! needs to be passed from the all_ntp 3D array as well.
-
-    ! First set counter for all chemical species in f array
-    jspf = 0
-    ! Loop through all species
-    DO js = 1,jpspec
-
-      ! First try to map with transported tracer
-      DO jtr=1,jpctr
-        IF (advt(jtr) == speci(js)) THEN
-          jspf = jspf+1
-
-          ! Map data from tracer 3D array into zftr
-          zftr(:,jspf) = tracer(j,i,:,jtr)/c_species(jtr)
-        END IF
-      END DO ! Close advected tracer do loop
-
-      ! If RO2 species are not being transported, search in list of RO2 species
-      IF (ukca_config%l_ukca_ro2_ntp) THEN
-        DO jro2 = 1, jpro2
-          IF (spro2(jro2) == speci(js) .AND. ctype(js) == 'OO') THEN
-
-            ! Get index of speci(js) in NTP array.
-            ! If not found this is a fatal error.
-            l = name2ntpindex(spro2(jro2))
-
-            ! Find location of species in nadvt array
-            jna = nlnaro2(jro2)
-
-            ! Map data from all_ntp 3D array into zftr
-            IF (nadvt(jna) == spro2(jro2)) THEN
-              jspf = jspf+1
-              zftr(:,jspf) = all_ntp(l)%data_3d(j,i,:) / c_na_species(jna)
-            ELSE
-              errcode = jro2
-              WRITE(umMessage,'(A)') '** ERROR in ukca_chemistry_ctl'
-              CALL umPrint(umMessage,src=RoutineName)
-              cmessage='ERROR: Indices for RO2 species do not match w/ nadvt'
-              CALL ereport(ModuleName//':'//RoutineName,errcode,cmessage)
-            END IF ! Close IF nadvt and spro2 match
-
-          END IF   ! Close IF RO2 species
-        END DO     ! Close loop through RO2 species
-      END IF       ! Close IF RO2_NTP
-    END DO         ! Close loop through all species
-
-    ! Check we have the correct number of active chemical species
-    IF (ukca_config%l_ukca_ro2_ntp) THEN
-      IF (jspf /= jpro2+jpctr) THEN
-        errcode = jspf
-        WRITE(umMessage,'(A)') '** ERROR in ukca_chemistry_ctl'
-        CALL umPrint(umMessage,src=RoutineName)
-        cmessage = 'ERROR: Number of chemical active species /= jpro2+jpctr'
-        CALL ereport(ModuleName//':'//RoutineName,errcode,cmessage)
-      END IF
-    ELSE
-      IF (jspf /= jpctr) THEN
-        errcode = jspf
-        WRITE(umMessage,'(A)') '** ERROR in ukca_chemistry_ctl'
-        CALL umPrint(umMessage,src=RoutineName)
-        cmessage = 'ERROR: Number of chemical active species /= jpctr'
-        CALL ereport(ModuleName//':'//RoutineName,errcode,cmessage)
-      END IF
-    END IF
-
-
-    ! Map photolysis rates onto 1-D array.
-    IF (ukca_config%l_ukca_offline) THEN
-      ! Offline chemistry has no photolysis
-      zprt1d(:,:) = 0.0
-    ELSE
-      ! take column+species info from 4D photolysis array
-      zprt1d(:,:) = photol_rates(j,i,:,:)
-    END IF
-
-    !       Call ASAD routines to do chemistry integration
-
-    IF (.NOT. (ukca_config%l_ukca_trop .OR. ukca_config%l_ukca_aerchem .OR.    &
-               ukca_config%l_ukca_raq .OR. ukca_config%l_ukca_raqaero)) THEN
-                                                                      ! Not B-E
-
-      ! retrieve tropospheric heterogeneous rates from previous time step
-      ! for this model level (index k)
-      IF (ukca_config%l_ukca_trophet) THEN
-        ! N2O5
-        l = name2ntpindex('het_n2o5  ')
-        rc_het(:,1) = all_ntp(l)%data_3d(j,i,:)
-        ! HO2+HO2
-        l = name2ntpindex('het_ho2   ')
-        rc_het(:,2) = all_ntp(l)%data_3d(j,i,:)
-      ELSE
-        rc_het(:,:) = 0.0
-      END IF
-
-      have_nat1d(:) = have_nat3d(j,i,:)
-
-      ! fill stratospheric flag indicator
-      stratflag(:) = L_stratosphere(j,i,:)
-
-      ! pass 2D wet-dep field to cdrive
-      zwetrt2(:,:) = zwetrt(j,i,:,:)
-
-      ! Strided loop to segment the column before passing to asad_cdrive
-      DO kcs = 1, model_levels, ukca_config%ukca_chem_seg_size
-
-        kce = MIN(kcs+(ukca_config%ukca_chem_seg_size-1),model_levels)
-
-        ! Get current chunk_size (not necessarily equal to ukca_chem_seg_size)
-        chunk_size  = (kce+1)-kcs
-
-        ! For unequal chunk sizes, reallocate arrays
-        ! to ensure array conformance
-        IF (chunk_size /= ukca_config%ukca_chem_seg_size) THEN
-          CALL ukca_reallocate_asad_arrays(chunk_size)
-        END IF
-
-        IF (uph2so4inaer == 1) THEN
-          ! H2SO4 will be updated in MODE, so store old value here
-          IF (ukca_config%l_fix_ukca_h2so4_ystore) THEN
-            ! primary array passed is zftr, so save this, NOT y
-            ystore(kcs:kce) = zftr(kcs:kce,istore_h2so4)
-          ELSE
-            ystore(kcs:kce) = y(1:chunk_size,nn_h2so4)
-          END IF
-        END IF
-
-        ! Initialise za for current chunk, following reallocation
-        za(:)=0.0
-        za(1:chunk_size) = so4_sa(j,i,kcs:kce)
-
-        ! Initialise sph2o for current chunk
-        sph2o(:) = 0.0
-        IF (ukca_config%l_ukca_het_psc) THEN
-          sph2o(1:chunk_size) = qcf(j,i,kcs:kce)/c_h2o
-        END IF
-
-        ! Call asad_cdrive with segmented arrays
-        CALL asad_cdrive(cdot(kcs:kce,:),                                      &
-                         zftr(kcs:kce,:),                                      &
-                         zp(kcs:kce),                                          &
-                         zt(kcs:kce),                                          &
-                         zq(kcs:kce),                                          &
-                         co2_1d(kcs:kce),                                      &
-                         zfcloud(kcs:kce),                                     &
-                         zclw(kcs:kce),                                        &
-                         j,i,klevel,                                           &
-                         zdryrt2(kcs:kce,:),                                   &
-                         zwetrt2(kcs:kce,:),                                   &
-                         rc_het(kcs:kce,:),                                    &
-                         zprt1d(kcs:kce,:),                                    &
-                         chunk_size,                                           &
-                         have_nat1d(kcs:kce),                                  &
-                         stratflag(kcs:kce),                                   &
-                         H_plus_1d_arr(kcs:kce))
-
-        ! Store the full column values of dpd, dpw, fpsc1,
-        ! fpsc2, prk and y - these are needed later on
-        ! for the calculation of 3D flux diagnostics
-        ! outside the chunking loop
-        dpd_full(kcs:kce,:)=dpd(1:chunk_size,:)
-        dpw_full(kcs:kce,:)=dpw(1:chunk_size,:)
-        fpsc1_full(kcs:kce)=fpsc1(1:chunk_size)
-        fpsc2_full(kcs:kce)=fpsc2(1:chunk_size)
-        prk_full(kcs:kce,:)=prk(1:chunk_size,:)
-        y_full(kcs:kce,:)=y(1:chunk_size,:)
-
-        IF (ukca_config%l_ukca_het_psc) THEN
-          ! Save MMR of NAT PSC particles into 3-D array for PSC sedimentation.
-          ! Note that sphno3 is NAT in number density of HNO3.
-          IF (ANY(sphno3(:) > 0.0)) THEN
-            shno3_3d(j,i,kcs:kce) = (sphno3(:)/tnd(:))*c_hono2
-          ELSE
-            shno3_3d(j,i,kcs:kce) = 0.0
-          END IF
-        END IF
-
-        IF (ukca_config%l_ukca_chem .AND. ukca_config%l_ukca_nr_aqchem) THEN
-          ! Calculate chemical fluxes for MODE
-          IF (ihso3_h2o2 > 0) delSO2_wet_H2O2(j,i,kcs:kce) =                   &
-            delSO2_wet_H2O2(j,i,kcs:kce) + (rk(:,ihso3_h2o2)*                  &
-            y(:,nn_so2)*y(:,nn_h2o2))*cdt
-          IF (ihso3_o3 > 0) delSO2_wet_O3(j,i,kcs:kce) =                       &
-            delSO2_wet_O3(j,i,kcs:kce) + (rk(:,ihso3_o3)*                      &
-            y(:,nn_so2)*y(:,nn_o3))*cdt
-          IF (iso3_o3 > 0) delSO2_wet_O3(j,i,kcs:kce) =                        &
-            delSO2_wet_O3(j,i,kcs:kce) + (rk(:,iso3_o3)*                       &
-            y(:,nn_so2)*y(:,nn_o3))*cdt
-          ! net H2SO4 production - note that this is affected by
-          ! l_fix_ukca_h2so4_ystore above. Y value is concentration
-          ! from chemistry prior to zftr being over-written below
-          IF (iso2_oh > 0 .AND. ih2so4_hv > 0) THEN
-            delh2so4_chem(j,i,kcs:kce) = delh2so4_chem(j,i,kcs:kce) +          &
-             ((rk(:,iso2_oh)*y(:,nn_so2)*y(:,nn_oh)) -                         &
-              (rk(:,ih2so4_hv)*y(:,nn_h2so4)))*cdt
-          ELSE IF (iso2_oh > 0) THEN
-            delh2so4_chem(j,i,kcs:kce) = delh2so4_chem(j,i,kcs:kce) +          &
-              (rk(:,iso2_oh)*y(:,nn_so2)*y(:,nn_oh))*cdt
-          END IF
-
-          IF (uph2so4inaer == 1) THEN
-            ! Restore H2SO4 tracer as it will be updated in MODE
-            ! using delh2so4_chem
-            IF (ukca_config%l_fix_ukca_h2so4_ystore) THEN
-              ! calculate delh2so4_chem as the difference in H2SO4 over
-              ! chemistry
-              ! zftr is already in VMR, so divide by CDT to give as vmr/s
-              delh2so4_chem(j,i,kcs:kce) = (zftr(kcs:kce,istore_h2so4)         &
-                                             - ystore(kcs:kce)) / cdt
-              ! primary array passed is zftr, so copy back to this, NOT y
-              zftr(kcs:kce,istore_h2so4) = ystore(kcs:kce)
-            ELSE
-              y(:,nn_h2so4) = ystore(kcs:kce)
-            END IF
-          END IF
-        END IF
-
-        ! Bring results back from vmr to mmr.
-        ! Also bring back results for nontransported RO2 to all_ntp
-        jspf = 0 ! reset counter for all chemical species in f array
-        DO js = 1,jpspec
-          DO jtr=1,jpctr
-            IF (advt(jtr) == speci(js)) THEN
-
-              jspf = jspf+1
-              tracer(j,i,kcs:kce,jtr) = zftr(kcs:kce,jspf) * c_species(jtr)
-
-            END IF
-          END DO
-
-          ! If RO2 species are not being transported, map RO2 species
-          ! back to the all_ntp 3D array
-          IF (ukca_config%l_ukca_ro2_ntp) THEN
-            DO jro2 = 1, jpro2
-              IF (spro2(jro2) == speci(js) .AND. ctype(js) == 'OO') THEN
-                jspf = jspf+1
-                ! Get index of speci(js) in NTP array.
-                ! If not found this is a fatal error.
+module ukca_chemistry_ctl_col_mod
+  implicit none
+  character(len = *), parameter, private :: ModuleName = 'UKCA_CHEMISTRY_CTL_COL_MOD'
+  public
+
+  contains
+  subroutine ukca_chemistry_ctl_col(row_length, rows, model_levels, theta_field_size, ntracers, istore_h2so4, pres, temp, q, qcf, qcl, tracer, all_ntp, cloud_frac, photol_rates, shno3_3d, volume, have_nat3d, uph2so4inaer, delso2_wet_h2o2, delso2_wet_o3, delh2so4_chem, so4_sa, atm_ch4_mol, atm_co_mol, atm_n2o_mol, atm_cf2cl2_mol, atm_cfcl3_mol, atm_mebr_mol, atm_h2_mol, h_plus_3d_arr, zdryrt, zwetrt, nlev_with_ddep)
+    use asad_mod, only : advt, cdt, ctype, dpd, dpw, fpsc1, fpsc2, ih2so4_hv, ihso3_h2o2, ihso3_o3, iso2_oh, iso3_o3, jpcspf, jpctr, jpdd, jpdw, jpnr, jppj, jpro2, jpspec, nadvt, nlnaro2, nprkx, o1d_in_ss, o3p_in_ss, prk, rk, specf, speci, sph2o, sphno3, spro2, tnd, y, za
+    use asad_chem_flux_diags, only : asad_chemical_diagnostics, asad_psc_diagnostic, l_asad_use_chem_diags, l_asad_use_drydep, l_asad_use_flux_rxns, l_asad_use_psc_diagnostic, l_asad_use_rxn_rates, l_asad_use_wetdep
+    use ukca_cspecies, only : c_na_species, c_species, n_cf2cl2, n_cfcl3, n_ch4, n_co, n_h2, n_h2so4, n_mebr, n_n2o, nn_h2o2, nn_h2so4, nn_o1d, nn_o3, nn_o3p, nn_oh, nn_so2
+    use ukca_tropopause, only : l_stratosphere
+    use ukca_constants, only : c_co2, c_h2o, c_hono2, c_o1d, c_o3p
+    use ukca_config_constants_mod, only : avogadro
+    use ukca_config_specification_mod, only : ukca_config
+    use ukca_ntp_mod, only : dim_ntp, name2ntpindex, ntp_type
+    use ukca_environment_fields_mod, only : co2_interactive
+    use yomhook, only : dr_hook, lhook
+    use parkind1, only : jpim, jprb
+    use ereport_mod, only : ereport
+    use umPrintMgr, only : ummessage, umprint
+    use ukca_missing_data_mod, only : rmdi
+    use errormessagelength_mod, only : errormessagelength
+    use asad_cdrive_mod, only : asad_cdrive
+    integer(kind=jpim), parameter :: zhook_in = 0
+    integer(kind=jpim), parameter :: zhook_out = 1
+    integer, intent(in) :: row_length
+    integer, intent(in) :: rows
+    integer, intent(in) :: model_levels
+    integer, intent(in) :: theta_field_size
+    integer, intent(in) :: ntracers
+    integer, intent(in) :: uph2so4inaer
+    integer, intent(in) :: istore_h2so4
+    integer, dimension(row_length,rows), intent(in) :: nlev_with_ddep
+    real, dimension(row_length,rows,model_levels), intent(in) :: pres
+    real, dimension(row_length,rows,model_levels), intent(in) :: temp
+    real, dimension(row_length,rows,model_levels), intent(in) :: volume
+    real, dimension(row_length,rows,model_levels), intent(in) :: h_plus_3d_arr
+    real, dimension(row_length,rows,model_levels), intent(in) :: qcf
+    real, dimension(row_length,rows,model_levels), intent(in) :: qcl
+    real, dimension(row_length,rows,model_levels), intent(in) :: cloud_frac
+    real, dimension(row_length,rows,model_levels), intent(in) :: so4_sa
+    real, dimension(row_length,rows,jpdd), intent(in) :: zdryrt
+    real, dimension(row_length,rows,model_levels,jpdw), intent(in) :: zwetrt
+    real, dimension(row_length,rows,model_levels,jppj), intent(in) :: photol_rates
+    real, dimension(row_length,rows,model_levels), intent(out) :: shno3_3d
+    real, dimension(row_length,rows,model_levels), intent(inout) :: q
+    real, dimension(row_length,rows,model_levels,ntracers), intent(inout) :: tracer
+    real, dimension(row_length,rows,model_levels), intent(inout) :: delso2_wet_h2o2
+    real, dimension(row_length,rows,model_levels), intent(inout) :: delso2_wet_o3
+    real, dimension(row_length,rows,model_levels), intent(inout) :: delh2so4_chem
+    real, dimension(row_length,rows,model_levels), intent(inout) :: atm_ch4_mol
+    real, dimension(row_length,rows,model_levels), intent(inout) :: atm_co_mol
+    real, dimension(row_length,rows,model_levels), intent(inout) :: atm_n2o_mol
+    real, dimension(row_length,rows,model_levels), intent(inout) :: atm_cf2cl2_mol
+    real, dimension(row_length,rows,model_levels), intent(inout) :: atm_cfcl3_mol
+    real, dimension(row_length,rows,model_levels), intent(inout) :: atm_mebr_mol
+    real, dimension(row_length,rows,model_levels), intent(inout) :: atm_h2_mol
+    type(ntp_type), dimension(dim_ntp), intent(inout) :: all_ntp
+    logical, dimension(row_length,rows,model_levels), intent(in) :: have_nat3d
+    integer :: i
+    integer :: j
+    integer :: js
+    integer :: jtr
+    integer :: jro2
+    integer :: jna
+    integer :: jspf
+    integer :: k
+    integer :: klevel
+    integer :: l
+    integer :: kcs
+    integer :: kce
+    integer :: chunk_size
+    integer :: ierr
+    integer :: errcode
+    CHARACTER(LEN = errormessagelength) :: cmessage
+    CHARACTER(LEN = 10) :: prods(2)
+    CHARACTER(LEN = 10) :: prods3(3)
+    real, allocatable, dimension(:) :: ystore
+    real, dimension(model_levels,jpcspf) :: zftr
+    real, dimension(model_levels) :: zp
+    real, dimension(model_levels) :: zt
+    real, dimension(model_levels) :: zclw
+    real, dimension(model_levels) :: zfcloud
+    real, dimension(model_levels,jpcspf) :: cdot
+    real, dimension(model_levels) :: zq
+    real, dimension(model_levels) :: co2_1d
+    real, dimension(model_levels,jppj) :: zprt1d
+    real, dimension(model_levels,jpdd) :: zdryrt2
+    real, dimension(model_levels,jpdw) :: zwetrt2
+    real, dimension(model_levels,2) :: rc_het
+    real, dimension(theta_field_size,model_levels) :: h_plus_2d_arr
+    real, dimension(model_levels) :: h_plus_1d_arr
+    real, dimension(model_levels,jpspec) :: dpd_full
+    real, dimension(model_levels,jpspec) :: dpw_full
+    real, dimension(model_levels) :: fpsc1_full
+    real, dimension(model_levels) :: fpsc2_full
+    real, dimension(model_levels,jpnr) :: prk_full
+    real, dimension(model_levels,jpspec) :: y_full
+    logical :: l_autotune_local
+    logical, dimension(model_levels) :: stratflag
+    logical, dimension(model_levels) :: have_nat1d
+    real(kind=jprb) :: zhook_handle
+    CHARACTER(LEN = *), PARAMETER :: RoutineName = 'UKCA_CHEMISTRY_CTL_COL'
+    integer :: idx
+    integer :: idx_1
+    integer :: idx_2
+    integer :: idx_3
+    integer :: idx_4
+    integer :: idx_5
+    integer :: idx_6
+    integer :: idx_7
+    integer :: idx_8
+    integer :: idx_9
+    integer :: idx_10
+    integer :: idx_11
+    integer :: idx_12
+    integer :: idx_13
+    integer :: idx_14
+    integer :: idx_15
+    integer :: idx_16
+    integer :: idx_17
+    integer :: idx_18
+    integer :: idx_19
+    integer :: idx_20
+    integer :: idx_21
+    integer :: idx_22
+    integer :: idx_23
+    integer :: idx_24
+    integer :: idx_25
+    integer :: idx_26
+    integer :: idx_27
+    integer :: idx_28
+    integer :: idx_29
+    integer :: idx_30
+    integer :: idx_31
+    integer :: idx_32
+    integer :: idx_33
+    integer :: idx_34
+    integer :: idx_35
+    integer :: idx_36
+    integer :: idx_37
+    integer :: idx_38
+    integer :: idx_39
+    integer :: idx_40
+    integer :: idx_41
+
+    if (lhook) then
+      call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
+    end if
+    klevel = 0
+    if (ukca_config%l_ukca_het_psc) then
+      !$acc kernels
+      !$acc loop gang vector independent collapse(3)
+      do idx = 1, model_levels, 1
+        do idx_1 = 1, rows, 1
+          do idx_2 = 1, row_length, 1
+            shno3_3d(idx_2,idx_1,idx) = 0.0
+          enddo
+        enddo
+      enddo
+      !$acc end kernels
+    end if
+    l_autotune_local = .false.
+    if (.NOT.ALLOCATED(ystore) .AND. uph2so4inaer == 1) then
+      ALLOCATE(ystore(1:model_levels))
+    end if
+    if (l_autotune_local) then
+      call ukca_reallocate_asad_arrays(ukca_config%ukca_chem_seg_size)
+    end if
+    do i = 1, rows, 1
+      do j = 1, row_length, 1
+        !$acc kernels
+        !$acc loop gang vector independent collapse(2)
+        do idx_3 = 1, jpdd, 1
+          do idx_4 = 1, model_levels, 1
+            zdryrt2(idx_4,idx_3) = 0.0
+          enddo
+        enddo
+        !$acc end kernels
+        if (ukca_config%l_ukca_intdd) then
+          !$acc kernels
+          !$acc loop gang vector independent collapse(2)
+          do l = 1, jpdd, 1
+            do idx_5 = 1, nlev_with_ddep(j,i), 1
+              zdryrt2(idx_5,l) = zdryrt(j,i,l)
+            enddo
+          enddo
+          !$acc end kernels
+        else
+          !$acc kernels
+          !$acc loop gang vector independent
+          do idx_6 = LBOUND(zdryrt2, dim=2), UBOUND(zdryrt2, dim=2), 1
+            zdryrt2(1,idx_6) = zdryrt(j,i,idx_6)
+          enddo
+          !$acc end kernels
+        end if
+        !$acc kernels
+        !$acc loop gang vector independent
+        do idx_7 = LBOUND(zp, dim=1), UBOUND(zp, dim=1), 1
+          zp(idx_7) = pres(j,i,idx_7)
+        enddo
+        !$acc loop gang vector independent
+        do idx_8 = LBOUND(zt, dim=1), UBOUND(zt, dim=1), 1
+          zt(idx_8) = temp(j,i,idx_8)
+        enddo
+        zq(:) = q(j,i,:) / c_h2o
+        !$acc loop gang vector independent
+        do idx_9 = LBOUND(h_plus_1d_arr, dim=1), UBOUND(h_plus_1d_arr, dim=1), 1
+          h_plus_1d_arr(idx_9) = h_plus_3d_arr(j,i,idx_9)
+        enddo
+        !$acc end kernels
+        if (ANY(speci(:) == 'CO2       ')) then
+          if (ukca_config%l_chem_environ_co2_fld) then
+            co2_1d(:) = co2_interactive(j,i,:) / c_co2
+          else
+            co2_1d(:) = rmdi
+          end if
+        end if
+        !$acc kernels
+        !$acc loop gang vector independent
+        do idx_10 = LBOUND(zclw, dim=1), UBOUND(zclw, dim=1), 1
+          zclw(idx_10) = qcl(j,i,idx_10)
+        enddo
+        !$acc loop gang vector independent
+        do idx_11 = LBOUND(zfcloud, dim=1), UBOUND(zfcloud, dim=1), 1
+          zfcloud(idx_11) = cloud_frac(j,i,idx_11)
+        enddo
+        jspf = 0
+        !$acc end kernels
+        do js = 1, jpspec, 1
+          do jtr = 1, jpctr, 1
+            if (advt(jtr) == speci(js)) then
+              jspf = jspf + 1
+              zftr(:,jspf) = tracer(j,i,:,jtr) / c_species(jtr)
+            end if
+          enddo
+          if (ukca_config%l_ukca_ro2_ntp) then
+            do jro2 = 1, jpro2, 1
+              if (spro2(jro2) == speci(js) .AND. ctype(js) == 'OO') then
                 l = name2ntpindex(spro2(jro2))
-
-                ! Find location of species in nadvt array
                 jna = nlnaro2(jro2)
-                all_ntp(l)%data_3d(j,i,kcs:kce) = zftr(kcs:kce,jspf) *         &
-                                                  c_na_species(jna)
+                if (nadvt(jna) == spro2(jro2)) then
+                  jspf = jspf + 1
+                  zftr(:,jspf) = all_ntp(l)%data_3d(j,i,:) / c_na_species(jna)
+                else
+                  errcode = jro2
+                  ! PSyclone CodeBlock (unsupported code) reason:
+                  !  - Unsupported statement: Write_Stmt
+                  WRITE(umMessage, '(A)') '** ERROR in ukca_chemistry_ctl'
+                  call umprint(ummessage, src=routinename)
+                  cmessage(:) = 'ERROR: Indices for RO2 species do not match w/ nadvt'
+                  call ereport(ModuleName // ':' // RoutineName, errcode, cmessage)
+                end if
+              end if
+            enddo
+          end if
+        enddo
+        if (ukca_config%l_ukca_ro2_ntp) then
+          if (jspf /= jpro2 + jpctr) then
+            errcode = jspf
+            ! PSyclone CodeBlock (unsupported code) reason:
+            !  - Unsupported statement: Write_Stmt
+            WRITE(umMessage, '(A)') '** ERROR in ukca_chemistry_ctl'
+            call umprint(ummessage, src=routinename)
+            cmessage(:) = 'ERROR: Number of chemical active species /= jpro2+jpctr'
+            call ereport(ModuleName // ':' // RoutineName, errcode, cmessage)
+          end if
+        else
+          if (jspf /= jpctr) then
+            errcode = jspf
+            ! PSyclone CodeBlock (unsupported code) reason:
+            !  - Unsupported statement: Write_Stmt
+            WRITE(umMessage, '(A)') '** ERROR in ukca_chemistry_ctl'
+            call umprint(ummessage, src=routinename)
+            cmessage(:) = 'ERROR: Number of chemical active species /= jpctr'
+            call ereport(ModuleName // ':' // RoutineName, errcode, cmessage)
+          end if
+        end if
+        if (ukca_config%l_ukca_offline) then
+          !$acc kernels
+          !$acc loop gang vector independent collapse(2)
+          do idx_12 = LBOUND(zprt1d, dim=2), UBOUND(zprt1d, dim=2), 1
+            do idx_13 = LBOUND(zprt1d, dim=1), UBOUND(zprt1d, dim=1), 1
+              zprt1d(idx_13,idx_12) = 0.0
+            enddo
+          enddo
+          !$acc end kernels
+        else
+          !$acc kernels
+          !$acc loop gang vector independent collapse(2)
+          do idx_14 = LBOUND(zprt1d, dim=2), UBOUND(zprt1d, dim=2), 1
+            do idx_15 = LBOUND(zprt1d, dim=1), UBOUND(zprt1d, dim=1), 1
+              zprt1d(idx_15,idx_14) = photol_rates(j,i,idx_15,idx_14)
+            enddo
+          enddo
+          !$acc end kernels
+        end if
+        if (.NOT.(ukca_config%l_ukca_trop .OR. ukca_config%l_ukca_aerchem .OR. ukca_config%l_ukca_raq .OR. ukca_config%l_ukca_raqaero)) then
+          if (ukca_config%l_ukca_trophet) then
+            l = name2ntpindex('het_n2o5  ')
+            !$acc kernels
+            !$acc loop gang vector independent
+            do idx_16 = LBOUND(rc_het, dim=1), UBOUND(rc_het, dim=1), 1
+              rc_het(idx_16,1) = all_ntp(l)%data_3d(j,i,idx_16 + (LBOUND(all_ntp(l)%data_3d, dim=3) - LBOUND(rc_het, dim=1)))
+            enddo
+            !$acc end kernels
+            l = name2ntpindex('het_ho2   ')
+            !$acc kernels
+            !$acc loop gang vector independent
+            do idx_17 = LBOUND(rc_het, dim=1), UBOUND(rc_het, dim=1), 1
+              rc_het(idx_17,2) = all_ntp(l)%data_3d(j,i,idx_17 + (LBOUND(all_ntp(l)%data_3d, dim=3) - LBOUND(rc_het, dim=1)))
+            enddo
+            !$acc end kernels
+          else
+            !$acc kernels
+            !$acc loop gang vector independent collapse(2)
+            do idx_18 = LBOUND(rc_het, dim=2), UBOUND(rc_het, dim=2), 1
+              do idx_19 = LBOUND(rc_het, dim=1), UBOUND(rc_het, dim=1), 1
+                rc_het(idx_19,idx_18) = 0.0
+              enddo
+            enddo
+            !$acc end kernels
+          end if
+          !$acc kernels
+          !$acc loop gang vector independent
+          do idx_20 = LBOUND(have_nat1d, dim=1), UBOUND(have_nat1d, dim=1), 1
+            have_nat1d(idx_20) = have_nat3d(j,i,idx_20)
+          enddo
+          !$acc loop gang vector independent
+          do idx_21 = LBOUND(stratflag, dim=1), UBOUND(stratflag, dim=1), 1
+            stratflag(idx_21) = l_stratosphere(j,i,idx_21 + (LBOUND(l_stratosphere, dim=3) - LBOUND(stratflag, dim=1)))
+          enddo
+          !$acc loop gang vector independent collapse(2)
+          do idx_22 = LBOUND(zwetrt2, dim=2), UBOUND(zwetrt2, dim=2), 1
+            do idx_23 = LBOUND(zwetrt2, dim=1), UBOUND(zwetrt2, dim=1), 1
+              zwetrt2(idx_23,idx_22) = zwetrt(j,i,idx_23,idx_22)
+            enddo
+          enddo
+          !$acc end kernels
+          do kcs = 1, model_levels, ukca_config%ukca_chem_seg_size
+            kce = MIN(kcs + (ukca_config%ukca_chem_seg_size - 1), model_levels)
+            chunk_size = kce + 1 - kcs
+            if (chunk_size /= ukca_config%ukca_chem_seg_size) then
+              call ukca_reallocate_asad_arrays(chunk_size)
+            end if
+            if (uph2so4inaer == 1) then
+              if (ukca_config%l_fix_ukca_h2so4_ystore) then
+                !$acc kernels
+                !$acc loop gang vector independent
+                do idx_24 = kcs, kce, 1
+                  ystore(idx_24) = zftr(idx_24,istore_h2so4)
+                enddo
+                !$acc end kernels
+              else
+                !$acc kernels
+                !$acc loop gang vector independent
+                do idx_25 = kcs, kce, 1
+                  ystore(idx_25) = y(idx_25 + (1 - kcs),nn_h2so4)
+                enddo
+                !$acc end kernels
+              end if
+            end if
+            !$acc kernels
+            !$acc loop gang vector independent
+            do idx_26 = LBOUND(za, dim=1), UBOUND(za, dim=1), 1
+              za(idx_26) = 0.0
+            enddo
+            !$acc loop gang vector independent
+            do idx_27 = 1, chunk_size, 1
+              za(idx_27) = so4_sa(j,i,idx_27 + (kcs - 1))
+            enddo
+            !$acc loop gang vector independent
+            do idx_28 = LBOUND(sph2o, dim=1), UBOUND(sph2o, dim=1), 1
+              sph2o(idx_28) = 0.0
+            enddo
+            !$acc end kernels
+            if (ukca_config%l_ukca_het_psc) then
+              sph2o(1:chunk_size) = qcf(j,i,kcs:kce) / c_h2o
+            end if
+            call asad_cdrive(cdot(kcs:kce,:), zftr(kcs:kce,:), zp(kcs:kce), zt(kcs:kce), zq(kcs:kce), co2_1d(kcs:kce), zfcloud(kcs:kce), zclw(kcs:kce), j, i, klevel, zdryrt2(kcs:kce,:), zwetrt2(kcs:kce,:), rc_het(kcs:kce,:), zprt1d(kcs:kce,:), chunk_size, have_nat1d(kcs:kce), stratflag(kcs:kce), h_plus_1d_arr(kcs:kce))
+            !$acc kernels
+            !$acc loop gang vector independent collapse(2)
+            do idx_29 = LBOUND(dpd_full, dim=2), UBOUND(dpd_full, dim=2), 1
+              do idx_30 = kcs, kce, 1
+                dpd_full(idx_30,idx_29) = dpd(idx_30 + (1 - kcs),idx_29 + (LBOUND(dpd, dim=2) - LBOUND(dpd_full, dim=2)))
+              enddo
+            enddo
+            !$acc loop gang vector independent collapse(2)
+            do idx_31 = LBOUND(dpw_full, dim=2), UBOUND(dpw_full, dim=2), 1
+              do idx_32 = kcs, kce, 1
+                dpw_full(idx_32,idx_31) = dpw(idx_32 + (1 - kcs),idx_31 + (LBOUND(dpw, dim=2) - LBOUND(dpw_full, dim=2)))
+              enddo
+            enddo
+            !$acc loop gang vector independent
+            do idx_33 = kcs, kce, 1
+              fpsc1_full(idx_33) = fpsc1(idx_33 + (1 - kcs))
+            enddo
+            !$acc loop gang vector independent
+            do idx_34 = kcs, kce, 1
+              fpsc2_full(idx_34) = fpsc2(idx_34 + (1 - kcs))
+            enddo
+            !$acc loop gang vector independent collapse(2)
+            do idx_35 = LBOUND(prk_full, dim=2), UBOUND(prk_full, dim=2), 1
+              do idx_36 = kcs, kce, 1
+                prk_full(idx_36,idx_35) = prk(idx_36 + (1 - kcs),idx_35 + (LBOUND(prk, dim=2) - LBOUND(prk_full, dim=2)))
+              enddo
+            enddo
+            !$acc loop gang vector independent collapse(2)
+            do idx_37 = LBOUND(y_full, dim=2), UBOUND(y_full, dim=2), 1
+              do idx_38 = kcs, kce, 1
+                y_full(idx_38,idx_37) = y(idx_38 + (1 - kcs),idx_37 + (LBOUND(y, dim=2) - LBOUND(y_full, dim=2)))
+              enddo
+            enddo
+            !$acc end kernels
+            if (ukca_config%l_ukca_het_psc) then
+              if (ANY(sphno3(:) > 0.0)) then
+                shno3_3d(j,i,kcs:kce) = sphno3(:) / tnd(:) * c_hono2
+              else
+                !$acc kernels
+                !$acc loop gang vector independent
+                do idx_39 = kcs, kce, 1
+                  shno3_3d(j,i,idx_39) = 0.0
+                enddo
+                !$acc end kernels
+              end if
+            end if
+            if (ukca_config%l_ukca_chem .AND. ukca_config%l_ukca_nr_aqchem) then
+              if (ihso3_h2o2 > 0) then
+                delso2_wet_h2o2(j,i,kcs:kce) = delso2_wet_h2o2(j,i,kcs:kce) + rk(:,ihso3_h2o2) * y(:,nn_so2) * y(:,nn_h2o2) * cdt
+              end if
+              if (ihso3_o3 > 0) then
+                delso2_wet_o3(j,i,kcs:kce) = delso2_wet_o3(j,i,kcs:kce) + rk(:,ihso3_o3) * y(:,nn_so2) * y(:,nn_o3) * cdt
+              end if
+              if (iso3_o3 > 0) then
+                delso2_wet_o3(j,i,kcs:kce) = delso2_wet_o3(j,i,kcs:kce) + rk(:,iso3_o3) * y(:,nn_so2) * y(:,nn_o3) * cdt
+              end if
+              if (iso2_oh > 0 .AND. ih2so4_hv > 0) then
+                delh2so4_chem(j,i,kcs:kce) = delh2so4_chem(j,i,kcs:kce) + (rk(:,iso2_oh) * y(:,nn_so2) * y(:,nn_oh) - rk(:,ih2so4_hv) * y(:,nn_h2so4)) * cdt
+              else
+                if (iso2_oh > 0) then
+                  delh2so4_chem(j,i,kcs:kce) = delh2so4_chem(j,i,kcs:kce) + rk(:,iso2_oh) * y(:,nn_so2) * y(:,nn_oh) * cdt
+                end if
+              end if
+              if (uph2so4inaer == 1) then
+                if (ukca_config%l_fix_ukca_h2so4_ystore) then
+                  !$acc kernels
+                  delh2so4_chem(j,i,kcs:kce) = (zftr(kcs:kce,istore_h2so4) - ystore(kcs:kce)) / cdt
+                  !$acc loop gang vector independent
+                  do idx_40 = kcs, kce, 1
+                    zftr(idx_40,istore_h2so4) = ystore(idx_40)
+                  enddo
+                  !$acc end kernels
+                else
+                  !$acc kernels
+                  !$acc loop gang vector independent
+                  do idx_41 = LBOUND(y, dim=1), UBOUND(y, dim=1), 1
+                    y(idx_41,nn_h2so4) = ystore(idx_41 + (kcs - LBOUND(y, dim=1)))
+                  enddo
+                  !$acc end kernels
+                end if
+              end if
+            end if
+            jspf = 0
+            do js = 1, jpspec, 1
+              do jtr = 1, jpctr, 1
+                if (advt(jtr) == speci(js)) then
+                  jspf = jspf + 1
+                  tracer(j,i,kcs:kce,jtr) = zftr(kcs:kce,jspf) * c_species(jtr)
+                end if
+              enddo
+              if (ukca_config%l_ukca_ro2_ntp) then
+                !$acc kernels
+                !$acc loop seq
+                do jro2 = 1, jpro2, 1
+                  if (spro2(jro2) == speci(js) .AND. ctype(js) == 'OO') then
+                    jspf = jspf + 1
+                    l = name2ntpindex(spro2(jro2))
+                    jna = nlnaro2(jro2)
+                    all_ntp(l)%data_3d(j,i,kcs:kce) = zftr(kcs:kce,jspf) * c_na_species(jna)
+                  end if
+                enddo
+                !$acc end kernels
+              end if
+            enddo
+            if (o1d_in_ss) then
+              l = name2ntpindex('O(1D)     ')
+              all_ntp(l)%data_3d(j,i,kcs:kce) = y(:,nn_o1d) / tnd(:) * c_o1d
+            end if
+            if (o3p_in_ss) then
+              l = name2ntpindex('O(3P)     ')
+              all_ntp(l)%data_3d(j,i,kcs:kce) = y(:,nn_o3p) / tnd(:) * c_o3p
+            end if
+            do jspf = 1, jpcspf, 1
+              if (n_ch4 > 0) then
+                if (specf(jspf) == advt(n_ch4)) then
+                  atm_ch4_mol(j,i,kcs:kce) = zftr(kcs:kce,jspf) * tnd(:) * volume(j,i,kcs:kce) * 1.0e6 / avogadro
+                end if
+              end if
+              if (n_co > 0) then
+                if (specf(jspf) == advt(n_co)) then
+                  atm_co_mol(j,i,kcs:kce) = zftr(kcs:kce,jspf) * tnd(:) * volume(j,i,kcs:kce) * 1.0e6 / avogadro
+                end if
+              end if
+              if (n_n2o > 0) then
+                if (specf(jspf) == advt(n_n2o)) then
+                  atm_n2o_mol(j,i,kcs:kce) = zftr(kcs:kce,jspf) * tnd(:) * volume(j,i,kcs:kce) * 1.0e6 / avogadro
+                end if
+              end if
+              if (n_cf2cl2 > 0) then
+                if (specf(jspf) == advt(n_cf2cl2)) then
+                  atm_cf2cl2_mol(j,i,kcs:kce) = zftr(kcs:kce,jspf) * tnd(:) * volume(j,i,kcs:kce) * 1.0e6 / avogadro
+                end if
+              end if
+              if (n_cfcl3 > 0) then
+                if (specf(jspf) == advt(n_cfcl3)) then
+                  atm_cfcl3_mol(j,i,kcs:kce) = zftr(kcs:kce,jspf) * tnd(:) * volume(j,i,kcs:kce) * 1.0e6 / avogadro
+                end if
+              end if
+              if (n_mebr > 0) then
+                if (specf(jspf) == advt(n_mebr)) then
+                  atm_mebr_mol(j,i,kcs:kce) = zftr(kcs:kce,jspf) * tnd(:) * volume(j,i,kcs:kce) * 1.0e6 / avogadro
+                end if
+              end if
+              if (n_h2 > 0) then
+                if (specf(jspf) == advt(n_h2)) then
+                  atm_h2_mol(j,i,kcs:kce) = zftr(kcs:kce,jspf) * tnd(:) * volume(j,i,kcs:kce) * 1.0e6 / avogadro
+                end if
+              end if
+            enddo
+          enddo
+          if (chunk_size /= ukca_config%ukca_chem_seg_size) then
+            call ukca_reallocate_asad_arrays(ukca_config%ukca_chem_seg_size)
+          end if
+          if (l_asad_use_chem_diags .AND. (l_asad_use_flux_rxns .OR. l_asad_use_rxn_rates .OR. (l_asad_use_wetdep .OR. l_asad_use_drydep))) then
+            call asad_chemical_diagnostics(row_length, rows, model_levels, model_levels, dpd_full, dpw_full, prk_full, y_full, j, i, klevel, volume, ierr)
+          end if
+          if (l_asad_use_chem_diags .AND. l_asad_use_psc_diagnostic) then
+            call asad_psc_diagnostic(row_length, rows, model_levels, model_levels, fpsc1_full, fpsc2_full, j, i, klevel, ierr)
+          end if
+        else
+          cmessage(:) = 'Column call is not available for Backward Euler schemes'
+          errcode = 5
+          call ereport(ModuleName // ':' // RoutineName, errcode, cmessage)
+        end if
+      enddo
+    enddo
+    if (ALLOCATED(ystore)) then
+      DEALLOCATE(ystore)
+    end if
+    if (lhook) then
+      call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
+    end if
+    return
 
-              END IF ! Close IF RO2 species
-            END DO   ! Close loop through RO2 species
-          END IF     ! Close IF RO2_NTP
-        END DO       ! Close loop through all species
+  end subroutine ukca_chemistry_ctl_col
+  subroutine ukca_reallocate_asad_arrays(n_pnts)
+    use asad_mod, only : co2, co3, deriv, dpd, dpw, ej, emr, f, fdot, fj, fpsc1, fpsc2, ftilde, ipa, jpcspf, jpnr, jpspec, lati, linfam, method, p, pd, pmintnd, prk, prod, qa, ratio, rk, sh2o, shno3, slos, spfj, spfjsize_max, sph2o, sphno3, t, t300, tnd, wp, y, ydot, za
+    use ukca_config_specification_mod, only : int_method_nr, ukca_config
+    integer, intent(in) :: n_pnts
+    integer :: idx
+    integer :: idx_1
+    integer :: idx_2
+    integer :: idx_3
+    integer :: idx_4
+    integer :: idx_5
+    integer :: idx_6
+    integer :: idx_7
+    integer :: idx_8
+    integer :: idx_9
+    integer :: idx_10
+    integer :: idx_11
+    integer :: idx_12
+    integer :: idx_13
+    integer :: idx_14
+    integer :: idx_15
+    integer :: idx_16
+    integer :: idx_17
+    integer :: idx_18
+    integer :: idx_19
+    integer :: idx_20
+    integer :: idx_21
+    integer :: idx_22
+    integer :: idx_23
+    integer :: idx_24
+    integer :: idx_25
+    integer :: idx_26
+    integer :: idx_27
+    integer :: idx_28
 
-        ! Set SS species concentrations for output (stratospheric
-        ! configurations)
+    method = ukca_config%ukca_int_method
+    if (method == int_method_nr) then
+      if (ALLOCATED(spfj)) then
+        DEALLOCATE(spfj)
+      end if
+    end if
+    if (ALLOCATED(za)) then
+      DEALLOCATE(za)
+    end if
+    if (ALLOCATED(ydot)) then
+      DEALLOCATE(ydot)
+    end if
+    if (ALLOCATED(y)) then
+      DEALLOCATE(y)
+    end if
+    if (ALLOCATED(co2)) then
+      DEALLOCATE(co2)
+    end if
+    if (ALLOCATED(wp)) then
+      DEALLOCATE(wp)
+    end if
+    if (ALLOCATED(tnd)) then
+      DEALLOCATE(tnd)
+    end if
+    if (ALLOCATED(t300)) then
+      DEALLOCATE(t300)
+    end if
+    if (ALLOCATED(t)) then
+      DEALLOCATE(t)
+    end if
+    if (ALLOCATED(sphno3)) then
+      DEALLOCATE(sphno3)
+    end if
+    if (ALLOCATED(sph2o)) then
+      DEALLOCATE(sph2o)
+    end if
+    if (ALLOCATED(shno3)) then
+      DEALLOCATE(shno3)
+    end if
+    if (ALLOCATED(sh2o)) then
+      DEALLOCATE(sh2o)
+    end if
+    if (ALLOCATED(rk)) then
+      DEALLOCATE(rk)
+    end if
+    if (ALLOCATED(ratio)) then
+      DEALLOCATE(ratio)
+    end if
+    if (ALLOCATED(qa)) then
+      DEALLOCATE(qa)
+    end if
+    if (ALLOCATED(prk)) then
+      DEALLOCATE(prk)
+    end if
+    if (ALLOCATED(pmintnd)) then
+      DEALLOCATE(pmintnd)
+    end if
+    if (ALLOCATED(p)) then
+      DEALLOCATE(p)
+    end if
+    if (ALLOCATED(linfam)) then
+      DEALLOCATE(linfam)
+    end if
+    if (ALLOCATED(lati)) then
+      DEALLOCATE(lati)
+    end if
+    if (ALLOCATED(ipa)) then
+      DEALLOCATE(ipa)
+    end if
+    if (ALLOCATED(ftilde)) then
+      DEALLOCATE(ftilde)
+    end if
+    if (ALLOCATED(fpsc2)) then
+      DEALLOCATE(fpsc2)
+    end if
+    if (ALLOCATED(fpsc1)) then
+      DEALLOCATE(fpsc1)
+    end if
+    if (ALLOCATED(fj)) then
+      DEALLOCATE(fj)
+    end if
+    if (ALLOCATED(fdot)) then
+      DEALLOCATE(fdot)
+    end if
+    if (ALLOCATED(f)) then
+      DEALLOCATE(f)
+    end if
+    if (ALLOCATED(emr)) then
+      DEALLOCATE(emr)
+    end if
+    if (ALLOCATED(ej)) then
+      DEALLOCATE(ej)
+    end if
+    if (ALLOCATED(dpw)) then
+      DEALLOCATE(dpw)
+    end if
+    if (ALLOCATED(dpd)) then
+      DEALLOCATE(dpd)
+    end if
+    if (ALLOCATED(deriv)) then
+      DEALLOCATE(deriv)
+    end if
+    if (ALLOCATED(co3)) then
+      DEALLOCATE(co3)
+    end if
+    if (ALLOCATED(pd)) then
+      DEALLOCATE(pd)
+    end if
+    if (.NOT.ALLOCATED(pd)) then
+      ALLOCATE(pd(1:n_pnts,1:2 * jpspec))
+    end if
+    if (.NOT.ALLOCATED(co3)) then
+      ALLOCATE(co3(1:n_pnts))
+    end if
+    if (.NOT.ALLOCATED(deriv)) then
+      ALLOCATE(deriv(1:n_pnts,1:4,1:4))
+    end if
+    if (.NOT.ALLOCATED(dpd)) then
+      ALLOCATE(dpd(1:n_pnts,1:jpspec))
+    end if
+    if (.NOT.ALLOCATED(dpw)) then
+      ALLOCATE(dpw(1:n_pnts,1:jpspec))
+    end if
+    if (.NOT.ALLOCATED(ej)) then
+      ALLOCATE(ej(1:n_pnts,1:jpcspf))
+    end if
+    if (.NOT.ALLOCATED(emr)) then
+      ALLOCATE(emr(1:n_pnts,1:jpspec))
+    end if
+    if (.NOT.ALLOCATED(f)) then
+      ALLOCATE(f(1:n_pnts,1:jpcspf))
+    end if
+    if (.NOT.ALLOCATED(fdot)) then
+      ALLOCATE(fdot(1:n_pnts,1:jpcspf))
+    end if
+    if (.NOT.ALLOCATED(fj)) then
+      ALLOCATE(fj(1:n_pnts,1:jpcspf,1:jpcspf))
+    end if
+    if (.NOT.ALLOCATED(fpsc1)) then
+      ALLOCATE(fpsc1(1:n_pnts))
+    end if
+    if (.NOT.ALLOCATED(fpsc2)) then
+      ALLOCATE(fpsc2(1:n_pnts))
+    end if
+    if (.NOT.ALLOCATED(ftilde)) then
+      ALLOCATE(ftilde(1:n_pnts,1:jpcspf))
+    end if
+    if (.NOT.ALLOCATED(ipa)) then
+      ALLOCATE(ipa(1:n_pnts,1:jpcspf))
+    end if
+    if (.NOT.ALLOCATED(lati)) then
+      ALLOCATE(lati(1:n_pnts))
+    end if
+    if (.NOT.ALLOCATED(linfam)) then
+      ALLOCATE(linfam(1:n_pnts,0:jpcspf))
+    end if
+    if (.NOT.ALLOCATED(p)) then
+      ALLOCATE(p(1:n_pnts))
+    end if
+    if (.NOT.ALLOCATED(pmintnd)) then
+      ALLOCATE(pmintnd(1:n_pnts))
+    end if
+    if (.NOT.ALLOCATED(prk)) then
+      ALLOCATE(prk(1:n_pnts,1:jpnr))
+    end if
+    if (.NOT.ALLOCATED(qa)) then
+      ALLOCATE(qa(1:n_pnts,1:jpspec))
+    end if
+    if (.NOT.ALLOCATED(ratio)) then
+      ALLOCATE(ratio(1:n_pnts,1:jpspec))
+    end if
+    if (.NOT.ALLOCATED(rk)) then
+      ALLOCATE(rk(1:n_pnts,1:jpnr))
+    end if
+    if (.NOT.ALLOCATED(sh2o)) then
+      ALLOCATE(sh2o(1:n_pnts))
+    end if
+    if (.NOT.ALLOCATED(shno3)) then
+      ALLOCATE(shno3(1:n_pnts))
+    end if
+    if (.NOT.ALLOCATED(sph2o)) then
+      ALLOCATE(sph2o(1:n_pnts))
+    end if
+    if (.NOT.ALLOCATED(sphno3)) then
+      ALLOCATE(sphno3(1:n_pnts))
+    end if
+    if (.NOT.ALLOCATED(t)) then
+      ALLOCATE(t(1:n_pnts))
+    end if
+    if (.NOT.ALLOCATED(t300)) then
+      ALLOCATE(t300(1:n_pnts))
+    end if
+    if (.NOT.ALLOCATED(tnd)) then
+      ALLOCATE(tnd(1:n_pnts))
+    end if
+    if (.NOT.ALLOCATED(wp)) then
+      ALLOCATE(wp(1:n_pnts))
+    end if
+    if (.NOT.ALLOCATED(co2)) then
+      ALLOCATE(co2(1:n_pnts))
+    end if
+    if (.NOT.ALLOCATED(y)) then
+      ALLOCATE(y(1:n_pnts,1:jpspec))
+    end if
+    if (.NOT.ALLOCATED(ydot)) then
+      ALLOCATE(ydot(1:n_pnts,1:jpspec))
+    end if
+    if (.NOT.ALLOCATED(za)) then
+      ALLOCATE(za(1:n_pnts))
+    end if
+    if (method == int_method_nr) then
+      if (.NOT.ALLOCATED(spfj)) then
+        ALLOCATE(spfj(1:n_pnts,1:spfjsize_max))
+      end if
+    end if
+    ! PSyclone CodeBlock (unsupported code) reason:
+    !  - Unsupported statement: Nullify_Stmt
+    !  - Unsupported statement: Nullify_Stmt
+    NULLIFY(prod)
+    NULLIFY(slos)
+    !$acc kernels
+    prod => pd(:,1:jpspec)
+    slos => pd(:,jpspec + 1:2 * jpspec)
+    !$acc loop gang vector independent collapse(3)
+    do idx = LBOUND(deriv, dim=3), UBOUND(deriv, dim=3), 1
+      do idx_1 = LBOUND(deriv, dim=2), UBOUND(deriv, dim=2), 1
+        do idx_2 = LBOUND(deriv, dim=1), UBOUND(deriv, dim=1), 1
+          deriv(idx_2,idx_1,idx) = 1.0
+        enddo
+      enddo
+    enddo
+    !$acc loop gang vector independent collapse(2)
+    do idx_3 = LBOUND(f, dim=2), UBOUND(f, dim=2), 1
+      do idx_4 = LBOUND(f, dim=1), UBOUND(f, dim=1), 1
+        f(idx_4,idx_3) = 0.0
+      enddo
+    enddo
+    !$acc loop gang vector independent collapse(2)
+    do idx_5 = LBOUND(fdot, dim=2), UBOUND(fdot, dim=2), 1
+      do idx_6 = LBOUND(fdot, dim=1), UBOUND(fdot, dim=1), 1
+        fdot(idx_6,idx_5) = 0.0
+      enddo
+    enddo
+    !$acc loop gang vector independent collapse(2)
+    do idx_7 = LBOUND(ej, dim=2), UBOUND(ej, dim=2), 1
+      do idx_8 = LBOUND(ej, dim=1), UBOUND(ej, dim=1), 1
+        ej(idx_8,idx_7) = 0.0
+      enddo
+    enddo
+    !$acc loop gang vector independent collapse(2)
+    do idx_9 = LBOUND(linfam, dim=2), UBOUND(linfam, dim=2), 1
+      do idx_10 = LBOUND(linfam, dim=1), UBOUND(linfam, dim=1), 1
+        linfam(idx_10,idx_9) = .false.
+      enddo
+    enddo
+    !$acc loop gang vector independent collapse(2)
+    do idx_11 = LBOUND(y, dim=2), UBOUND(y, dim=2), 1
+      do idx_12 = LBOUND(y, dim=1), UBOUND(y, dim=1), 1
+        y(idx_12,idx_11) = 0.0
+      enddo
+    enddo
+    !$acc loop gang vector independent collapse(2)
+    do idx_13 = LBOUND(ydot, dim=2), UBOUND(ydot, dim=2), 1
+      do idx_14 = LBOUND(ydot, dim=1), UBOUND(ydot, dim=1), 1
+        ydot(idx_14,idx_13) = 0.0
+      enddo
+    enddo
+    !$acc loop gang vector independent collapse(2)
+    do idx_15 = LBOUND(prod, dim=2), UBOUND(prod, dim=2), 1
+      do idx_16 = LBOUND(prod, dim=1), UBOUND(prod, dim=1), 1
+        prod(idx_16,idx_15) = 0.0
+      enddo
+    enddo
+    !$acc loop gang vector independent collapse(2)
+    do idx_17 = LBOUND(slos, dim=2), UBOUND(slos, dim=2), 1
+      do idx_18 = LBOUND(slos, dim=1), UBOUND(slos, dim=1), 1
+        slos(idx_18,idx_17) = 0.0
+      enddo
+    enddo
+    !$acc loop gang vector independent collapse(2)
+    do idx_19 = LBOUND(dpd, dim=2), UBOUND(dpd, dim=2), 1
+      do idx_20 = LBOUND(dpd, dim=1), UBOUND(dpd, dim=1), 1
+        dpd(idx_20,idx_19) = 0.0
+      enddo
+    enddo
+    !$acc loop gang vector independent collapse(2)
+    do idx_21 = LBOUND(dpw, dim=2), UBOUND(dpw, dim=2), 1
+      do idx_22 = LBOUND(dpw, dim=1), UBOUND(dpw, dim=1), 1
+        dpw(idx_22,idx_21) = 0.0
+      enddo
+    enddo
+    !$acc loop gang vector independent collapse(2)
+    do idx_23 = LBOUND(emr, dim=2), UBOUND(emr, dim=2), 1
+      do idx_24 = LBOUND(emr, dim=1), UBOUND(emr, dim=1), 1
+        emr(idx_24,idx_23) = 0.0
+      enddo
+    enddo
+    !$acc loop gang vector independent collapse(2)
+    do idx_25 = LBOUND(rk, dim=2), UBOUND(rk, dim=2), 1
+      do idx_26 = LBOUND(rk, dim=1), UBOUND(rk, dim=1), 1
+        rk(idx_26,idx_25) = 0.0
+      enddo
+    enddo
+    !$acc loop gang vector independent collapse(2)
+    do idx_27 = LBOUND(prk, dim=2), UBOUND(prk, dim=2), 1
+      do idx_28 = LBOUND(prk, dim=1), UBOUND(prk, dim=1), 1
+        prk(idx_28,idx_27) = 0.0
+      enddo
+    enddo
+    !$acc end kernels
+    return
 
-        ! O1D mmr
-        IF (o1d_in_ss) THEN
-          l = name2ntpindex('O(1D)     ')
-          all_ntp(l)%data_3d(j,i,kcs:kce) = ( y(:,nn_o1d)/tnd(:) ) * c_o1d
-        END IF
+  end subroutine ukca_reallocate_asad_arrays
 
-        ! O3P mmr
-        IF (o3p_in_ss) THEN
-          l = name2ntpindex('O(3P)     ')
-          all_ntp(l)%data_3d(j,i,kcs:kce) = ( y(:,nn_o3p)/tnd(:) ) * c_o3p
-        END IF
-
-        ! First copy the concentrations from the zftr array to the
-        ! diag arrays, reshape and convert to moles.
-        ! The indices (n_ch4, n_n2o etc.) don't refer to the location
-        ! in the zftr array if RO2_NTP is true, but instead to the
-        ! location in the tracer array.
-        DO jspf = 1, jpcspf
-          IF (n_ch4 > 0) THEN
-            IF (specf(jspf) == advt(n_ch4)) THEN
-              atm_ch4_mol(j,i,kcs:kce) = zftr(kcs:kce,jspf)*tnd(:)*            &
-                                  volume(j,i,kcs:kce)*1.0e6/avogadro
-            END IF
-          END IF
-
-          ! CO
-          IF (n_co > 0) THEN
-            IF (specf(jspf) == advt(n_co)) THEN
-              atm_co_mol(j,i,kcs:kce) = zftr(kcs:kce,jspf)*tnd(:)*             &
-                                  volume(j,i,kcs:kce)*1.0e6/avogadro
-            END IF
-          END IF
-
-          ! N2O
-          IF (n_n2o > 0) THEN
-            IF (specf(jspf) == advt(n_n2o)) THEN
-              atm_n2o_mol(j,i,kcs:kce) = zftr(kcs:kce,jspf)*tnd(:)*            &
-                                   volume(j,i,kcs:kce)*1.0e6/avogadro
-            END IF
-          END IF
-
-          ! CFC-12
-          IF (n_cf2cl2 > 0) THEN
-            IF (specf(jspf) == advt(n_cf2cl2)) THEN
-              atm_cf2cl2_mol(j,i,kcs:kce) = zftr(kcs:kce,jspf)*tnd(:)*         &
-                                   volume(j,i,kcs:kce)* 1.0e6/avogadro
-            END IF
-          END IF
-
-          ! CFC-11
-          IF (n_cfcl3 > 0) THEN
-            IF (specf(jspf) == advt(n_cfcl3)) THEN
-              atm_cfcl3_mol(j,i,kcs:kce) = zftr(kcs:kce,jspf)*tnd(:)*          &
-                                   volume(j,i,kcs:kce)* 1.0e6/avogadro
-            END IF
-          END IF
-
-          ! CH3Br
-          IF (n_mebr > 0) THEN
-            IF (specf(jspf) == advt(n_mebr)) THEN
-              atm_mebr_mol(j,i,kcs:kce) = zftr(kcs:kce,jspf)*tnd(:)*           &
-                                   volume(j,i,kcs:kce)* 1.0e6/avogadro
-            END IF
-          END IF
-
-          ! H2
-          IF (n_h2 > 0) THEN
-            IF (specf(jspf) == advt(n_h2)) THEN
-              atm_h2_mol(j,i,kcs:kce) = zftr(kcs:kce,jspf)*tnd(:)*             &
-                                   volume(j,i,kcs:kce)* 1.0e6/avogadro
-            END IF
-          END IF
-
-        END DO ! End loop through species in zftr array
-
-      END DO ! end chunking loop
-
-      ! If current chunk size is not equal to ukca_chem_seg_size,
-      !reallocate asad arrays ready for next column
-      IF (chunk_size /= ukca_config%ukca_chem_seg_size) THEN
-        CALL ukca_reallocate_asad_arrays(ukca_config%ukca_chem_seg_size)
-      END IF
-
-      ! 3D flux diagnostics
-      IF (L_asad_use_chem_diags .AND.                                          &
-         ((L_asad_use_flux_rxns .OR. L_asad_use_rxn_rates) .OR.                &
-         (L_asad_use_wetdep .OR. L_asad_use_drydep)))                          &
-         CALL asad_chemical_diagnostics(row_length,rows,model_levels,          &
-            model_levels,dpd_full,dpw_full,prk_full,y_full,                    &
-            j,i,klevel,volume,ierr)
-
-      ! PSC diagnostics
-      IF (L_asad_use_chem_diags .AND. L_asad_use_psc_diagnostic)               &
-         CALL asad_psc_diagnostic(row_length,rows,model_levels,model_levels,   &
-                             fpsc1_full,fpsc2_full,                            &
-                             j,i,klevel,ierr)
-    ELSE
-      cmessage='Column call is not available for Backward Euler schemes'
-      errcode = 5
-      CALL ereport(ModuleName//':'//RoutineName,errcode,cmessage)
-    END IF
-  END DO
-END DO ! loop (j,i)
-!$OMP END DO
-
-IF (ALLOCATED(ystore)) DEALLOCATE(ystore)
-
-!$OMP END PARALLEL
-
-#if !defined(LFRIC)
-IF (l_autotune_segments) THEN
-  CALL autotune_stop_region(autotune_state)
-END IF
-#endif
-
-#if !defined(LFRIC)
-! If autotuning is active, decide what to do with the
-! trial segment size and report the current state.
-IF (l_autotune_segments) THEN
-  CALL autotune_return(autotune_state)
-END IF
-#endif
-
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
-RETURN
-END SUBROUTINE ukca_chemistry_ctl_col
-
-SUBROUTINE ukca_reallocate_asad_arrays(n_pnts)
-
-USE asad_mod, ONLY: prod, slos, pd, co3, deriv, dpd, dpw,                      &
-                     ej, emr, f, fdot, fj, fpsc1, fpsc2,                       &
-                     ftilde, ipa, lati, linfam, method, p,                     &
-                     pmintnd, prk, qa, ratio, rk, sh2o, shno3,                 &
-                     sph2o, sphno3, t, t300, tnd, wp, co2, y,                  &
-                     ydot, za, spfj, spfjsize_max,                             &
-                     jpspec, jpcspf, jpnr
-USE ukca_config_specification_mod, ONLY: ukca_config, int_method_nr
-
-IMPLICIT NONE
-
-INTEGER, INTENT(IN) :: n_pnts
-
-! Set integration method (1 = IMPACT; 3 = N-R solver; 5 = Backward-Euler)
-method = ukca_config%ukca_int_method
-
-! Deallocate asad mod variables (in reverse order
-! to which they are initially allocated in ukca_mod.F90)...
-
-IF (method == int_method_NR) THEN ! sparse_vars
-  IF (ALLOCATED(spfj)) DEALLOCATE(spfj)
-END IF
-
-IF (ALLOCATED(za)) DEALLOCATE(za)
-IF (ALLOCATED(ydot)) DEALLOCATE(ydot)
-IF (ALLOCATED(y)) DEALLOCATE(y)
-IF (ALLOCATED(co2)) DEALLOCATE(co2)
-IF (ALLOCATED(wp)) DEALLOCATE(wp)
-IF (ALLOCATED(tnd)) DEALLOCATE(tnd)
-IF (ALLOCATED(t300)) DEALLOCATE(t300)
-IF (ALLOCATED(t)) DEALLOCATE(t)
-IF (ALLOCATED(sphno3)) DEALLOCATE(sphno3)
-IF (ALLOCATED(sph2o)) DEALLOCATE(sph2o)
-IF (ALLOCATED(shno3)) DEALLOCATE(shno3)
-IF (ALLOCATED(sh2o)) DEALLOCATE(sh2o)
-IF (ALLOCATED(rk)) DEALLOCATE(rk)
-IF (ALLOCATED(ratio)) DEALLOCATE(ratio)
-IF (ALLOCATED(qa)) DEALLOCATE(qa)
-IF (ALLOCATED(prk)) DEALLOCATE(prk)
-IF (ALLOCATED(pmintnd)) DEALLOCATE(pmintnd)
-IF (ALLOCATED(p)) DEALLOCATE(p)
-IF (ALLOCATED(linfam)) DEALLOCATE(linfam)
-IF (ALLOCATED(lati)) DEALLOCATE(lati)
-IF (ALLOCATED(ipa)) DEALLOCATE(ipa)
-IF (ALLOCATED(ftilde)) DEALLOCATE(ftilde)
-IF (ALLOCATED(fpsc2)) DEALLOCATE(fpsc2)
-IF (ALLOCATED(fpsc1))  DEALLOCATE(fpsc1)
-IF (ALLOCATED(fj)) DEALLOCATE(fj)
-IF (ALLOCATED(fdot)) DEALLOCATE(fdot)
-IF (ALLOCATED(f)) DEALLOCATE(f)
-IF (ALLOCATED(emr)) DEALLOCATE(emr)
-IF (ALLOCATED(ej)) DEALLOCATE(ej)
-IF (ALLOCATED(dpw)) DEALLOCATE(dpw)
-IF (ALLOCATED(dpd)) DEALLOCATE(dpd)
-IF (ALLOCATED(deriv)) DEALLOCATE(deriv)
-IF (ALLOCATED(co3)) DEALLOCATE(co3)
-IF (ALLOCATED(pd)) DEALLOCATE(pd)
-
-!...and re-allocate based on value of n_pnts
-IF (.NOT. ALLOCATED(pd)) ALLOCATE(pd(n_pnts,2*jpspec))
-IF (.NOT. ALLOCATED(co3)) ALLOCATE(co3(n_pnts))
-IF (.NOT. ALLOCATED(deriv)) ALLOCATE(deriv(n_pnts,4,4))
-IF (.NOT. ALLOCATED(dpd)) ALLOCATE(dpd(n_pnts,jpspec))
-IF (.NOT. ALLOCATED(dpw)) ALLOCATE(dpw(n_pnts,jpspec))
-IF (.NOT. ALLOCATED(ej)) ALLOCATE(ej(n_pnts,jpcspf))
-IF (.NOT. ALLOCATED(emr)) ALLOCATE(emr(n_pnts,jpspec))
-IF (.NOT. ALLOCATED(f)) ALLOCATE(f(n_pnts,jpcspf))
-IF (.NOT. ALLOCATED(fdot)) ALLOCATE(fdot(n_pnts,jpcspf))
-IF (.NOT. ALLOCATED(fj)) ALLOCATE(fj(n_pnts,jpcspf,jpcspf))
-IF (.NOT. ALLOCATED(fpsc1)) ALLOCATE(fpsc1(n_pnts))
-IF (.NOT. ALLOCATED(fpsc2)) ALLOCATE(fpsc2(n_pnts))
-IF (.NOT. ALLOCATED(ftilde)) ALLOCATE(ftilde(n_pnts, jpcspf))
-IF (.NOT. ALLOCATED(ipa)) ALLOCATE(ipa(n_pnts,jpcspf))
-IF (.NOT. ALLOCATED(lati)) ALLOCATE(lati(n_pnts))
-IF (.NOT. ALLOCATED(linfam)) ALLOCATE(linfam(n_pnts,0:jpcspf))
-IF (.NOT. ALLOCATED(p)) ALLOCATE(p(n_pnts))
-IF (.NOT. ALLOCATED(pmintnd)) ALLOCATE(pmintnd(n_pnts))
-IF (.NOT. ALLOCATED(prk)) ALLOCATE(prk(n_pnts,jpnr))
-IF (.NOT. ALLOCATED(qa)) ALLOCATE(qa(n_pnts,jpspec))
-IF (.NOT. ALLOCATED(ratio)) ALLOCATE(ratio(n_pnts,jpspec))
-IF (.NOT. ALLOCATED(rk)) ALLOCATE(rk(n_pnts,jpnr))
-IF (.NOT. ALLOCATED(sh2o)) ALLOCATE(sh2o(n_pnts))
-IF (.NOT. ALLOCATED(shno3)) ALLOCATE(shno3(n_pnts))
-IF (.NOT. ALLOCATED(sph2o)) ALLOCATE(sph2o(n_pnts))
-IF (.NOT. ALLOCATED(sphno3)) ALLOCATE(sphno3(n_pnts))
-IF (.NOT. ALLOCATED(t)) ALLOCATE(t(n_pnts))
-IF (.NOT. ALLOCATED(t300)) ALLOCATE(t300(n_pnts))
-IF (.NOT. ALLOCATED(tnd)) ALLOCATE(tnd(n_pnts))
-IF (.NOT. ALLOCATED(wp)) ALLOCATE(wp(n_pnts))
-IF (.NOT. ALLOCATED(co2)) ALLOCATE(co2(n_pnts))
-IF (.NOT. ALLOCATED(y)) ALLOCATE(y(n_pnts,jpspec))
-IF (.NOT. ALLOCATED(ydot)) ALLOCATE(ydot(n_pnts,jpspec))
-IF (.NOT. ALLOCATED(za)) ALLOCATE(za(n_pnts))
-
-IF (method == int_method_NR) THEN ! sparse vars
-  IF (.NOT. ALLOCATED(spfj)) ALLOCATE(spfj(n_pnts,spfjsize_max))
-END IF
-
-NULLIFY(prod)
-NULLIFY(slos)
-prod => pd(:,1:jpspec)
-slos => pd(:,jpspec+1:2*jpspec)
-
-! (re-)initialise DERIV array to 1.0 before each call to ASAD_CDRIVE
-! to ensure bit-comparability when changing domain decomposition
-deriv(:,:,:) = 1.0
-
-!     Clear the species arrays
-f(:,:)      = 0.0
-fdot(:,:)   = 0.0
-ej(:,:)     = 0.0
-linfam(:,:) = .FALSE.
-
-y(:,:)    = 0.0
-ydot(:,:) = 0.0
-prod(:,:) = 0.0
-slos(:,:) = 0.0
-dpd(:,:)  = 0.0
-dpw(:,:)  = 0.0
-emr(:,:)  = 0.0
-
-!     Clear the rates and index arrays
-rk(:,:)   = 0.0
-prk(:,:)  = 0.0
-
-RETURN
-END SUBROUTINE ukca_reallocate_asad_arrays
-
-END MODULE ukca_chemistry_ctl_col_mod
+end module ukca_chemistry_ctl_col_mod

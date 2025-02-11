@@ -1,89 +1,63 @@
-! *****************************COPYRIGHT*******************************
-! (C) Crown copyright Met Office. All rights reserved.
-! For further details please refer to the file COPYRIGHT.txt
-! which you should have received as part of this distribution.
-! *****************************COPYRIGHT*******************************
-!
-! Description:
-!  To perform an explicit loss of methane in the top two model
-!  levels when tropospheric chemistry is switched on
-!
-!  Part of the UKCA model, a community model supported by the
-!  Met Office and NCAS, with components provided initially
-!  by The University of Cambridge, University of Leeds and
-!  The Met. Office.  See www.ukca.ac.uk
-!
-! Method:
-!
-! Code Owner: Please refer to the UM file CodeOwners.txt
-! This file belongs in section: UKCA
-!
-!  Code Description:
-!   Language:  FORTRAN 90
-!   This code is written to UMDP3 v6 programming standards.
-!
-! ----------------------------------------------------------------------
-!
-MODULE ukca_ch4_stratloss_mod
+module ukca_ch4_stratloss_mod
+  implicit none
+  character(len = *), parameter, private :: ModuleName = 'UKCA_CH4_STRATLOSS_MOD'
+  public
 
-IMPLICIT NONE
+  contains
+  subroutine ukca_ch4_stratloss(n_be_calls, n_pnts, vol, dts, y, stratloss)
+    use yomhook, only : dr_hook, lhook
+    use parkind1, only : jpim, jprb
+    use ukca_config_constants_mod, only : avogadro
+    real, parameter :: loss_rate = 2.0e-7
+    integer(kind=jpim), parameter :: zhook_in = 0
+    integer(kind=jpim), parameter :: zhook_out = 1
+    integer, intent(in) :: n_be_calls
+    integer, intent(in) :: n_pnts
+    real, intent(in) :: dts
+    real, dimension(n_pnts), intent(in) :: vol
+    real, dimension(n_pnts), intent(inout) :: y
+    real, dimension(n_pnts), intent(inout) :: stratloss
+    integer :: n
+    real, dimension(n_pnts) :: p
+    real, dimension(n_pnts) :: l
+    real, dimension(n_pnts) :: yp
+    real(kind=jprb) :: zhook_handle
+    CHARACTER(LEN = *), PARAMETER :: RoutineName = 'UKCA_CH4_STRATLOSS'
+    integer :: idx
+    integer :: idx_1
+    integer :: idx_2
+    integer :: idx_3
 
-CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName = 'UKCA_CH4_STRATLOSS_MOD'
+    if (lhook) then
+      call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
+    end if
+    !$acc kernels
+    !$acc loop seq
+    do n = 1, n_be_calls, 1
+      !$acc loop gang vector independent
+      do idx = LBOUND(yp, dim=1), UBOUND(yp, dim=1), 1
+        yp(idx) = y(idx)
+      enddo
+      !$acc loop gang vector independent
+      do idx_1 = LBOUND(p, dim=1), UBOUND(p, dim=1), 1
+        p(idx_1) = 0.0
+      enddo
+      !$acc loop gang vector independent
+      do idx_2 = LBOUND(l, dim=1), UBOUND(l, dim=1), 1
+        l(idx_2) = loss_rate
+      enddo
+      !$acc loop gang vector independent
+      do idx_3 = LBOUND(y, dim=1), UBOUND(y, dim=1), 1
+        y(idx_3) = (yp(idx_3) + dts * p(idx_3)) / (1.0 + dts * l(idx_3))
+      enddo
+      stratloss(:) = stratloss(:) + loss_rate * y(:) * dts * vol(:) / avogadro
+    enddo
+    !$acc end kernels
+    if (lhook) then
+      call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
+    end if
+    return
 
-CONTAINS
+  end subroutine ukca_ch4_stratloss
 
-SUBROUTINE ukca_ch4_stratloss(n_be_calls, n_pnts,                              &
-                    vol, dts,                                                  &
-                    y, stratloss)
-
-USE yomhook, ONLY: lhook, dr_hook
-USE parkind1, ONLY: jprb, jpim
-USE ukca_config_constants_mod, ONLY: avogadro
-
-IMPLICIT NONE
-
-INTEGER, INTENT(IN) :: n_be_calls ! No. chemical steps
-INTEGER, INTENT(IN) :: n_pnts     ! Actual no. calculations
-
-REAL, INTENT(IN)    :: dts
-REAL, INTENT(IN)    :: vol(n_pnts)
-
-REAL, INTENT(IN OUT) :: y(n_pnts)
-
-REAL, INTENT(IN OUT) :: stratloss(n_pnts)
-
-!     Local variables
-
-INTEGER :: n
-
-REAL, PARAMETER :: Loss_rate = 2.0e-7   ! per second
-REAL :: p(n_pnts)
-REAL :: l(n_pnts)
-REAL :: yp(n_pnts)
-
-INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
-INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
-REAL(KIND=jprb)               :: zhook_handle
-
-CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_CH4_STRATLOSS'
-
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-
-DO n = 1, n_be_calls
-
-  yp(:) = y(:)
-  p(:)  = 0.0
-  l(:)  = Loss_rate
-  y(:)  = (yp(:)+dts*p(:))/(1.0+dts*l(:))
-
-  !       Calculate flux terms.
-
-  stratloss(:) = stratloss(:)                                                  &
-                + Loss_rate*y(:)*dts*Vol(:)/avogadro
-
-END DO  ! n_be_calls
-
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
-RETURN
-END SUBROUTINE ukca_ch4_stratloss
-END MODULE ukca_ch4_stratloss_mod
+end module ukca_ch4_stratloss_mod
