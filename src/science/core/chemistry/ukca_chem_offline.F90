@@ -1,123 +1,312 @@
-module ukca_chem_offline
-  use ukca_chem_defs_mod, only : chch_t, ratb_t, rath_t, ratj_t, ratt_t
-  implicit none
-  integer, parameter, private :: naq_offline = 3
-  integer, parameter, public :: ndry_offline = 6
-  integer, parameter, public :: nwet_offline = 4
-  integer, parameter, public :: nwet_constant = 1
-  type(ratb_t), dimension(9), parameter, private :: ratb_defs_a = [ratb_t('DMS       ', 'OH        ', 'SO2       ', '          ', '          ', '          ', 9.60E-12, 0.00, 240.00, 0.000, 0.000, 0.000, 0.000), ratb_t('DMS       ', 'OH        ', 'SO2       ', 'DMSO      ', '          ', '          ', 3.04E-12, 0.00, - 350.00, 0.600, 0.400, 0.000, 0.000), ratb_t('DMS       ', 'NO3       ', 'SO2       ', '          ', '          ', '          ', 1.90E-13, 0.00, - 500.00, 0.000, 0.000, 0.000, 0.000), ratb_t('DMSO      ', 'OH        ', 'SO2       ', '          ', '          ', '          ', 5.80E-11, 0.00, 0.00, 0.600, 0.000, 0.000, 0.000), ratb_t('Monoterp  ', 'OH        ', 'Sec_Org   ', '          ', '          ', '          ', 1.20E-11, 0.00, - 444.00, 0.130, 0.000, 0.000, 0.000), ratb_t('Monoterp  ', 'O3        ', 'Sec_Org   ', '          ', '          ', '          ', 1.01E-15, 0.00, 732.00, 0.130, 0.000, 0.000, 0.000), ratb_t('Monoterp  ', 'NO3       ', 'Sec_Org   ', '          ', '          ', '          ', 1.19E-12, 0.00, - 925.00, 0.130, 0.000, 0.000, 0.000), ratb_t('HO2       ', 'HO2       ', 'H2O2      ', '          ', '          ', '          ', 2.20E-13, 0.00, - 600.00, 0.000, 0.000, 0.000, 0.000), ratb_t('OH        ', 'H2O2      ', 'H2O       ', '          ', '          ', '          ', 2.90E-12, 0.00, 160.00, 0.000, 0.000, 0.000, 0.000)]
-  type(chch_t), allocatable, dimension(:), public :: chch_defs_offline
-  type(ratb_t), allocatable, dimension(:), public :: ratb_defs_offline
-  type(ratt_t), allocatable, dimension(:), public :: ratt_defs_offline
-  type(ratj_t), allocatable, dimension(:), public :: ratj_defs_offline
-  type(rath_t), allocatable, dimension(:), public :: rath_defs_offline
-  real, allocatable, dimension(:,:,:), public :: depvel_defs_offline
-  real, allocatable, dimension(:,:), public :: henry_defs_offline
-  integer, private :: n_tracers
-  real, allocatable, dimension(:,:), save, public :: o3_offline_diag
-  real, allocatable, dimension(:,:), save, public :: oh_offline_diag
-  real, allocatable, dimension(:,:), save, public :: no3_offline_diag
-  real, allocatable, dimension(:,:), save, public :: ho2_offline_diag
-  type(chch_t), dimension(11), save, private :: chch_defs_a = [chch_t(1, 'H2O2      ', 1, 'TR        ', '          ', 1, 1), chch_t(2, 'DMS       ', 1, 'TR        ', '          ', 0, 0), chch_t(3, 'SO2       ', 1, 'TR        ', '          ', 1, 1), chch_t(4, 'H2SO4     ', 1, 'TR        ', '          ', 1, 0), chch_t(5, 'DMSO      ', 1, 'TR        ', '          ', 1, 1), chch_t(6, 'Monoterp  ', 1, 'TR        ', '          ', 1, 0), chch_t(7, 'Sec_Org   ', 1, 'TR        ', '          ', 1, 1), chch_t(8, 'O3        ', 1, 'CF        ', '          ', 0, 0), chch_t(9, 'OH        ', 1, 'CF        ', '          ', 0, 0), chch_t(10, 'NO3       ', 1, 'CF        ', '          ', 0, 0), chch_t(11, 'HO2       ', 1, 'CF        ', '          ', 0, 0)]
-  type(rath_t), dimension(naq_offline), save, private :: rath_defs_a = [rath_t('SO2       ', 'H2O2      ', 'NULL0     ', '          ', '          ', '          ', 0.000, 0.000, 0.000, 0.000), rath_t('SO2       ', 'O3        ', 'NULL1     ', '          ', '          ', '          ', 0.000, 0.000, 0.000, 0.000), rath_t('SO2       ', 'O3        ', 'NULL2     ', '          ', '          ', '          ', 0.000, 0.000, 0.000, 0.000)]
-  type(ratt_t), dimension(1), save, private :: ratt_defs_a = [ratt_t('SO2       ', 'OH        ', 'H2SO4     ', '          ', 0.6, 3.00E-31, - 3.30, 0.0, 1.50E-12, 0.00, 0.0, 0.000, 0.000)]
-  real, dimension(6,5,ndry_offline), save, private :: depvel_defs_a = RESHAPE([1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.25, 0.16, 0.71, 0.28, 0.12, 0.20, 1.25, 0.53, 0.89, 0.83, 0.78, 0.81, 0.26, 0.26, 0.26, 0.26, 0.26, 0.26, 0.32, 0.32, 0.32, 0.32, 0.32, 0.32, 0.80, 0.80, 0.80, 0.80, 0.80, 0.80, 0.60, 0.60, 0.60, 0.60, 0.60, 0.60, 0.60, 0.60, 0.60, 0.60, 0.60, 0.60, 0.60, 0.60, 0.60, 0.60, 0.60, 0.60, 0.10, 0.10, 0.10, 0.10, 0.10, 0.10, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.20, 0.20, 0.20, 0.20, 0.20, 0.20, 0.10, 0.10, 0.10, 0.10, 0.10, 0.10, 0.10, 0.10, 0.10, 0.10, 0.10, 0.10, 0.10, 0.10, 0.10, 0.10, 0.10, 0.10, 0.10, 0.10, 0.10, 0.10, 0.10, 0.10, 0.20, 0.20, 0.20, 0.20, 0.20, 0.20, 0.10, 0.10, 0.10, 0.10, 0.10, 0.10, 0.10, 0.10, 0.10, 0.10, 0.10, 0.10, 0.10, 0.10, 0.10, 0.10, 0.10, 0.10, 0.10, 0.10, 0.10, 0.10, 0.10, 0.10], [6, 5, ndry_offline])
-  real, dimension(6,nwet_offline), save, private :: henry_defs_a = RESHAPE([0.830E+05, 0.740E+04, 0.240E-11, - 0.373E+04, 0.000E+00, 0.000E+00, 0.123E+01, 0.302E+04, 0.123E-01, 0.201E+04, 0.600E-07, 0.112E+04, 0.500E+05, 0.6425E+04, 0.000E+00, 0.000E+00, 0.000E+00, 0.000E+00, 0.100E+06, 0.120E+02, 0.000E-00, 0.000E+00, 0.000E+00, 0.000E+00], [6, nwet_offline])
-  real, dimension(6,nwet_constant), save, public :: henry_defs_const = RESHAPE([0.113E-01, 0.230E+04, 0.000E+00, 0.000E+00, 0.000E+00, 0.000E+00], [6, nwet_constant])
-  character(len = *), parameter, private :: ModuleName = 'UKCA_CHEM_OFFLINE'
-  private
+! *****************************COPYRIGHT*******************************
+! (C) Crown copyright Met Office. All rights reserved.
+! For further details please refer to the file COPYRIGHT.txt
+! which you should have received as part of this distribution.
+! *****************************COPYRIGHT*******************************
+!
+!  Description:
+!    Module providing UKCA with inputs describing the chemistry for the
+!    off line oxidants version of the sulphur and terpene chemistry for the
+!    ASAD system. The subroutine UKCA_INIT_OFFLINE constructs the final
+!    arrays from the components.
+!
+!
+!  UKCA is a community model supported by The Met Office and
+!  NCAS, with components initially provided by The University of
+!  Cambridge, University of Leeds, University of Oxford, and
+!  The Met Office. See www.ukca.ac.uk
+!
+!
+! Code Owner: Please refer to the UM file CodeOwners.txt
+! This file belongs in section: UKCA
+!
+!  Code Description:
+!   Language:  FORTRAN 95
+!   This code is written to UMDP3 programming standards.
+!
+!  Contained subroutines:
+!   ukca_init_offline
+!
+! ----------------------------------------------------------------------
 
-  public :: ukca_init_offline
+MODULE ukca_chem_offline
 
-  contains
-  subroutine ukca_init_offline()
-    use asad_mod, only : ct_ddhr, ct_dhr, ct_k298, ct_kd298, ih_o3_const, jddepc, jddept, jpbk, jpctr, jpdd, jpdw, jpeq, jphk, jppj, jpsp, jpspec, jptk
-    use yomhook, only : dr_hook, lhook
-    use parkind1, only : jpim, jprb
-    use ereport_mod, only : ereport
-    use umPrintMgr, only : ummessage, umprint
-    use errormessagelength_mod, only : errormessagelength
-    integer(kind=jpim), parameter :: zhook_in = 0
-    integer(kind=jpim), parameter :: zhook_out = 1
-    CHARACTER(LEN = errormessagelength) :: cmessage
-    integer :: errcode
-    integer :: i
-    real(kind=jprb) :: zhook_handle
-    CHARACTER(LEN = *), PARAMETER :: RoutineName = 'UKCA_INIT_OFFLINE'
-    integer :: idx
-    integer :: idx_1
-    integer :: idx_2
-    integer :: idx_3
-    integer :: idx_4
+USE ukca_chem_defs_mod, ONLY: chch_t, ratb_t, rath_t, ratj_t, ratt_t
 
-    if (lhook) then
-      call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
-    end if
-    !$acc kernels
-    ih_o3_const = 1
-    n_tracers = 0
-    !$acc loop seq
-    do i = 1, SIZE(chch_defs_a), 1
-      if (chch_defs_a(i)%ctype == jpsp) then
-        n_tracers = n_tracers + 1
-      end if
-    enddo
-    !$acc end kernels
-    if (n_tracers /= jpctr) then
-      cmessage(:) = 'No. of tracers found not equal to jpctr'
-      errcode = 1
-      ! PSyclone CodeBlock (unsupported code) reason:
-      !  - Unsupported statement: Write_Stmt
-      WRITE(umMessage, '(A40,A12,I5,A9,I5)') cmessage, ' n_tracers:', n_tracers, ' jpctr: ', jpctr
-      call umprint(ummessage, src='UKCA_INIT_OFFLINE')
-      call ereport('UKCA_INIT_OFFLINE', errcode, cmessage)
-    end if
-    ALLOCATE(chch_defs_offline(1:jpspec))
-    ALLOCATE(ratb_defs_offline(1:jpbk))
-    ALLOCATE(ratj_defs_offline(1:jppj))
-    ALLOCATE(ratt_defs_offline(1:jptk))
-    ALLOCATE(rath_defs_offline(1:jphk))
-    ALLOCATE(depvel_defs_offline(1:jddept,1:jddepc,1:jpdd))
-    ALLOCATE(henry_defs_offline(1:6,1:jpdw))
-    if (nwet_constant > 0) then
-      if (.NOT.ALLOCATED(ct_k298)) then
-        ALLOCATE(ct_k298(1:nwet_constant))
-      end if
-      if (.NOT.ALLOCATED(ct_dhr)) then
-        ALLOCATE(ct_dhr(1:nwet_constant))
-      end if
-      if (.NOT.ALLOCATED(ct_kd298)) then
-        ALLOCATE(ct_kd298(1:nwet_constant,1:jpeq))
-      end if
-      if (.NOT.ALLOCATED(ct_ddhr)) then
-        ALLOCATE(ct_ddhr(1:nwet_constant,1:jpeq))
-      end if
-    end if
-    chch_defs_offline(:) = [chch_defs_a]
-    ratb_defs_offline(:) = [ratb_defs_a]
-    ratt_defs_offline(:) = [ratt_defs_a]
-    rath_defs_offline(:) = [rath_defs_a]
-    !$acc kernels
-    !$acc loop gang vector independent collapse(3)
-    do idx = LBOUND(depvel_defs_offline, dim=3), UBOUND(depvel_defs_offline, dim=3), 1
-      do idx_1 = LBOUND(depvel_defs_offline, dim=2), UBOUND(depvel_defs_offline, dim=2), 1
-        do idx_2 = LBOUND(depvel_defs_offline, dim=1), UBOUND(depvel_defs_offline, dim=1), 1
-          depvel_defs_offline(idx_2,idx_1,idx) = depvel_defs_a(idx_2 + (1 - LBOUND(depvel_defs_offline, dim=1)),idx_1 + (1 - LBOUND(depvel_defs_offline, dim=2)),idx + (1 - LBOUND(depvel_defs_offline, dim=3)))
-        enddo
-      enddo
-    enddo
-    !$acc loop gang vector independent collapse(2)
-    do idx_3 = LBOUND(henry_defs_offline, dim=2), UBOUND(henry_defs_offline, dim=2), 1
-      do idx_4 = LBOUND(henry_defs_offline, dim=1), UBOUND(henry_defs_offline, dim=1), 1
-        henry_defs_offline(idx_4,idx_3) = henry_defs_a(idx_4 + (1 - LBOUND(henry_defs_offline, dim=1)),idx_3 + (1 - LBOUND(henry_defs_offline, dim=2)))
-      enddo
-    enddo
-    !$acc end kernels
-    if (lhook) then
-      call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
-    end if
-    return
+IMPLICIT NONE
+PRIVATE
 
-  end subroutine ukca_init_offline
+! Chemistry for sulphur and monoterpene species using offline oxidants
+! =============================================================================
 
-end module ukca_chem_offline
+TYPE(chch_t), ALLOCATABLE, PUBLIC :: chch_defs_offline(:)
+TYPE(ratb_t), ALLOCATABLE, PUBLIC :: ratb_defs_offline(:)
+TYPE(ratt_t), ALLOCATABLE, PUBLIC :: ratt_defs_offline(:)
+TYPE(ratj_t), ALLOCATABLE, PUBLIC :: ratj_defs_offline(:)
+TYPE(rath_t), ALLOCATABLE, PUBLIC :: rath_defs_offline(:)
+REAL,         ALLOCATABLE, PUBLIC :: depvel_defs_offline(:,:,:)
+REAL,         ALLOCATABLE, PUBLIC :: henry_defs_offline(:,:)
+
+! No of heterogeneous processes
+INTEGER, PARAMETER :: naq_offline   = 3        ! Aqueous phase
+
+! No of dry deposited tracers
+INTEGER, PARAMETER, PUBLIC :: ndry_offline  = 6
+
+! No of wet deposited species
+INTEGER, PARAMETER, PUBLIC :: nwet_offline  = 4        ! tracers
+
+! No of constant species in aqueous phase
+INTEGER, PARAMETER, PUBLIC :: nwet_constant = 1        ! O3 field
+
+INTEGER :: n_tracers
+
+! Diagnostic fields (mass mixing ratio)
+REAL, PUBLIC, ALLOCATABLE, SAVE :: o3_offline_diag(:,:)   ! O3 diagnostic
+REAL, PUBLIC, ALLOCATABLE, SAVE :: oh_offline_diag(:,:)   ! OH diagnostic
+REAL, PUBLIC, ALLOCATABLE, SAVE :: no3_offline_diag(:,:)  ! NO3 diagnostic
+REAL, PUBLIC, ALLOCATABLE, SAVE :: ho2_offline_diag(:,:)  ! HO2 diagnostic
+
+! The CHCH definitions array lists the species used by the chemical solver.
+! The elements of the chch_t type are:
+! idum (reference integer)
+! name (species name)
+! nodd (unused)
+! ctype (either TR - tracer or CF - constant field here)
+! family (unused)
+! switch1 (1 if species dry deposits)
+! switch2 (1 if species wet deposits)
+
+TYPE(chch_t) :: chch_defs_a(11) = [                                            &
+  chch_t( 1,'H2O2      ',  1,'TR        ','          ',  1,  1),               &
+  chch_t( 2,'DMS       ',  1,'TR        ','          ',  0,  0),               &
+  chch_t( 3,'SO2       ',  1,'TR        ','          ',  1,  1),               &
+  chch_t( 4,'H2SO4     ',  1,'TR        ','          ',  1,  0),               &
+  chch_t( 5,'DMSO      ',  1,'TR        ','          ',  1,  1),               &
+  chch_t( 6,'Monoterp  ',  1,'TR        ','          ',  1,  0),               &
+  chch_t( 7,'Sec_Org   ',  1,'TR        ','          ',  1,  1),               &
+  chch_t( 8,'O3        ',  1,'CF        ','          ',  0,  0),               &
+  chch_t( 9,'OH        ',  1,'CF        ','          ',  0,  0),               &
+  chch_t(10,'NO3       ',  1,'CF        ','          ',  0,  0),               &
+  chch_t(11,'HO2       ',  1,'CF        ','          ',  0,  0)                &
+  ]
+
+
+! Bimolecular reactions
+TYPE(ratb_t), PARAMETER :: ratb_defs_a(9) = [                                  &
+  ratb_t('DMS       ','OH        ','SO2       ','          ','          ',     &
+  '          ',9.60e-12,  0.00,    240.00, 0.000, 0.000, 0.000, 0.000),        &
+  ratb_t('DMS       ','OH        ','SO2       ','DMSO      ','          ',     &
+  '          ',3.04e-12,  0.00,   -350.00, 0.600, 0.400, 0.000, 0.000),        &
+  ratb_t('DMS       ','NO3       ','SO2       ','          ','          ',     &
+  '          ',1.90e-13,  0.00,   -500.00, 0.000, 0.000, 0.000, 0.000),        &
+  ratb_t('DMSO      ','OH        ','SO2       ','          ','          ',     &
+  '          ',5.80e-11,  0.00,      0.00, 0.600, 0.000, 0.000, 0.000),        &
+  ratb_t('Monoterp  ','OH        ','Sec_Org   ','          ','          ',     &
+  '          ',1.20e-11,  0.00,   -444.00, 0.130, 0.000, 0.000, 0.000),        &
+  ratb_t('Monoterp  ','O3        ','Sec_Org   ','          ','          ',     &
+  '          ',1.01e-15,  0.00,   732.00, 0.130, 0.000, 0.000, 0.000),         &
+  ratb_t('Monoterp  ','NO3       ','Sec_Org   ','          ','          ',     &
+  '          ',1.19e-12,  0.00,   -925.00, 0.130, 0.000, 0.000, 0.000),        &
+  ratb_t('HO2       ','HO2       ','H2O2      ','          ','          ',     &
+  '          ',2.20e-13,  0.00,   -600.00, 0.000, 0.000, 0.000, 0.000),        &
+  ratb_t('OH        ','H2O2      ','H2O       ','          ','          ',     &
+  '          ',2.90e-12,  0.00,    160.00, 0.000, 0.000, 0.000, 0.000)         &
+  ]
+
+! The rate coefficients for these reactions are
+! defined in the asad_hetero routine. The 'NULL' products serve to identify the
+! reactions - these reactions have no gas-phase products.
+TYPE(rath_t) :: rath_defs_a(naq_offline) = [                                   &
+  rath_t('SO2       ','H2O2      ','NULL0     ','          ','          ',     &
+  '          ', 0.000, 0.000, 0.000, 0.000),                                   &
+  ! HSO3+H2O2(aq)
+  rath_t('SO2       ','O3        ','NULL1     ','          ','          ',     &
+  '          ', 0.000, 0.000, 0.000, 0.000),                                   &
+  ! HSO3+O3(aq)
+  rath_t('SO2       ','O3        ','NULL2     ','          ','          ',     &
+  '          ', 0.000, 0.000, 0.000, 0.000)                                    &
+  ! SO3+O3(aq)
+  ]
+
+
+! Termolecular reactions
+TYPE(ratt_t) :: ratt_defs_a(1) = [                                             &
+  ratt_t('SO2       ','OH        ','H2SO4     ','          ',                  &
+  0.6, 3.00e-31, -3.30,     0.0, 1.50e-12, 0.00, 0.0, 0.000, 0.000)            &
+  ]
+
+! Dry deposition array:
+! NOTE: This array is only used when the interactives scheme is not selected
+! Dry deposition rates are written in a table format, with the columns
+! corresponding to times and the rows corresponding to surface type:
+!
+!           SUMMER                       WINTER
+!       day  night  24hr    day  night  24hr
+!         x     x     x       x     x     x     Water
+!         x     x     x       x     x     x     Forest
+!         x     x     x       x     x     x     Grass/Shrub
+!         x     x     x       x     x     x     Desert
+!         x     x     x       x     x     x     Snow/Ice
+!
+! '24 hr' corresponds to the 24 hour average deposition velocity,
+!  currently not used. The units of x are cm s-1
+
+! These have to be in the same order as the species which dry deposit in the
+! chch array.
+
+
+REAL :: depvel_defs_a(6,5,ndry_offline) = RESHAPE([                            &
+  1.00,  1.00,  1.00,  1.00,  1.00,  1.00,  & ! H2O2
+  1.25,  0.16,  0.71,  0.28,  0.12,  0.20,                                     &
+  1.25,  0.53,  0.89,  0.83,  0.78,  0.81,                                     &
+  0.26,  0.26,  0.26,  0.26,  0.26,  0.26,                                     &
+  0.32,  0.32,  0.32,  0.32,  0.32,  0.32,                                     &
+  0.80,  0.80,  0.80,  0.80,  0.80,  0.80,  & ! SO2
+  0.60,  0.60,  0.60,  0.60,  0.60,  0.60,                                     &
+  0.60,  0.60,  0.60,  0.60,  0.60,  0.60,                                     &
+  0.60,  0.60,  0.60,  0.60,  0.60,  0.60,                                     &
+  0.10,  0.10,  0.10,  0.10,  0.10,  0.10,                                     &
+  0.50,  0.50,  0.50,  0.50,  0.50,  0.50,  & ! H2SO4
+  0.50,  0.50,  0.50,  0.50,  0.50,  0.50,                                     &
+  0.50,  0.50,  0.50,  0.50,  0.50,  0.50,                                     &
+  0.50,  0.50,  0.50,  0.50,  0.50,  0.50,                                     &
+  0.50,  0.50,  0.50,  0.50,  0.50,  0.50,                                     &
+  1.00,  1.00,  1.00,  1.00,  1.00,  1.00,  & ! DMSO
+  0.00,  0.00,  0.00,  0.00,  0.00,  0.00,                                     &
+  0.00,  0.00,  0.00,  0.00,  0.00,  0.00,                                     &
+  0.00,  0.00,  0.00,  0.00,  0.00,  0.00,                                     &
+  0.00,  0.00,  0.00,  0.00,  0.00,  0.00,                                     &
+  0.20,  0.20,  0.20,  0.20,  0.20,  0.20,  & ! Monoterp
+  0.10,  0.10,  0.10,  0.10,  0.10,  0.10,                                     &
+  0.10,  0.10,  0.10,  0.10,  0.10,  0.10,                                     &
+  0.10,  0.10,  0.10,  0.10,  0.10,  0.10,                                     &
+  0.10,  0.10,  0.10,  0.10,  0.10,  0.10,                                     &
+  0.20,  0.20,  0.20,  0.20,  0.20,  0.20,  & ! Sec_Org
+  0.10,  0.10,  0.10,  0.10,  0.10,  0.10,                                     &
+  0.10,  0.10,  0.10,  0.10,  0.10,  0.10,                                     &
+  0.10,  0.10,  0.10,  0.10,  0.10,  0.10,                                     &
+  0.10,  0.10,  0.10,  0.10,  0.10,  0.10                                      &
+  ],[  6,  5,  ndry_offline] )
+
+
+! The following formula is used to calculate the effective Henry's Law coef,
+! which takes the affects of dissociation and complex formation on a species'
+! solubility (see Giannakopoulos, 1998)
+!
+!       H(eff) = K(298)exp{[-deltaH/R]x[(1/T)-(1/298)]}
+!
+! The data in columns 1 and 2 above give the data for gas-aqueous transfer,
+!       Column 1 = K(298) [M/atm]
+!       Column 2 = -deltaH/R [K-1]
+!
+! If the species dissociates in the aqueous phase the above term is multiplied
+! by another factor of 1+{K(aq)/[H+]}, where
+!       K(aq) = K(298)exp{[-deltaH/R]x[(1/T)-(1/298)]}
+! The data in columns 3 and 4 give the data for this aqueous-phase dissociation,
+!       Column 3 = K(298) [M]
+!       Column 4 = -deltaH/R [K-1]
+! The data in columns 5 and 6 give the data for a second dissociation,
+! e.g for SO2, HSO3^{-}, and SO3^{2-}
+!       Column 5 = K(298) [M]
+!       Column 6 = -deltaH/R [K-1]
+
+! Tracers (must be in the same order as in chch_defs array):
+!   H2O2, SO2, DMSO, Sec_Org
+REAL :: henry_defs_a(6,nwet_offline) = RESHAPE([                               &
+  0.830e+05, 0.740e+04, 0.240e-11,-0.373e+04, 0.000e+00, 0.000e+00, & ! H2O2
+  0.123e+01, 0.302e+04, 0.123e-01, 0.201e+04, 0.600e-07, 0.112e+04, & ! SO2
+  0.500e+05, 0.6425e+04,0.000e+00, 0.000e+00, 0.000e+00, 0.000e+00, & ! DMSO
+  0.100e+06, 0.120e+02, 0.000e-00, 0.000e+00, 0.000e+00, 0.000e+00  & ! Sec_Org
+  ],[  6,  nwet_offline] )
+
+! Constant fields: O3
+REAL, PUBLIC :: henry_defs_const(6,nwet_constant) = RESHAPE([                  &
+     0.113e-01, 0.230e+04, 0.000e+00, 0.000e+00, 0.000e+00, 0.000e+00          &
+     ],[  6,  nwet_constant] )
+
+PUBLIC ukca_init_offline
+
+CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName='UKCA_CHEM_OFFLINE'
+
+CONTAINS
+
+! ######################################################################
+
+SUBROUTINE ukca_init_offline
+
+! To initialise chemistry files from specified species and rate arrays
+! using the defined logicals.
+
+USE asad_mod,    ONLY: jddepc, jddept, ih_o3_const,                            &
+                       ct_k298, ct_dhr, ct_kd298, ct_ddhr, jpeq, jpsp,         &
+                       jpctr, jpspec, jpbk, jppj, jptk, jphk, jpdd, jpdw
+USE yomhook,     ONLY: lhook, dr_hook
+USE parkind1,    ONLY: jprb, jpim
+USE ereport_mod, ONLY: ereport
+USE umPrintMgr,  ONLY: umPrint, umMessage
+USE errormessagelength_mod, ONLY: errormessagelength
+
+IMPLICIT NONE
+
+CHARACTER (LEN=errormessagelength) :: cmessage           ! Error message
+INTEGER            :: errcode            ! Error code
+INTEGER            :: i                  ! Loop counter
+
+INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
+INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+REAL(KIND=jprb)               :: zhook_handle
+
+CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_INIT_OFFLINE'
+
+IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+
+! Define species index for the constant aqueous species
+ih_o3_const = 1
+
+n_tracers = 0
+! Count no of tracers in chch_defs array
+DO i = 1,SIZE(chch_defs_a)
+  IF (chch_defs_a(i)%ctype == jpsp) n_tracers = n_tracers + 1
+END DO
+
+! Check that number of tracers declared is equal to jpctr
+IF (n_tracers /= jpctr) THEN
+  cmessage = 'No. of tracers found not equal to jpctr'
+  errcode = 1
+  WRITE(umMessage,'(A40,A12,I5,A9,I5)') cmessage,' n_tracers:',n_tracers,      &
+    ' jpctr: ',jpctr
+  CALL umPrint(umMessage,src='UKCA_INIT_OFFLINE')
+  CALL ereport('UKCA_INIT_OFFLINE',errcode,cmessage)
+END IF
+
+ALLOCATE(chch_defs_offline(jpspec))
+ALLOCATE(ratb_defs_offline(jpbk))
+ALLOCATE(ratj_defs_offline(jppj))
+ALLOCATE(ratt_defs_offline(jptk))
+ALLOCATE(rath_defs_offline(jphk))
+ALLOCATE(depvel_defs_offline(jddept,jddepc,jpdd))
+ALLOCATE(henry_defs_offline(6,jpdw))
+
+! Set number of constant species in aqueous phase
+IF (nwet_constant > 0) THEN
+  ! allow for dissociation for constant species as well as tracers
+  IF (.NOT. ALLOCATED(ct_k298))  ALLOCATE(ct_k298(nwet_constant))
+  IF (.NOT. ALLOCATED(ct_dhr))   ALLOCATE(ct_dhr(nwet_constant))
+  IF (.NOT. ALLOCATED(ct_kd298)) ALLOCATE(ct_kd298(nwet_constant,jpeq))
+  IF (.NOT. ALLOCATED(ct_ddhr))  ALLOCATE(ct_ddhr(nwet_constant,jpeq))
+END IF
+
+! Offline chemistry
+chch_defs_offline = [chch_defs_a]
+ratb_defs_offline = [ratb_defs_a]
+ratt_defs_offline = [ratt_defs_a]
+rath_defs_offline = [rath_defs_a]
+depvel_defs_offline = depvel_defs_a
+henry_defs_offline  = henry_defs_a
+
+IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+RETURN
+END SUBROUTINE ukca_init_offline
+
+END MODULE ukca_chem_offline
