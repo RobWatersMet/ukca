@@ -4,6 +4,7 @@ module ukca_trop_hetchem_mod
   use ukca_mode_setup, only : cp_bc, cp_cl, cp_du, cp_nh4, cp_nn, cp_no3, cp_oc, cp_so, cp_su, nmodes
   use ukca_config_specification_mod, only : glomap_variables, ukca_config
   use yomhook, only : dr_hook, lhook
+  use nvtx
   use parkind1, only : jpim, jprb
   use ereport_mod, only : ereport
   use umPrintMgr, only : printstatus, prstatus_diag, ummessage, umprint
@@ -73,6 +74,7 @@ module ukca_trop_hetchem_mod
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
+    call nvtxStartRange(ModuleName // ':' // RoutineName)
     component => glomap_variables%component
     mode => glomap_variables%mode
     ncp => glomap_variables%ncp
@@ -337,6 +339,7 @@ module ukca_trop_hetchem_mod
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
     end if
+    call nvtxEndRange()
     return
 
   end subroutine ukca_trop_hetchem
@@ -371,6 +374,7 @@ module ukca_trop_hetchem_mod
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
+    call nvtxStartRange(ModuleName // ':' // RoutineName)
     !$acc kernels
     !$acc loop gang vector independent
     do idx = LBOUND(rh_p, dim=1), UBOUND(rh_p, dim=1), 1
@@ -499,6 +503,7 @@ module ukca_trop_hetchem_mod
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
     end if
+    call nvtxEndRange()
     return
 
   end function cal_n2o5
@@ -528,6 +533,7 @@ module ukca_trop_hetchem_mod
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
+    call nvtxStartRange(ModuleName // ':' // RoutineName)
     !$acc kernels
     !$acc loop gang vector independent
     do idx = LBOUND(rh_p, dim=1), UBOUND(rh_p, dim=1), 1
@@ -553,7 +559,7 @@ module ukca_trop_hetchem_mod
           if (rh_p(widx1_1) <= 35.0) then
             cal_ho2(widx1_1) = 0.01e0
           else
-            factt(widx1_1) = 5.66e-5 * EXP(1560.0 / temp(widx1_1)) / 0.11
+            factt(widx1_1) = (5.66e-5 * EXP(1560.0 / temp(widx1_1))) / 0.11
             facth(widx1_1) = (-2.86 * EXP(-0.078 * rh_p(widx1_1)) + 0.192) / 0.11
             cal_ho2(widx1_1) = 0.11 * factt(widx1_1) * facth(widx1_1)
           end if
@@ -625,6 +631,7 @@ module ukca_trop_hetchem_mod
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
     end if
+    call nvtxEndRange()
     return
 
   end function cal_ho2
@@ -650,12 +657,19 @@ module ukca_trop_hetchem_mod
     CHARACTER(LEN = *), PARAMETER :: RoutineName = 'CAL_LOSS1K'
     integer :: widx1
     integer :: idx
+    integer :: idx_1
 
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
+    call nvtxStartRange(ModuleName // ':' // RoutineName)
+    !$acc kernels
     mw_s = molec_wt_s / 1.0e3
-    rho_a(:) = aird(:) * m_air * 1.0e6 / avogadro
+    !$acc loop gang vector independent
+    do idx = LBOUND(rho_a, dim=1), UBOUND(rho_a, dim=1), 1
+      rho_a(idx) = aird(idx) * m_air * 1.0e6 / avogadro
+    enddo
+    !$acc end kernels
     if (printstatus >= prstatus_diag) then
       ! PSyclone CodeBlock (unsupported code) reason:
       !  - Unsupported statement: Write_Stmt
@@ -664,8 +678,8 @@ module ukca_trop_hetchem_mod
     end if
     !$acc kernels
     !$acc loop gang vector independent
-    do idx = LBOUND(dfkg, dim=1), UBOUND(dfkg, dim=1), 1
-      dfkg(idx) = 0.0
+    do idx_1 = LBOUND(dfkg, dim=1), UBOUND(dfkg, dim=1), 1
+      dfkg(idx_1) = 0.0
     enddo
     !$acc end kernels
     if (ukca_config%l_ukca_classic_hetchem) then
@@ -692,6 +706,7 @@ module ukca_trop_hetchem_mod
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
     end if
+    call nvtxEndRange()
     return
 
   end function cal_loss1k

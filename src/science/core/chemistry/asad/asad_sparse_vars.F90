@@ -223,7 +223,7 @@ module asad_sparse_vars
       permute(i,reorder(i)) = 1
     enddo
     !$acc end kernels
-    nonzero_map_unordered = MATMUL(MATMUL(permute, nonzero_map), TRANSPOSE(permute))
+    nonzero_map_unordered(:,:) = MATMUL(MATMUL(permute, nonzero_map), TRANSPOSE(permute))
     if (ALLOCATED(permute)) then
       DEALLOCATE(permute)
     end if
@@ -447,6 +447,7 @@ module asad_sparse_vars
     integer :: idx_6
     integer :: idx_7
     integer :: idx_8
+    integer :: idx_9
 
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
@@ -493,7 +494,10 @@ module asad_sparse_vars
       enddo
       !$acc loop seq
       do i = nfracterms(p), 1, -1
-        spfj(:,p) = spfj(:,p) + ffrac(p,i) * prk(:,fracterms(p,i))
+        !$acc loop gang vector independent
+        do idx_5 = LBOUND(spfj, dim=1), UBOUND(spfj, dim=1), 1
+          spfj(idx_5,p) = spfj(idx_5,p) + ffrac(p,i) * prk(idx_5 + (LBOUND(prk, dim=1) - LBOUND(spfj, dim=1)),fracterms(p,i))
+        enddo
       enddo
     enddo
     !$acc loop seq
@@ -511,8 +515,8 @@ module asad_sparse_vars
           if (lj(jn)) then
             p = nonzero_map(ij(jn),ntro3)
             !$acc loop gang vector independent
-            do idx_5 = LBOUND(spfj, dim=1), UBOUND(spfj, dim=1), 1
-              spfj(idx_5,p) = spfj(idx_5,p) - prk(idx_5 + (LBOUND(prk, dim=1) - LBOUND(spfj, dim=1)),irj) * deriv(idx_5 + (LBOUND(deriv, dim=1) - LBOUND(spfj, dim=1)),jc,1)
+            do idx_6 = LBOUND(spfj, dim=1), UBOUND(spfj, dim=1), 1
+              spfj(idx_6,p) = spfj(idx_6,p) - prk(idx_6 + (LBOUND(prk, dim=1) - LBOUND(spfj, dim=1)),irj) * deriv(idx_6 + (LBOUND(deriv, dim=1) - LBOUND(spfj, dim=1)),jc,1)
             enddo
           end if
         enddo
@@ -521,8 +525,8 @@ module asad_sparse_vars
           if (lj(jn)) then
             p = nonzero_map(ij(jn),ntro3)
             !$acc loop gang vector independent
-            do idx_6 = LBOUND(spfj, dim=1), UBOUND(spfj, dim=1), 1
-              spfj(idx_6,p) = spfj(idx_6,p) + prk(idx_6 + (LBOUND(prk, dim=1) - LBOUND(spfj, dim=1)),irj) * deriv(idx_6 + (LBOUND(deriv, dim=1) - LBOUND(spfj, dim=1)),jc,1)
+            do idx_7 = LBOUND(spfj, dim=1), UBOUND(spfj, dim=1), 1
+              spfj(idx_7,p) = spfj(idx_7,p) + prk(idx_7 + (LBOUND(prk, dim=1) - LBOUND(spfj, dim=1)),irj) * deriv(idx_7 + (LBOUND(deriv, dim=1) - LBOUND(spfj, dim=1)),jc,1)
             enddo
           end if
         enddo
@@ -538,7 +542,7 @@ module asad_sparse_vars
           !$acc kernels
           !$acc loop gang vector independent
           do jl = 1, n_points, 1
-            if (ityped(:) == jpfm .OR. ityped(:) == jpif .AND. linfam(jl,itrd)) then
+            if (ityped(:) == jpfm(:) .OR. ityped(:) == jpif(:) .AND. linfam(jl,itrd)) then
               p = nonzero_map(ifamd,ifamd)
               spfj(jl,p) = spfj(jl,p) - nodd(js) * (dpd(jl,js) + dpw(jl,js)) * y(jl,js)
             end if
@@ -549,8 +553,8 @@ module asad_sparse_vars
           !$acc kernels
           p = nonzero_map(itrd,itrd)
           !$acc loop gang vector independent
-          do idx_7 = LBOUND(spfj, dim=1), UBOUND(spfj, dim=1), 1
-            spfj(idx_7,p) = spfj(idx_7,p) - (dpd(idx_7 + (LBOUND(dpd, dim=1) - LBOUND(spfj, dim=1)),js) + dpw(idx_7 + (LBOUND(dpw, dim=1) - LBOUND(spfj, dim=1)),js)) * y(idx_7 + (LBOUND(y, dim=1) - LBOUND(spfj, dim=1)),js)
+          do idx_8 = LBOUND(spfj, dim=1), UBOUND(spfj, dim=1), 1
+            spfj(idx_8,p) = spfj(idx_8,p) - (dpd(idx_8 + (LBOUND(dpd, dim=1) - LBOUND(spfj, dim=1)),js) + dpw(idx_8 + (LBOUND(dpw, dim=1) - LBOUND(spfj, dim=1)),js)) * y(idx_8 + (LBOUND(y, dim=1) - LBOUND(spfj, dim=1)),js)
           enddo
           !$acc end kernels
         end if
@@ -559,8 +563,8 @@ module asad_sparse_vars
     !$acc kernels
     !$acc loop gang vector independent collapse(2)
     do p = 1, total, 1
-      do idx_8 = LBOUND(spfj, dim=1), UBOUND(spfj, dim=1), 1
-        spfj(idx_8,p) = spfj(idx_8,p) / f(idx_8 + (LBOUND(f, dim=1) - LBOUND(spfj, dim=1)),base_tracer(p))
+      do idx_9 = LBOUND(spfj, dim=1), UBOUND(spfj, dim=1), 1
+        spfj(idx_9,p) = spfj(idx_9,p) / f(idx_9 + (LBOUND(f, dim=1) - LBOUND(spfj, dim=1)),base_tracer(p))
       enddo
     enddo
     !$acc end kernels

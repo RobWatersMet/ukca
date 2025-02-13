@@ -42,16 +42,16 @@ module asad_inrats_mod
     h_in_ss = .false.
     !$acc loop seq
     do k = 1, jpspec, 1
-      if (chch_defs(k)%speci == 'O(1D)     ' .AND. chch_defs(k)%ctype(1:2) == jpna) then
+      if (chch_defs(k)%speci == 'O(1D)     ' .AND. chch_defs(k)%ctype(1:2) == jpna(:)) then
         o1d_in_ss = .true.
       end if
-      if (chch_defs(k)%speci == 'O(3P)     ' .AND. chch_defs(k)%ctype(1:2) == jpna) then
+      if (chch_defs(k)%speci == 'O(3P)     ' .AND. chch_defs(k)%ctype(1:2) == jpna(:)) then
         o3p_in_ss = .true.
       end if
-      if (chch_defs(k)%speci == 'N         ' .AND. chch_defs(k)%ctype(1:2) == jpna) then
+      if (chch_defs(k)%speci == 'N         ' .AND. chch_defs(k)%ctype(1:2) == jpna(:)) then
         n_in_ss = .true.
       end if
-      if (chch_defs(k)%speci == 'H         ' .AND. chch_defs(k)%ctype(1:2) == jpna) then
+      if (chch_defs(k)%speci == 'H         ' .AND. chch_defs(k)%ctype(1:2) == jpna(:)) then
         h_in_ss = .true.
       end if
     enddo
@@ -80,8 +80,6 @@ module asad_inrats_mod
       call umprint(ummessage, src=routinename)
       call ereport(routinename, errcode, cmessage)
     end if
-    !$acc kernels
-    !$acc loop gang vector independent
     do k = 1, jpspec, 1
       speci(k) = chch_defs(k)%speci
       nodd(k) = chch_defs(k)%nodd
@@ -96,12 +94,11 @@ module asad_inrats_mod
     iro2 = 0
     nro2 = 0
     ispf = 0
-    !$acc end kernels
     do js = 1, jpspec, 1
-      if (ctype(js) /= jpfm .AND. ctype(js) /= jpif) then
+      if (ctype(js) /= jpfm(:) .AND. ctype(js) /= jpif(:)) then
         family(js) = '          '
       end if
-      if (ctype(js) == jpsp) then
+      if (ctype(js) == jpsp(:)) then
         iadv = iadv + 1
         ntrf = ntrf + 1
         ispf = ispf + 1
@@ -129,7 +126,7 @@ module asad_inrats_mod
         nltrf(ntrf) = ispf
         specf(ntrf) = speci(js)
       else
-        if (ctype(js) == jpoo) then
+        if (ctype(js) == jpoo(:)) then
           iro2 = iro2 + 1
           nro2 = nro2 + 1
           spro2(iro2) = speci(js)
@@ -168,16 +165,16 @@ module asad_inrats_mod
             advt(iadv) = speci(js)
           end if
         else
-          if (ctype(js) == jpna) then
+          if (ctype(js) == jpna(:)) then
             inadv = inadv + 1
             nnaf = nnaf + 1
             nadvt(inadv) = speci(js)
           else
-            if (ctype(js) == jpfm .OR. ctype(js) == jpif) then
+            if (ctype(js) == jpfm(:) .OR. ctype(js) == jpif(:)) then
               cmessage(:) = ' Family chemistry not available in this version'
               errcode = js
               call ereport('ASAD_INRATS', errcode, cmessage)
-              if (ctype(js) == jpif) then
+              if (ctype(js) == jpif(:)) then
                 iadv = iadv + 1
                 ntr3 = ntr3 + 1
                 if (iadv > jpctr) then
@@ -364,7 +361,7 @@ module asad_inrats_mod
     !$acc loop gang vector independent collapse(2)
     do jcspf = 1, ntrf, 1
       do js = 1, jpspec, 1
-        if (family(js) == specf(jcspf) .AND. ctype(js) /= jpif) then
+        if (family(js) == specf(jcspf) .AND. ctype(js) /= jpif(:)) then
           majors(jcspf) = js
         end if
         if (speci(js) == specf(jcspf)) then
@@ -547,9 +544,7 @@ module asad_inrats_mod
       cmessage(:) = 'size of ratb_defs is inconsistent with jpbk'
       call ereport('ASAD_INRATS', errcode, cmessage)
     end if
-    !$acc kernels
     icount = 1
-    !$acc loop seq
     do k = 1, jpbk, 1
       spb(k,1) = ratb_defs(k)%react1
       spb(k,2) = ratb_defs(k)%react2
@@ -575,6 +570,7 @@ module asad_inrats_mod
         icount = icount + 4
       end if
     enddo
+    !$acc kernels
     !$acc loop gang vector independent collapse(3)
     do jb = 1, jpbk, 1
       do js = 1, jpspec, 1
@@ -585,6 +581,8 @@ module asad_inrats_mod
         enddo
       enddo
     enddo
+    !$acc end kernels
+    !$acc kernels
     !$acc loop gang vector independent
     do jf = 1, jpfrpb, 1
       frpx(jf) = frpb(jf)
@@ -595,9 +593,7 @@ module asad_inrats_mod
       cmessage(:) = 'size of ratt_defs is inconsistent with jptk'
       call ereport('ASAD_INRATS', errcode, cmessage)
     end if
-    !$acc kernels
     icount = 1
-    !$acc loop seq
     do k = 1, jptk, 1
       spt(k,1) = ratt_defs(k)%react1
       spt(k,2) = ratt_defs(k)%react2
@@ -619,6 +615,7 @@ module asad_inrats_mod
         icount = icount + 2
       end if
     enddo
+    !$acc kernels
     !$acc loop gang vector independent collapse(3)
     do jt = 1, jptk, 1
       do js = 1, jpspec, 1
@@ -629,6 +626,8 @@ module asad_inrats_mod
         enddo
       enddo
     enddo
+    !$acc end kernels
+    !$acc kernels
     !$acc loop seq
     do jf = 1, jpfrpt, 1
       ind = jf + jpfrpb
@@ -640,9 +639,7 @@ module asad_inrats_mod
       cmessage(:) = 'size of ratj_defs is not equal to jppj'
       call ereport('ASAD_INRATS', errcode, cmessage)
     end if
-    !$acc kernels
     icount = 1
-    !$acc loop seq
     do k = 1, jppj, 1
       spj(k,1) = ratj_defs(k)%react1
       spj(k,2) = ratj_defs(k)%react2
@@ -665,6 +662,7 @@ module asad_inrats_mod
         icount = icount + 4
       end if
     enddo
+    !$acc kernels
     !$acc loop gang vector independent collapse(3)
     do jj = 1, jppj, 1
       do js = 1, jpspec, 1
@@ -675,6 +673,8 @@ module asad_inrats_mod
         enddo
       enddo
     enddo
+    !$acc end kernels
+    !$acc kernels
     !$acc loop seq
     do jf = 1, jpfrpj, 1
       ind = jf + jpfrpb + jpfrpt
@@ -687,9 +687,7 @@ module asad_inrats_mod
         cmessage(:) = 'size of rath_defs is not equal to jphk'
         call ereport('ASAD_INRATS', errcode, cmessage)
       end if
-      !$acc kernels
       icount = 1
-      !$acc loop seq
       do k = 1, jphk, 1
         sph(k,1) = rath_defs(k)%react1
         sph(k,2) = rath_defs(k)%react2
@@ -712,6 +710,7 @@ module asad_inrats_mod
           icount = icount + 4
         end if
       enddo
+      !$acc kernels
       !$acc loop gang vector independent collapse(3)
       do jh = 1, jphk, 1
         do js = 1, jpspec, 1
@@ -722,6 +721,8 @@ module asad_inrats_mod
           enddo
         enddo
       enddo
+      !$acc end kernels
+      !$acc kernels
       !$acc loop seq
       do jf = 1, jpfrph, 1
         ind = jf + jpfrpb + jpfrpt + jpfrpj

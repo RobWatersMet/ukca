@@ -127,16 +127,16 @@ module asad_inijac_mod
       end if
       if (ifam(1) /= 0) then
         iss = -nodd(ir1)
-        if (ifam(2) == ifam(1) .AND. itype(2) == jpfm) then
+        if (ifam(2) == ifam(1) .AND. itype(2) == jpfm(:)) then
           iss = iss - nodd(ir2)
         end if
-        if (ifam(3) == ifam(1) .AND. itype(3) == jpfm) then
+        if (ifam(3) == ifam(1) .AND. itype(3) == jpfm(:)) then
           iss = iss + nodd(ip1)
         end if
-        if (ifam(4) == ifam(1) .AND. itype(4) == jpfm) then
+        if (ifam(4) == ifam(1) .AND. itype(4) == jpfm(:)) then
           iss = iss + nodd(ip2)
         end if
-        if (ifam(5) == ifam(1) .AND. itype(5) == jpfm) then
+        if (ifam(5) == ifam(1) .AND. itype(5) == jpfm(:)) then
           iss = iss + nodd(ip3)
         end if
         if (iss < 0) then
@@ -173,16 +173,16 @@ module asad_inijac_mod
       end if
       if (ifam(2) /= 0) then
         iss = -nodd(ir2)
-        if (ifam(1) == ifam(2) .AND. itype(2) == jpfm) then
+        if (ifam(1) == ifam(2) .AND. itype(2) == jpfm(:)) then
           iss = iss - nodd(ir1)
         end if
-        if (ifam(3) == ifam(2) .AND. itype(3) == jpfm) then
+        if (ifam(3) == ifam(2) .AND. itype(3) == jpfm(:)) then
           iss = iss + nodd(ip1)
         end if
-        if (ifam(4) == ifam(2) .AND. itype(4) == jpfm) then
+        if (ifam(4) == ifam(2) .AND. itype(4) == jpfm(:)) then
           iss = iss + nodd(ip2)
         end if
-        if (ifam(5) == ifam(2) .AND. itype(5) == jpfm) then
+        if (ifam(5) == ifam(2) .AND. itype(5) == jpfm(:)) then
           iss = iss + nodd(ip3)
         end if
         if (iss < 0) then
@@ -324,7 +324,7 @@ module asad_inijac_mod
       !$acc loop seq
       do j = 1, jpmsp, 1
         njcoss(jr,j) = 0
-        if (itype(j) == jpna) then
+        if (itype(j) == jpna(:)) then
           if (speci(nspi(jr,j)) == 'O(1D)') then
             if (j <= 2) then
               ifs(1) = ifs(1) + 1

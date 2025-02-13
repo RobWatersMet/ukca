@@ -29,6 +29,7 @@ module ukca_transform_halogen_mod
   subroutine ukca_transform_halogen(rows, row_length, model_levels, tr_ukca, forward, tracers)
     use parkind1, only : jpim, jprb
     use yomhook, only : dr_hook, lhook
+    use nvtx
     integer(kind=jpim), parameter :: zhook_in = 0
     integer(kind=jpim), parameter :: zhook_out = 1
     integer, intent(in) :: rows
@@ -44,6 +45,7 @@ module ukca_transform_halogen_mod
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
+    call nvtxStartRange(ModuleName // ':' // RoutineName)
     if (first) then
       call ukca_setup_lumping()
       first = .false.
@@ -60,12 +62,14 @@ module ukca_transform_halogen_mod
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
     end if
+    call nvtxEndRange()
     return
 
   end subroutine ukca_transform_halogen
   subroutine transform(row_length, rows, model_levels, tr_ukca, n_tracers, iposition, c_tracers, s_tracers, major, c_major, forward, tracers)
     use parkind1, only : jpim, jprb
     use yomhook, only : dr_hook, lhook
+    use nvtx
     real, parameter :: rafeps = 1e-150
     integer(kind=jpim), parameter :: zhook_in = 0
     integer(kind=jpim), parameter :: zhook_out = 1
@@ -145,6 +149,7 @@ module ukca_transform_halogen_mod
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
+    call nvtxStartRange(ModuleName // ':' // RoutineName)
     ALLOCATE(total_all(1:row_length,1:rows,1:model_levels))
     ALLOCATE(total_source(1:row_length,1:rows,1:model_levels))
     ALLOCATE(total_nochange(1:row_length,1:rows,1:model_levels))
@@ -356,6 +361,7 @@ module ukca_transform_halogen_mod
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
     end if
+    call nvtxEndRange()
     return
 
   end subroutine transform
@@ -364,6 +370,7 @@ module ukca_transform_halogen_mod
     use umPrintMgr, only : printstatus, prstatus_oper, ummessage, umprint
     use parkind1, only : jpim, jprb
     use yomhook, only : dr_hook, lhook
+    use nvtx
     integer(kind=jpim), parameter :: zhook_in = 0
     integer(kind=jpim), parameter :: zhook_out = 1
     integer :: i
@@ -373,6 +380,7 @@ module ukca_transform_halogen_mod
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
+    call nvtxStartRange(ModuleName // ':' // RoutineName)
     do i = 1, jpctr, 1
       if (advt(i) == 'HCl       ') then
         n_hcl = i
@@ -580,7 +588,7 @@ module ukca_transform_halogen_mod
                                                                                 c_n_tracers(n_n_tracers) = c_mpan
                                                                                 n_tracers(n_n_tracers) = i
                                                                               else
-                                                                                ummessage = 'Species: ' // advt(i) // ' not included in CASE'
+                                                                                ummessage(:) = 'Species: ' // advt(i) // ' not included in CASE'
                                                                                 if (printstatus > prstatus_oper) then
                                                                                   call umprint(ummessage, src=ModuleName // ':' // RoutineName)
                                                                                 end if
@@ -625,6 +633,7 @@ module ukca_transform_halogen_mod
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
     end if
+    call nvtxEndRange()
 
   end subroutine ukca_setup_lumping
 

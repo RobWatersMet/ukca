@@ -11,6 +11,7 @@ module ukca_stratf_mod
     use ukca_constants, only : c_hno3, c_n
     use parkind1, only : jpim, jprb
     use yomhook, only : dr_hook, lhook
+    use nvtx
     use ereport_mod, only : ereport
     use umPrintMgr, only : printstatus, prstatus_diag, ummessage, umprint
     use errormessagelength_mod, only : errormessagelength
@@ -41,6 +42,9 @@ module ukca_stratf_mod
     integer :: idx_2
     integer :: idx_3
     integer :: idx_4
+    integer :: idx_5
+    integer :: idx_6
+    integer :: idx_7
     integer :: widx3_1
     integer :: widx2_1
     integer :: widx1_1
@@ -48,6 +52,7 @@ module ukca_stratf_mod
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
+    call nvtxStartRange(ModuleName // ':' // RoutineName)
     if (ukca_config%nlev_above_trop_o3_env > 0) then
       no_above_trop = ukca_config%nlev_above_trop_o3_env
     else
@@ -81,23 +86,31 @@ module ukca_stratf_mod
       if (lhook) then
         call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
       end if
+      call nvtxEndRange()
       return
     end if
     !$acc kernels
-    hno33d(:,:,:) = o33d(:,:,:) * o3_hno3_ratio * c_hno3 / c_n
     !$acc loop gang vector independent collapse(3)
-    do idx = LBOUND(mask, dim=3), UBOUND(mask, dim=3), 1
-      do idx_1 = LBOUND(mask, dim=2), UBOUND(mask, dim=2), 1
-        do idx_2 = LBOUND(mask, dim=1), UBOUND(mask, dim=1), 1
-          mask(idx_2,idx_1,idx) = .false.
+    do idx = LBOUND(hno33d, dim=3), UBOUND(hno33d, dim=3), 1
+      do idx_1 = LBOUND(hno33d, dim=2), UBOUND(hno33d, dim=2), 1
+        do idx_2 = LBOUND(hno33d, dim=1), UBOUND(hno33d, dim=1), 1
+          hno33d(idx_2,idx_1,idx) = o33d(idx_2,idx_1,idx) * o3_hno3_ratio * c_hno3 / c_n
+        enddo
+      enddo
+    enddo
+    !$acc loop gang vector independent collapse(3)
+    do idx_3 = LBOUND(mask, dim=3), UBOUND(mask, dim=3), 1
+      do idx_4 = LBOUND(mask, dim=2), UBOUND(mask, dim=2), 1
+        do idx_5 = LBOUND(mask, dim=1), UBOUND(mask, dim=1), 1
+          mask(idx_5,idx_4,idx_3) = .false.
         enddo
       enddo
     enddo
     !$acc loop gang vector independent collapse(3)
     do l = model_levels, 1, -1
-      do idx_3 = LBOUND(mask, dim=2), UBOUND(mask, dim=2), 1
-        do idx_4 = LBOUND(mask, dim=1), UBOUND(mask, dim=1), 1
-          mask(idx_4,idx_3,l) = tropopause_level(idx_4 + (LBOUND(tropopause_level, dim=1) - LBOUND(mask, dim=1)),idx_3 + (LBOUND(tropopause_level, dim=2) - LBOUND(mask, dim=2))) + no_above_trop <= l
+      do idx_6 = LBOUND(mask, dim=2), UBOUND(mask, dim=2), 1
+        do idx_7 = LBOUND(mask, dim=1), UBOUND(mask, dim=1), 1
+          mask(idx_7,idx_6,l) = tropopause_level(idx_7 + (LBOUND(tropopause_level, dim=1) - LBOUND(mask, dim=1)),idx_6 + (LBOUND(tropopause_level, dim=2) - LBOUND(mask, dim=2))) + no_above_trop <= l
         enddo
       enddo
     enddo
@@ -118,6 +131,7 @@ module ukca_stratf_mod
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
     end if
+    call nvtxEndRange()
     return
 
   end subroutine ukca_stratf

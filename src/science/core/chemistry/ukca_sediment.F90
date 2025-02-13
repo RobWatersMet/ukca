@@ -6,6 +6,7 @@ module ukca_sediment_mod
   contains
   subroutine ukca_sediment(rows, row_length, model_levels, shno3, qcf, r_theta_levels, mass, secs_per_step, l_stratosphere)
     use yomhook, only : dr_hook, lhook
+    use nvtx
     use parkind1, only : jpim, jprb
     real, parameter :: fv1 = 0.000463
     real, parameter :: fv2 = 0.01736
@@ -58,6 +59,7 @@ module ukca_sediment_mod
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
+    call nvtxStartRange(ModuleName // ':' // RoutineName)
     !$acc kernels
     !$acc loop gang vector independent collapse(3)
     do k = 1, model_levels, 1
@@ -155,6 +157,7 @@ module ukca_sediment_mod
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
     end if
+    call nvtxEndRange()
     return
 
   end subroutine ukca_sediment

@@ -200,7 +200,7 @@ module asad_impact_mod
           end do
           iprod = nltrim(jt1,1)
           isp = majors(iprod)
-          if (ctype(isp) == jpif) then
+          if (ctype(isp) == jpif(:)) then
             !$acc kernels
             !$acc loop seq
             do j = 1, inl, 1

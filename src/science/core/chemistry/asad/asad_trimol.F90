@@ -45,6 +45,8 @@ module asad_trimol_mod
     integer :: idx
     integer :: idx_1
     integer :: idx_2
+    integer :: idx_3
+    integer :: idx_4
 
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
@@ -104,8 +106,16 @@ module asad_trimol_mod
       end if
       call powr_v(n_points, t300, at(j,3), t_power3)
       call powr_v(n_points, t300, at(j,6), t_power6)
-      inv_t_power4(:) = -at(j,4) * inv_t(:)
-      inv_t_power7(:) = -at(j,7) * inv_t(:)
+      !$acc kernels
+      !$acc loop gang vector independent
+      do idx_1 = 1, n_points, 1
+        inv_t_power4(idx_1) = -at(j,4) * inv_t(idx_1)
+      enddo
+      !$acc loop gang vector independent
+      do idx_2 = 1, n_points, 1
+        inv_t_power7(idx_2) = -at(j,7) * inv_t(idx_2)
+      enddo
+      !$acc end kernels
       call exp_v(n_points, inv_t_power4, inv_t_power4_out)
       call exp_v(n_points, inv_t_power7, inv_t_power7_out)
       !$acc kernels
@@ -146,8 +156,8 @@ module asad_trimol_mod
     if (ih2o /= 0 .AND. iho2 /= 0) then
       !$acc kernels
       !$acc loop gang vector independent
-      do idx_1 = 1, n_points, 1
-        tmp(idx_1) = 2200.0 * inv_t(idx_1)
+      do idx_3 = 1, n_points, 1
+        tmp(idx_3) = 2200.0 * inv_t(idx_3)
       enddo
       !$acc end kernels
       call exp_v(n_points, tmp, tmp_out)
@@ -161,8 +171,8 @@ module asad_trimol_mod
       if (ih2o == 0 .AND. iho2 /= 0) then
         !$acc kernels
         !$acc loop gang vector independent
-        do idx_2 = 1, n_points, 1
-          tmp(idx_2) = 2200.0 * inv_t(idx_2)
+        do idx_4 = 1, n_points, 1
+          tmp(idx_4) = 2200.0 * inv_t(idx_4)
         enddo
         !$acc end kernels
         call exp_v(n_points, tmp, tmp_out)

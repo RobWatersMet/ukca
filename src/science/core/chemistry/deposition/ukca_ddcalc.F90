@@ -1,334 +1,250 @@
-! *****************************COPYRIGHT*******************************
-! (C) Crown copyright Met Office. All rights reserved.
-! For further details please refer to the file COPYRIGHT.txt
-! which you should have received as part of this distribution.
-! *****************************COPYRIGHT*******************************
-!
-! Description:
-!  Combine surface resistance rc with aerodynamic resistance ra and
-!  quasi-laminar resistance rb to get overall dry deposition velocity.
-!
-!  Part of the UKCA model, a community model supported by
-!  The Met Office and NCAS, with components provided initially
-!  by The University of Cambridge, University of Leeds and
-!  The Met. Office.  See www.ukca.ac.uk
-!
-!   Called from UKCA_DDEPCTL.
-!
-! Code Owner: Please refer to the UM file CodeOwners.txt
-! This file belongs in section: UKCA
-!
-! Code description:
-!   Language: FORTRAN 90
-!   This code is written to UMDP3 v6 programming standards.
-!
-!------------------------------------------------------------------
-!
-MODULE ukca_ddcalc_mod
+module ukca_ddcalc_mod
+  implicit none
+  character(len = *), parameter, private :: ModuleName = 'UKCA_DDCALC_MOD'
+  public
 
-IMPLICIT NONE
+  contains
+  subroutine ukca_ddcalc(row_length, rows, bl_levels, ntype, npft, timestep, dzl, zbl, gsf, ra, rb, rc, nlev_with_ddep, zdryrt, len_stashwork, stashwork)
+    use asad_mod, only : jpdd, ndepd, nldepd, speci
+    use parkind1, only : jpim, jprb
+    use ukca_config_specification_mod, only : ukca_config
+    use ukca_um_legacy_mod, only : copydiag, len_stlist, num_stash_pseudo, pdims, set_pseudo_list, sf, si, si_last, stash_pseudo_levels, stindex, stlist
+    use yomhook, only : dr_hook, lhook
+    use nvtx
+    integer(kind=jpim), parameter :: zhook_in = 0
+    integer(kind=jpim), parameter :: zhook_out = 1
+    integer, intent(in) :: row_length
+    integer, intent(in) :: rows
+    integer, intent(in) :: bl_levels
+    integer, intent(in) :: ntype
+    integer, intent(in) :: npft
+    real, intent(in) :: timestep
+    real, dimension(row_length,rows), intent(in) :: zbl
+    real, dimension(row_length,rows,bl_levels), intent(in) :: dzl
+    real, dimension(row_length,rows,ntype), intent(in) :: gsf
+    real, dimension(row_length,rows,ntype), intent(in) :: ra
+    real, dimension(row_length,rows,jpdd), intent(in) :: rb
+    real, dimension(row_length,rows,ntype,jpdd), intent(in) :: rc
+    integer, intent(in) :: len_stashwork
+    real, dimension(len_stashwork), intent(inout) :: stashwork
+    integer, dimension(row_length,rows), intent(out) :: nlev_with_ddep
+    real, dimension(row_length,rows,jpdd), intent(out) :: zdryrt
+    integer :: i
+    integer :: j
+    integer :: loop
+    integer :: n
+    integer :: pslevel
+    integer :: pslevel_out
+    integer :: si_start
+    integer :: si_stop
+    logical, dimension(ntype) :: plltile
+    real :: dd
+    real, dimension(row_length,rows) :: layer_depth
+    real, dimension(row_length,rows,ntype,jpdd) :: vd
+    real, save :: r_nodep = 1.0e40
+    real(kind=jprb) :: zhook_handle
+    CHARACTER(LEN = *), PARAMETER :: RoutineName = 'UKCA_DDCALC'
+    integer :: idx
+    integer :: idx_1
+    integer :: idx_2
+    integer :: idx_3
 
-CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName = 'UKCA_DDCALC_MOD'
+    if (lhook) then
+      call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
+    end if
+    call nvtxStartRange(ModuleName // ':' // RoutineName)
+    !$acc kernels
+    !$acc loop gang vector independent collapse(3)
+    do loop = 1, jpdd, 1
+      do j = 1, rows, 1
+        do i = 1, row_length, 1
+          zdryrt(i,j,loop) = 0.0
+        enddo
+      enddo
+    enddo
+    !$acc loop gang vector independent collapse(4)
+    do loop = 1, jpdd, 1
+      do n = 1, ntype, 1
+        do j = 1, rows, 1
+          do i = 1, row_length, 1
+            vd(i,j,n,loop) = 0.0
+          enddo
+        enddo
+      enddo
+    enddo
+    !$acc end kernels
+    if (ukca_config%l_ukca_ddep_lev1) then
+      !$acc kernels
+      !$acc loop gang vector independent collapse(2)
+      do idx = LBOUND(nlev_with_ddep, dim=2), UBOUND(nlev_with_ddep, dim=2), 1
+        do idx_1 = LBOUND(nlev_with_ddep, dim=1), UBOUND(nlev_with_ddep, dim=1), 1
+          nlev_with_ddep(idx_1,idx) = 1
+        enddo
+      enddo
+      !$acc loop gang vector independent collapse(2)
+      do idx_2 = LBOUND(layer_depth, dim=2), UBOUND(layer_depth, dim=2), 1
+        do idx_3 = LBOUND(layer_depth, dim=1), UBOUND(layer_depth, dim=1), 1
+          layer_depth(idx_3,idx_2) = dzl(idx_3,idx_2,1)
+        enddo
+      enddo
+      !$acc end kernels
+    else
+      !$acc kernels
+      !$acc loop gang vector independent collapse(2)
+      do j = 1, rows, 1
+        do i = 1, row_length, 1
+          layer_depth(i,j) = dzl(i,j,1)
+          nlev_with_ddep(i,j) = 1
+        enddo
+      enddo
+      !$acc loop seq
+      do loop = 2, bl_levels, 1
+        !$acc loop gang vector independent collapse(2)
+        do j = 1, rows, 1
+          do i = 1, row_length, 1
+            dd = layer_depth(i,j) + dzl(i,j,loop)
+            if (dd < zbl(i,j)) then
+              layer_depth(i,j) = dd
+              nlev_with_ddep(i,j) = loop
+            end if
+          enddo
+        enddo
+      enddo
+      !$acc end kernels
+    end if
+    !$acc kernels
+    !$acc loop gang vector independent collapse(4)
+    do loop = 1, ndepd, 1
+      do n = 1, npft, 1
+        do j = 1, rows, 1
+          do i = 1, row_length, 1
+            if (rc(i,j,n,loop) < r_nodep .AND. gsf(i,j,n) > 0.0) then
+              vd(i,j,n,loop) = 1.0 / (ra(i,j,n) + 2.0 * rb(i,j,loop) + rc(i,j,n,loop))
+            end if
+          enddo
+        enddo
+      enddo
+    enddo
+    !$acc loop gang vector independent collapse(4)
+    do loop = 1, ndepd, 1
+      do n = npft + 1, ntype, 1
+        do j = 1, rows, 1
+          do i = 1, row_length, 1
+            if (rc(i,j,n,loop) < r_nodep .AND. gsf(i,j,n) > 0.0) then
+              vd(i,j,n,loop) = 1.0 / (ra(i,j,n) + rb(i,j,loop) + rc(i,j,n,loop))
+            end if
+          enddo
+        enddo
+      enddo
+    enddo
+    !$acc end kernels
+    if (ukca_config%l_ukca_scale_ppe) then
+      !$acc kernels
+      !$acc loop gang vector independent
+      do j = 1, ndepd, 1
+        if (speci(nldepd(j)) == 'SO2       ') then
+          vd(:,:,:,j) = vd(:,:,:,j) * ukca_config%dry_depvel_so2_scaling
+        end if
+      enddo
+      !$acc end kernels
+    end if
+    if (ukca_config%l_enable_diag_um) then
+      do loop = 1, ndepd, 1
+        if (speci(nldepd(loop)) == 'CH4       ') then
+          if (sf(432,50)) then
+            call set_pseudo_list(ntype, len_stlist, stlist(:,stindex(1,432,50,1)), plltile, stash_pseudo_levels, num_stash_pseudo)
+            pslevel_out = 0
+            do pslevel = 1, ntype, 1
+              if (plltile(pslevel)) then
+                pslevel_out = pslevel_out + 1
+                si_start = si(432,50,1) + (pslevel_out - 1) * pdims%i_end * pdims%j_end
+                si_stop = si(432,50,1) + pslevel_out * pdims%i_end * pdims%j_end - 1
+                call copydiag(stashwork(si_start:si_stop), vd(:,:,pslevel,loop), pdims%i_end, pdims%j_end)
+              end if
+            enddo
+          end if
+        else
+          if (speci(nldepd(loop)) == 'O3        ') then
+            if (sf(433,50)) then
+              call set_pseudo_list(ntype, len_stlist, stlist(:,stindex(1,433,50,1)), plltile, stash_pseudo_levels, num_stash_pseudo)
+              pslevel_out = 0
+              do pslevel = 1, ntype, 1
+                if (plltile(pslevel)) then
+                  pslevel_out = pslevel_out + 1
+                  si_start = si(433,50,1) + (pslevel_out - 1) * pdims%i_end * pdims%j_end
+                  si_stop = si(433,50,1) + pslevel_out * pdims%i_end * pdims%j_end - 1
+                  call copydiag(stashwork(si_start:si_stop), vd(:,:,pslevel,loop), pdims%i_end, pdims%j_end)
+                end if
+              enddo
+            end if
+          else
+            if (speci(nldepd(loop)) == 'HONO2     ') then
+              if (sf(434,50)) then
+                call set_pseudo_list(ntype, len_stlist, stlist(:,stindex(1,434,50,1)), plltile, stash_pseudo_levels, num_stash_pseudo)
+                pslevel_out = 0
+                do pslevel = 1, ntype, 1
+                  if (plltile(pslevel)) then
+                    pslevel_out = pslevel_out + 1
+                    si_start = si(434,50,1) + (pslevel_out - 1) * pdims%i_end * pdims%j_end
+                    si_stop = si(434,50,1) + pslevel_out * pdims%i_end * pdims%j_end - 1
+                    call copydiag(stashwork(si_start:si_stop), vd(:,:,pslevel,loop), pdims%i_end, pdims%j_end)
+                  end if
+                enddo
+              end if
+            end if
+          end if
+        end if
+      enddo
+    end if
+    !$acc kernels
+    !$acc loop gang vector independent collapse(4)
+    do loop = 1, ndepd, 1
+      do n = 1, ntype, 1
+        do j = 1, rows, 1
+          do i = 1, row_length, 1
+            if (vd(i,j,n,loop) > 0.0) then
+              zdryrt(i,j,loop) = zdryrt(i,j,loop) + gsf(i,j,n) * (1.0 - EXP(-vd(i,j,n,loop) * timestep / layer_depth(i,j)))
+            end if
+          enddo
+        enddo
+      enddo
+    enddo
+    !$acc loop gang vector independent collapse(3)
+    do loop = 1, ndepd, 1
+      do j = 1, rows, 1
+        do i = 1, row_length, 1
+          zdryrt(i,j,loop) = -LOG(1.0 - zdryrt(i,j,loop)) / timestep
+        enddo
+      enddo
+    enddo
+    !$acc end kernels
+    if (ukca_config%l_enable_diag_um) then
+      do loop = 1, ndepd, 1
+        if (speci(nldepd(loop)) == 'CH4       ') then
+          if (sf(435,50)) then
+            call copydiag(stashwork(si(435,50,1):si_last(435,50,1)), zdryrt(:,:,loop), row_length, rows)
+          end if
+        else
+          if (speci(nldepd(loop)) == 'O3        ') then
+            if (sf(436,50)) then
+              call copydiag(stashwork(si(436,50,1):si_last(436,50,1)), zdryrt(:,:,loop), row_length, rows)
+            end if
+          else
+            if (speci(nldepd(loop)) == 'HONO2     ') then
+              if (sf(437,50)) then
+                call copydiag(stashwork(si(437,50,1):si_last(437,50,1)), zdryrt(:,:,loop), row_length, rows)
+              end if
+            end if
+          end if
+        end if
+      enddo
+    end if
+    if (lhook) then
+      call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
+    end if
+    call nvtxEndRange()
+    return
 
-CONTAINS
+  end subroutine ukca_ddcalc
 
-SUBROUTINE ukca_ddcalc(row_length, rows, bl_levels, ntype,                     &
-                       npft, timestep, dzl, zbl, gsf, ra, rb, rc,              &
-                       nlev_with_ddep, zdryrt, len_stashwork, stashwork)
-
-
-USE asad_mod,                ONLY:                                             &
-    ndepd,                                                                     &
-    nldepd,                                                                    &
-    speci,                                                                     &
-    jpdd
-
-USE parkind1,                ONLY:                                             &
-    jprb,                                                                      &
-    jpim
-
-USE ukca_config_specification_mod, ONLY:                                       &
-    ukca_config
-
-USE ukca_um_legacy_mod,      ONLY:                                             &
-    len_stlist, stash_pseudo_levels, num_stash_pseudo, stindex, stlist,        &
-    si, si_last, sf, pdims, copydiag, set_pseudo_list
-
-USE yomhook,                 ONLY:                                             &
-    lhook,                                                                     &
-    dr_hook
-
-
-IMPLICIT NONE
-
-INTEGER, INTENT(IN) :: row_length
-INTEGER, INTENT(IN) :: rows
-INTEGER, INTENT(IN) :: bl_levels
-INTEGER, INTENT(IN) :: ntype
-INTEGER, INTENT(IN) :: npft
-
-REAL, INTENT(IN) :: timestep
-REAL, INTENT(IN) :: zbl(row_length,rows)             ! boundary layer depth
-REAL, INTENT(IN) :: dzl(row_length, rows, bl_levels) ! thickness of BL levels
-REAL, INTENT(IN) :: gsf(row_length,rows,ntype)       ! surface heat flux
-REAL, INTENT(IN) :: ra(row_length,rows,ntype)        ! aerodynamic resistance
-REAL, INTENT(IN) :: rb(row_length,rows,jpdd)         ! quasi-laminar resistance
-REAL, INTENT(IN) :: rc(row_length,rows,ntype,jpdd)   ! surface resistance
-
-! Diagnostics array
-INTEGER, INTENT(IN)  :: len_stashwork
-REAL, INTENT(IN OUT) :: stashwork (len_stashwork)
-
-! no of levels over which dry deposition acts
-INTEGER, INTENT(OUT) :: nlev_with_ddep(row_length,rows)
-REAL, INTENT(OUT)    :: zdryrt(row_length,rows,jpdd) ! dry deposition rate
-
-INTEGER :: i, j, loop, n
-INTEGER :: pslevel   !  loop counter for pseudolevels
-INTEGER :: pslevel_out   !  index for pseudolevels sent to STASH
-INTEGER :: si_start, si_stop   !Stashwork bounds for calling copydiag
-
-LOGICAL :: plltile(ntype)   ! pseudolevel list for surface types
-
-REAL :: dd
-REAL :: layer_depth(row_length,rows)
-REAL :: vd(row_length,rows,ntype,jpdd)   ! deposition velocity
-
-REAL :: r_nodep = 1.0e40
-
-INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
-INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
-REAL(KIND=jprb)               :: zhook_handle
-
-CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_DDCALC'
-
-
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-
-
-!     Set all arrays to zero
-DO loop = 1, jpdd
-  DO j = 1, rows
-    DO i = 1, row_length
-      zdryrt(i,j,loop) = 0.0
-    END DO
-  END DO
-END DO
-
-DO loop = 1, jpdd
-  DO n = 1, ntype
-    DO j = 1, rows
-      DO i = 1, row_length
-        vd(i,j,n,loop) = 0.0
-      END DO
-    END DO
-  END DO
-END DO
-
-
-! Two options:
-!
-! (A) dry deposition confined to lowest model layer:
-IF (ukca_config%l_ukca_ddep_lev1) THEN
-  nlev_with_ddep(:,:) = 1
-  layer_depth(:,:) = dzl(:,:,1)
-ELSE
-
-  ! (B) If dry deposition applied everywhere within the boundary
-  !     layer then look for the highest model level completely
-  !     contained in it.
-  DO j = 1, rows
-    DO i = 1, row_length
-      layer_depth(i,j) = dzl(i,j,1)
-      nlev_with_ddep(i,j) = 1
-    END DO
-  END DO
-
-  DO loop = 2, bl_levels
-    DO j = 1, rows
-      DO i = 1, row_length
-        dd = layer_depth(i,j) + dzl(i,j,loop)
-        IF (dd < zbl(i,j)) THEN
-          layer_depth(i,j) = dd
-          nlev_with_ddep(i,j) = loop
-        END IF
-      END DO
-    END DO
-  END DO
-
-END IF
-
-!     Calculate overall dry deposition velocity [vd = 1/(ra + rb + rc)]
-!     Do vegetated tiles first. Quasi-laminar resistance pre-multiplied by
-!     ln[z0m/z0] = 2.0 for vegetated areas, or 1.0 for smooth surfaces
-!     See Ganzeveld & Lelieveld, JGR 1995 Vol.100 No. D10 pp.20999-21012.
-
-DO loop = 1, ndepd
-  DO n = 1, npft
-    DO j = 1, rows
-      DO i = 1, row_length
-        IF (rc(i,j,n,loop) < r_nodep .AND. gsf(i,j,n) > 0.0) THEN
-          vd(i,j,n,loop) = 1.0 /                                               &
-            (ra(i,j,n) + 2.0*rb(i,j,loop) + rc(i,j,n,loop))
-        END IF
-      END DO
-    END DO
-  END DO
-END DO
-
-    !         Now do calculation for non-vegetated tiles
-
-DO loop = 1, ndepd
-  DO n = npft+1, ntype
-    DO j = 1, rows
-      DO i = 1, row_length
-        IF (rc(i,j,n,loop) < r_nodep .AND. gsf(i,j,n) > 0.0) THEN
-          vd(i,j,n,loop) = 1.0 /                                               &
-            (ra(i,j,n) + rb(i,j,loop) + rc(i,j,n,loop))
-        END IF
-      END DO
-    END DO
-  END DO
-END DO
-
-! Parameter scaling: scale the dry deposition velocity for SO2
-IF (ukca_config%l_ukca_scale_ppe) THEN
-  DO j = 1, ndepd
-    IF (speci(nldepd(j)) == 'SO2       ') THEN
-      vd(:,:,:,j) = vd(:,:,:,j) * ukca_config%dry_depvel_so2_scaling
-    END IF
-  END DO
-END IF
-
-! Now write dry deposition velocities for each tile to respective STASH items
-IF ( ukca_config%l_enable_diag_um ) THEN
-  DO loop = 1, ndepd
-    ! process vd diagnostics for CH4 (m1s50i432), O3 (m1s50i433), and
-    ! HONO2 (m1s50i434). These diagnostics are mainly for the purpose of
-    ! model debugging.
-    IF (speci(nldepd(loop)) == 'CH4       ') THEN
-      ! vd on tiles for CH4
-      IF (sf(432,50)) THEN
-        CALL set_pseudo_list(ntype,len_stlist,                                 &
-          stlist(:,stindex(1,432,50,1)),                                       &
-          plltile,stash_pseudo_levels,num_stash_pseudo)
-        pslevel_out=0
-        DO pslevel = 1, ntype
-          IF (plltile(pslevel)) THEN
-            pslevel_out=pslevel_out+1
-            si_start = si(432,50,1)+(pslevel_out-1)*pdims%i_end*pdims%j_end
-            si_stop  = si(432,50,1)+(pslevel_out)*pdims%i_end*pdims%j_end-1
-            CALL copydiag(stashwork(si_start:si_stop),vd(:,:,pslevel,loop),    &
-              pdims%i_end,pdims%j_end)
-          END IF
-        END DO
-      END IF
-    ELSE IF (speci(nldepd(loop)) == 'O3        ') THEN
-      ! vd on tiles for O3
-      IF (sf(433,50)) THEN
-        CALL set_pseudo_list(ntype,len_stlist,                                 &
-          stlist(:,stindex(1,433,50,1)),                                       &
-          plltile,stash_pseudo_levels,num_stash_pseudo)
-        pslevel_out=0
-        DO pslevel = 1, ntype
-          IF (plltile(pslevel)) THEN
-            pslevel_out=pslevel_out+1
-            si_start = si(433,50,1)+(pslevel_out-1)*pdims%i_end*pdims%j_end
-            si_stop  = si(433,50,1)+(pslevel_out)*pdims%i_end*pdims%j_end-1
-            CALL copydiag(stashwork(si_start:si_stop),vd(:,:,pslevel,loop),    &
-              pdims%i_end,pdims%j_end)
-          END IF
-        END DO
-      END IF
-    ELSE IF (speci(nldepd(loop)) == 'HONO2     ') THEN
-      ! vd on tiles for HONO2
-      IF (sf(434,50)) THEN
-        CALL set_pseudo_list(ntype,len_stlist,                                 &
-          stlist(:,stindex(1,434,50,1)),                                       &
-          plltile,stash_pseudo_levels,num_stash_pseudo)
-        pslevel_out=0
-        DO pslevel = 1, ntype
-          IF (plltile(pslevel)) THEN
-            pslevel_out=pslevel_out+1
-            si_start = si(434,50,1)+(pslevel_out-1)*pdims%i_end*pdims%j_end
-            si_stop  = si(434,50,1)+(pslevel_out)*pdims%i_end*pdims%j_end-1
-            CALL copydiag(stashwork(si_start:si_stop),vd(:,:,pslevel,loop),    &
-              pdims%i_end,pdims%j_end)
-          END IF
-        END DO
-      END IF
-    END IF
-  END DO  ! loop ndepd
-END IF    ! l_enable_diag_um
-
-!     VD() now contains dry deposition velocities for each tile
-!     in each grid sq. Calculate overall first-order loss rate
-!     over time "timestep" for each tile and sum over all tiles
-!     to obtain overall first-order loss rate zdryrt().
-
-DO loop = 1, ndepd
-  DO n = 1, ntype
-    DO j = 1, rows
-      DO i = 1, row_length
-        IF (vd(i,j,n,loop) > 0.0) THEN
-          zdryrt(i,j,loop) = zdryrt(i,j,loop) + gsf(i,j,n) *                   &
-            (1.0-EXP(-vd(i,j,n,loop) * timestep / layer_depth(i,j)))
-        END IF
-      END DO
-    END DO
-  END DO
-END DO
-
-!     ZDRYRT() contains loss rate over time "timestep".
-!     Divide by timestep to get rate in s-1.
-
-DO loop = 1, ndepd
-  DO j = 1, rows
-    DO i = 1, row_length
-      zdryrt(i,j,loop) = -LOG(1.0 - zdryrt(i,j,loop)) / timestep
-    END DO
-  END DO
-END DO
-
-!     Now write 2D dry deposition rate (1/s) for entire gridbox
-!     for a number of selected species to diagnostic stream into
-!     STASHitem m1s50i435-37
-!     This is a special diagnostic, mainly for debugging
-
-IF ( ukca_config%l_enable_diag_um ) THEN
-  DO loop = 1, ndepd
-    ! process ddep diagnostics for CH4
-    IF (speci(nldepd(loop)) == 'CH4       ') THEN
-      ! zdryrt on gridbox for CH4
-      IF (sf(435,50)) THEN
-        CALL copydiag (                                                        &
-          stashwork(si(435,50,1):si_last(435,50,1)),                           &
-          zdryrt(:,:,loop),                                                    &
-          row_length,rows)
-      END IF
-      ! process ddep diagnostics for O3
-    ELSE IF (speci(nldepd(loop)) == 'O3        ') THEN
-      ! zdryrt on gridbox for O3
-      IF (sf(436,50)) THEN
-        CALL copydiag (                                                        &
-          stashwork(si(436,50,1):si_last(436,50,1)),                           &
-          zdryrt(:,:,loop),                                                    &
-          row_length,rows)
-      END IF
-      ! process ddep diagnostics for HONO2
-    ELSE IF (speci(nldepd(loop)) == 'HONO2     ') THEN
-      ! zdryrt on gridbox for HONO2
-      IF (sf(437,50)) THEN
-        CALL copydiag (                                                        &
-          stashwork(si(437,50,1):si_last(437,50,1)),                           &
-          zdryrt(:,:,loop),                                                    &
-          row_length,rows)
-      END IF
-    END IF
-  END DO   ! loop over ndepd
-END IF     ! l_enable_diag_um
-
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
-RETURN
-END SUBROUTINE ukca_ddcalc
-END MODULE ukca_ddcalc_mod
+end module ukca_ddcalc_mod

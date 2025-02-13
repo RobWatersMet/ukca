@@ -41,6 +41,9 @@ module asad_fuljac_mod
     integer :: idx_5
     integer :: idx_6
     integer :: idx_7
+    integer :: idx_8
+    integer :: idx_9
+    integer :: idx_10
 
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
@@ -48,11 +51,18 @@ module asad_fuljac_mod
     call nvtxStartRange(ModuleName // ':' // RoutineName)
     !$acc kernels
     deltt = 1.0 / cdt
-    fj = 0.0
+    !$acc loop gang vector independent collapse(3)
+    do idx = LBOUND(fj, dim=3), UBOUND(fj, dim=3), 1
+      do idx_1 = LBOUND(fj, dim=2), UBOUND(fj, dim=2), 1
+        do idx_2 = LBOUND(fj, dim=1), UBOUND(fj, dim=1), 1
+          fj(idx_2,idx_1,idx) = 0.0
+        enddo
+      enddo
+    enddo
     !$acc loop gang vector independent collapse(2)
     do i = 1, jpcspf, 1
-      do idx = LBOUND(fj, dim=1), UBOUND(fj, dim=1), 1
-        fj(idx,i,i) = -deltt * f(idx + (LBOUND(f, dim=1) - LBOUND(fj, dim=1)),i)
+      do idx_3 = LBOUND(fj, dim=1), UBOUND(fj, dim=1), 1
+        fj(idx_3,i,i) = -deltt * f(idx_3 + (LBOUND(f, dim=1) - LBOUND(fj, dim=1)),i)
       enddo
     enddo
     !$acc loop seq
@@ -138,20 +148,20 @@ module asad_fuljac_mod
         do jn = 3, jpmsp, 1
           if (lj(jn)) then
             !$acc loop gang vector independent
-            do idx_1 = 1, n_points, 1
-              fj(idx_1,ij(jn),ntro3) = fj(idx_1,ij(jn),ntro3) + prk(idx_1,irj) * deriv(idx_1,jc,1)
-            enddo
-            !$acc loop gang vector independent
-            do idx_2 = 1, n_points, 1
-              fj(idx_2,ij(jn),ntroh) = fj(idx_2,ij(jn),ntroh) + prk(idx_2,irj) * deriv(idx_2,jc,2)
-            enddo
-            !$acc loop gang vector independent
-            do idx_3 = 1, n_points, 1
-              fj(idx_3,ij(jn),ntrho2) = fj(idx_3,ij(jn),ntrho2) + prk(idx_3,irj) * deriv(idx_3,jc,3)
-            enddo
-            !$acc loop gang vector independent
             do idx_4 = 1, n_points, 1
-              fj(idx_4,ij(jn),ntrno) = fj(idx_4,ij(jn),ntrno) + prk(idx_4,irj) * deriv(idx_4,jc,4)
+              fj(idx_4,ij(jn),ntro3) = fj(idx_4,ij(jn),ntro3) + prk(idx_4,irj) * deriv(idx_4,jc,1)
+            enddo
+            !$acc loop gang vector independent
+            do idx_5 = 1, n_points, 1
+              fj(idx_5,ij(jn),ntroh) = fj(idx_5,ij(jn),ntroh) + prk(idx_5,irj) * deriv(idx_5,jc,2)
+            enddo
+            !$acc loop gang vector independent
+            do idx_6 = 1, n_points, 1
+              fj(idx_6,ij(jn),ntrho2) = fj(idx_6,ij(jn),ntrho2) + prk(idx_6,irj) * deriv(idx_6,jc,3)
+            enddo
+            !$acc loop gang vector independent
+            do idx_7 = 1, n_points, 1
+              fj(idx_7,ij(jn),ntrno) = fj(idx_7,ij(jn),ntrno) + prk(idx_7,irj) * deriv(idx_7,jc,4)
             enddo
           end if
         enddo
@@ -159,35 +169,36 @@ module asad_fuljac_mod
     enddo
     !$acc end kernels
     if (ndepw /= 0 .OR. ndepd /= 0) then
-      !$acc kernels
-      !$acc loop seq
       do js = 1, jpspec, 1
         ifamd = moffam(js)
         itrd = madvtr(js)
         ityped = ctype(js)
         if (ifamd /= 0) then
+          !$acc kernels
           !$acc loop gang vector independent
           do jl = 1, n_points, 1
-            if (ityped == jpfm .OR. ityped == jpif .AND. linfam(jl,itrd)) then
+            if (ityped == jpfm(:) .OR. ityped == jpif(:) .AND. linfam(jl,itrd)) then
               fj(jl,ifamd,ifamd) = fj(jl,ifamd,ifamd) - nodd(js) * (dpd(jl,js) + dpw(jl,js)) * y(jl,js)
             end if
           enddo
+          !$acc end kernels
         end if
         if (itrd /= 0) then
+          !$acc kernels
           !$acc loop gang vector independent
-          do idx_5 = 1, n_points, 1
-            fj(idx_5,itrd,itrd) = fj(idx_5,itrd,itrd) - (dpd(idx_5,js) + dpw(idx_5,js)) * y(idx_5,js)
+          do idx_8 = 1, n_points, 1
+            fj(idx_8,itrd,itrd) = fj(idx_8,itrd,itrd) - (dpd(idx_8,js) + dpw(idx_8,js)) * y(idx_8,js)
           enddo
+          !$acc end kernels
         end if
       enddo
-      !$acc end kernels
     end if
     !$acc kernels
     !$acc loop gang vector independent collapse(3)
     do j = 1, jpcspf, 1
-      do idx_6 = LBOUND(fj, dim=3), UBOUND(fj, dim=3), 1
-        do idx_7 = 1, n_points, 1
-          fj(idx_7,j,idx_6) = fj(idx_7,j,idx_6) / f(idx_7,idx_6 + (LBOUND(f, dim=2) - LBOUND(fj, dim=3)))
+      do idx_9 = LBOUND(fj, dim=3), UBOUND(fj, dim=3), 1
+        do idx_10 = 1, n_points, 1
+          fj(idx_10,j,idx_9) = fj(idx_10,j,idx_9) / f(idx_10,idx_9 + (LBOUND(f, dim=2) - LBOUND(fj, dim=3)))
         enddo
       enddo
     enddo

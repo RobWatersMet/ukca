@@ -103,9 +103,8 @@ module asad_jac_mod
     enddo
     !$acc end kernels
     if (ntr3 /= 0) then
-      !$acc kernels
-      !$acc loop seq
       do jr = 1, jpnr, 1
+        !$acc kernels
         ir1 = nspi(jr,1)
         ir2 = nspi(jr,2)
         ip1 = nspi(jr,3)
@@ -118,6 +117,7 @@ module asad_jac_mod
           ifam(j) = 0
           itr(j) = 0
         enddo
+        !$acc end kernels
         if (ir1 /= 0) then
           ifam(1) = moffam(ir1)
           itr(1) = madvtr(ir1)
@@ -126,6 +126,7 @@ module asad_jac_mod
           ifam(2) = moffam(ir2)
           itr(2) = madvtr(ir2)
         end if
+        !$acc kernels
         gir1 = .false.
         gir2 = .false.
         !$acc loop seq
@@ -133,35 +134,37 @@ module asad_jac_mod
           gir1 = gir1 .OR. ifam(1) == nltr3(j3)
           gir2 = gir2 .OR. ifam(2) == nltr3(j3)
         enddo
+        !$acc end kernels
         if (gir1 .OR. gir2) then
           if (ir1 /= 0) then
-            gtype(1) = ctype(ir1) == jpfm
-            gif(1) = ctype(ir1) == jpif
+            gtype(1) = ctype(ir1) == jpfm(:)
+            gif(1) = ctype(ir1) == jpif(:)
           end if
           if (ir2 /= 0) then
-            gtype(2) = ctype(ir2) == jpfm
-            gif(2) = ctype(ir2) == jpif
+            gtype(2) = ctype(ir2) == jpfm(:)
+            gif(2) = ctype(ir2) == jpif(:)
           end if
           if (ip1 /= 0) then
             ifam(3) = moffam(ip1)
-            gtype(3) = ctype(ip1) == jpfm
-            gif(3) = ctype(ip1) == jpif
+            gtype(3) = ctype(ip1) == jpfm(:)
+            gif(3) = ctype(ip1) == jpif(:)
             itr(3) = madvtr(ip1)
           end if
           if (ip2 /= 0) then
             ifam(4) = moffam(ip2)
-            gtype(4) = ctype(ip2) == jpfm
-            gif(4) = ctype(ip2) == jpif
+            gtype(4) = ctype(ip2) == jpfm(:)
+            gif(4) = ctype(ip2) == jpif(:)
             itr(4) = madvtr(ip2)
           end if
           if (ip3 /= 0) then
             ifam(5) = moffam(ip3)
-            gtype(5) = ctype(ip3) == jpfm
-            gif(5) = ctype(ip3) == jpif
+            gtype(5) = ctype(ip3) == jpfm(:)
+            gif(5) = ctype(ip3) == jpif(:)
             itr(5) = madvtr(ip3)
           end if
         end if
         if (gir1) then
+          !$acc kernels
           !$acc loop gang vector independent
           do jl = 1, n_points, 1
             ginclude2 = gif(2) .AND. linfam(jl,itr(2)) .OR. gtype(2)
@@ -189,8 +192,10 @@ module asad_jac_mod
               ej(jl,ifam(1)) = ej(jl,ifam(1)) + prk(jl,jr) * ks
             end if
           enddo
+          !$acc end kernels
         end if
         if (gir2) then
+          !$acc kernels
           !$acc loop gang vector independent
           do jl = 1, n_points, 1
             ginclude2 = gif(2) .AND. linfam(jl,itr(2)) .OR. gtype(2)
@@ -218,33 +223,34 @@ module asad_jac_mod
               ej(jl,ifam(2)) = ej(jl,ifam(2)) + prk(jl,jr) * ks
             end if
           enddo
+          !$acc end kernels
         end if
       enddo
-      !$acc end kernels
     end if
     if (ndepw /= 0 .OR. ndepd /= 0) then
-      !$acc kernels
-      !$acc loop seq
       do js = 1, jpspec, 1
         ifamd = moffam(js)
         itrd = madvtr(js)
         ityped = ctype(js)
         if (ifamd /= 0) then
+          !$acc kernels
           !$acc loop gang vector independent
           do jl = 1, n_points, 1
-            if (ityped == jpfm .OR. ityped == jpif .AND. linfam(jl,itrd)) then
+            if (ityped == jpfm(:) .OR. ityped == jpif(:) .AND. linfam(jl,itrd)) then
               ej(jl,ifamd) = ej(jl,ifamd) - nodd(js) * (dpd(jl,js) + dpw(jl,js)) * y(jl,js)
             end if
           enddo
+          !$acc end kernels
         end if
         if (itrd /= 0) then
+          !$acc kernels
           !$acc loop gang vector independent
           do jl = 1, n_points, 1
             ej(jl,itrd) = ej(jl,itrd) - (dpd(jl,js) + dpw(jl,js)) * y(jl,js)
           enddo
+          !$acc end kernels
         end if
       enddo
-      !$acc end kernels
     end if
     !$acc kernels
     !$acc loop gang vector independent collapse(2)

@@ -208,11 +208,24 @@ module asad_spimpmjp_mod
     integer :: idx_7
     integer :: idx_8
     integer :: idx_9
+    integer :: idx_10
+    integer :: idx_11
+    integer :: idx_12
+    integer :: idx_13
+    integer :: idx_14
+    integer :: idx_15
+    integer :: idx_16
+    integer :: idx_17
+    integer :: idx_18
+    integer :: idx_19
+    integer :: idx_20
+    integer :: idx_21
 
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
     call nvtxStartRange(ModuleName // ':' // RoutineName)
+    !$acc kernels
     f_min = SQRT(peps)
     reltol_residual_error = 1.0e-10
     reltol_error = 10 * ptol
@@ -222,7 +235,13 @@ module asad_spimpmjp_mod
     error_norm = 1.0
     deltt = 1.0 / cdt
     damp1 = 0.5
-    f_initial(:,:) = f
+    !$acc loop gang vector independent collapse(2)
+    do idx = 1, jpcspf, 1
+      do idx_1 = 1, n_points, 1
+        f_initial(idx_1,idx) = f(idx_1 + (LBOUND(f, dim=1) - 1),idx + (LBOUND(f, dim=2) - 1))
+      enddo
+    enddo
+    !$acc end kernels
     ! PSyclone CodeBlock (unsupported code) reason:
     !  - PSyclone doesn't yet support reference to imported symbols inside WHERE clauses.
     WHERE (f(:, :) < f_min) f = f_min
@@ -283,7 +302,14 @@ module asad_spimpmjp_mod
         !  - Unsupported statement: Goto_Stmt
         GO TO 9999
       end if
-      g_f(:,:) = (f - f_initial(:,:)) * deltt - fdot
+      !$acc kernels
+      !$acc loop gang vector independent collapse(2)
+      do idx_2 = 1, jpcspf, 1
+        do idx_3 = 1, n_points, 1
+          g_f(idx_3,idx_2) = (f(idx_3 + (LBOUND(f, dim=1) - 1),idx_2 + (LBOUND(f, dim=2) - 1)) - f_initial(idx_3,idx_2)) * deltt - fdot(idx_3 + (LBOUND(fdot, dim=1) - 1),idx_2 + (LBOUND(fdot, dim=2) - 1))
+        enddo
+      enddo
+      !$acc end kernels
       call calc_residual_error(n_points, residual_error, g_f, f_min)
       if (residual_error < reltol_residual_error) then
         exit_code = 0
@@ -315,10 +341,10 @@ module asad_spimpmjp_mod
           call umprint(ummessage, src='asad_spimpmjp')
           !$acc kernels
           !$acc loop seq
-          do idx = LBOUND(fj, dim=3), UBOUND(fj, dim=3), 1
+          do idx_4 = LBOUND(fj, dim=3), UBOUND(fj, dim=3), 1
             !$acc loop seq
-            do idx_1 = LBOUND(fj, dim=2), UBOUND(fj, dim=2), 1
-              fj(jl,idx_1,idx) = 0.0
+            do idx_5 = LBOUND(fj, dim=2), UBOUND(fj, dim=2), 1
+              fj(jl,idx_5,idx_4) = 0.0
             enddo
           enddo
           !$acc loop seq
@@ -395,18 +421,18 @@ module asad_spimpmjp_mod
       if (iter == 1) then
         !$acc kernels
         !$acc loop gang vector independent collapse(2)
-        do idx_2 = 1, jpcspf, 1
-          do idx_3 = 1, n_points, 1
-            f_incr(idx_3,idx_2) = damp1 * f_incr(idx_3,idx_2)
+        do idx_6 = 1, jpcspf, 1
+          do idx_7 = 1, n_points, 1
+            f_incr(idx_7,idx_6) = damp1 * f_incr(idx_7,idx_6)
           enddo
         enddo
         !$acc end kernels
       end if
       !$acc kernels
       !$acc loop gang vector independent collapse(2)
-      do idx_4 = 1, jpcspf, 1
-        do idx_5 = 1, n_points, 1
-          f_incr(idx_5,idx_4) = MIN(MAX(f_incr(idx_5,idx_4), -f_max), f_max)
+      do idx_8 = 1, jpcspf, 1
+        do idx_9 = 1, n_points, 1
+          f_incr(idx_9,idx_8) = MIN(MAX(f_incr(idx_9,idx_8), -f_max), f_max)
         enddo
       enddo
       !$acc end kernels
@@ -441,16 +467,21 @@ module asad_spimpmjp_mod
           call asad_diffun(n_points)
           !$acc kernels
           !$acc loop gang vector independent collapse(2)
-          do idx_6 = 1, jpcspf, 1
-            do idx_7 = 1, n_points, 1
-              g_f_old(idx_7,idx_6) = g_f(idx_7,idx_6)
+          do idx_10 = 1, jpcspf, 1
+            do idx_11 = 1, n_points, 1
+              g_f_old(idx_11,idx_10) = g_f(idx_11,idx_10)
             enddo
           enddo
-          g_f(:,:) = (f - f_initial(:,:)) * deltt - fdot
           !$acc loop gang vector independent collapse(2)
-          do idx_8 = 1, jpcspf, 1
-            do idx_9 = 1, n_points, 1
-              delta_g(idx_9,idx_8) = g_f(idx_9,idx_8) - g_f_old(idx_9,idx_8)
+          do idx_12 = 1, jpcspf, 1
+            do idx_13 = 1, n_points, 1
+              g_f(idx_13,idx_12) = (f(idx_13 + (LBOUND(f, dim=1) - 1),idx_12 + (LBOUND(f, dim=2) - 1)) - f_initial(idx_13,idx_12)) * deltt - fdot(idx_13 + (LBOUND(fdot, dim=1) - 1),idx_12 + (LBOUND(fdot, dim=2) - 1))
+            enddo
+          enddo
+          !$acc loop gang vector independent collapse(2)
+          do idx_14 = 1, jpcspf, 1
+            do idx_15 = 1, n_points, 1
+              delta_g(idx_15,idx_14) = g_f(idx_15,idx_14) - g_f_old(idx_15,idx_14)
             enddo
           enddo
           coeff = 0.0
@@ -472,8 +503,20 @@ module asad_spimpmjp_mod
           enddo
           !$acc end kernels
           call spresolv2(n_points, g_ftmp, f_incr, f_min, modified_map, spfj)
-          f = f + f_incr(:,:)
-          f = ABS(f)
+          !$acc kernels
+          !$acc loop gang vector independent collapse(2)
+          do idx_16 = LBOUND(f, dim=2), UBOUND(f, dim=2), 1
+            do idx_17 = LBOUND(f, dim=1), UBOUND(f, dim=1), 1
+              f(idx_17,idx_16) = f(idx_17,idx_16) + f_incr(idx_17 + (1 - LBOUND(f, dim=1)),idx_16 + (1 - LBOUND(f, dim=2)))
+            enddo
+          enddo
+          !$acc loop gang vector independent collapse(2)
+          do idx_18 = LBOUND(f, dim=2), UBOUND(f, dim=2), 1
+            do idx_19 = LBOUND(f, dim=1), UBOUND(f, dim=1), 1
+              f(idx_19,idx_18) = ABS(f(idx_19,idx_18))
+            enddo
+          enddo
+          !$acc end kernels
         end if
       end if
     enddo
@@ -481,7 +524,14 @@ module asad_spimpmjp_mod
     !  - Unsupported labelled statement
     9999 CONTINUE
     if (exit_code /= 0) then
-      f = f_initial(:,:)
+      !$acc kernels
+      !$acc loop gang vector independent collapse(2)
+      do idx_20 = LBOUND(f, dim=2), UBOUND(f, dim=2), 1
+        do idx_21 = LBOUND(f, dim=1), UBOUND(f, dim=1), 1
+          f(idx_21,idx_20) = f_initial(idx_21 + (1 - LBOUND(f, dim=1)),idx_20 + (1 - LBOUND(f, dim=2)))
+        enddo
+      enddo
+      !$acc end kernels
       solver_iter = iter
       if (count_negatives > maxneg) then
         ! PSyclone CodeBlock (unsupported code) reason:

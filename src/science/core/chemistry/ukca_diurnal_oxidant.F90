@@ -1,5 +1,6 @@
 module ukca_diurnal_oxidant
   use yomhook, only : dr_hook, lhook
+  use nvtx
   use parkind1, only : jpim, jprb
   implicit none
   integer(kind=jpim), parameter, private :: zhook_in = 0
@@ -33,12 +34,14 @@ module ukca_diurnal_oxidant
     integer :: idx_1
     integer :: idx_2
     integer :: idx_3
+    integer :: idx_4
     integer :: widx1_1
     integer :: widx1_2
 
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
+    call nvtxStartRange(ModuleName // ':' // RoutineName)
     if (species(1:4) == 'OH  ' .OR. species(1:4) == 'HO2 ') then
       ! PSyclone CodeBlock (unsupported code) reason:
       !  - PSyclone doesn't yet support reference to imported symbols inside WHERE clauses.
@@ -49,7 +52,12 @@ module ukca_diurnal_oxidant
       END WHERE
     else
       if (species(1:4) == 'NO3 ') then
-        daylen_secs(:) = daylength1d(:) * rsec_per_day / (2.0 * pi)
+        !$acc kernels
+        !$acc loop gang vector independent
+        do idx = 1, n_points, 1
+          daylen_secs(idx) = daylength1d(idx + (LBOUND(daylength1d, dim=1) - 1)) * rsec_per_day / (2.0 * pi)
+        enddo
+        !$acc end kernels
         ! PSyclone CodeBlock (unsupported code) reason:
         !  - PSyclone doesn't yet support reference to imported symbols inside WHERE clauses.
         !  - PSyclone doesn't yet support reference to imported symbols inside WHERE clauses.
@@ -79,32 +87,32 @@ module ukca_diurnal_oxidant
     if (species(1:4) == 'O3  ') then
       !$acc kernels
       !$acc loop gang vector independent
-      do idx = LBOUND(o3_offline_diag, dim=1), UBOUND(o3_offline_diag, dim=1), 1
-        o3_offline_diag(idx,nlev) = field(idx + (LBOUND(field, dim=1) - LBOUND(o3_offline_diag, dim=1)))
+      do idx_1 = LBOUND(o3_offline_diag, dim=1), UBOUND(o3_offline_diag, dim=1), 1
+        o3_offline_diag(idx_1,nlev) = field(idx_1 + (LBOUND(field, dim=1) - LBOUND(o3_offline_diag, dim=1)))
       enddo
       !$acc end kernels
     else
       if (species(1:4) == 'OH  ') then
         !$acc kernels
         !$acc loop gang vector independent
-        do idx_1 = LBOUND(oh_offline_diag, dim=1), UBOUND(oh_offline_diag, dim=1), 1
-          oh_offline_diag(idx_1,nlev) = field(idx_1 + (LBOUND(field, dim=1) - LBOUND(oh_offline_diag, dim=1)))
+        do idx_2 = LBOUND(oh_offline_diag, dim=1), UBOUND(oh_offline_diag, dim=1), 1
+          oh_offline_diag(idx_2,nlev) = field(idx_2 + (LBOUND(field, dim=1) - LBOUND(oh_offline_diag, dim=1)))
         enddo
         !$acc end kernels
       else
         if (species(1:4) == 'NO3 ') then
           !$acc kernels
           !$acc loop gang vector independent
-          do idx_2 = LBOUND(no3_offline_diag, dim=1), UBOUND(no3_offline_diag, dim=1), 1
-            no3_offline_diag(idx_2,nlev) = field(idx_2 + (LBOUND(field, dim=1) - LBOUND(no3_offline_diag, dim=1)))
+          do idx_3 = LBOUND(no3_offline_diag, dim=1), UBOUND(no3_offline_diag, dim=1), 1
+            no3_offline_diag(idx_3,nlev) = field(idx_3 + (LBOUND(field, dim=1) - LBOUND(no3_offline_diag, dim=1)))
           enddo
           !$acc end kernels
         else
           if (species(1:4) == 'HO2 ') then
             !$acc kernels
             !$acc loop gang vector independent
-            do idx_3 = LBOUND(ho2_offline_diag, dim=1), UBOUND(ho2_offline_diag, dim=1), 1
-              ho2_offline_diag(idx_3,nlev) = field(idx_3 + (LBOUND(field, dim=1) - LBOUND(ho2_offline_diag, dim=1)))
+            do idx_4 = LBOUND(ho2_offline_diag, dim=1), UBOUND(ho2_offline_diag, dim=1), 1
+              ho2_offline_diag(idx_4,nlev) = field(idx_4 + (LBOUND(field, dim=1) - LBOUND(ho2_offline_diag, dim=1)))
             enddo
             !$acc end kernels
           end if
@@ -114,6 +122,7 @@ module ukca_diurnal_oxidant
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
     end if
+    call nvtxEndRange()
     return
 
   end subroutine ukca_set_diurnal_ox
@@ -142,19 +151,26 @@ module ukca_diurnal_oxidant
     integer :: idx_3
     integer :: idx_4
     integer :: idx_5
+    integer :: idx_6
 
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
+    call nvtxStartRange(ModuleName // ':' // RoutineName)
     location = ix + (jy - 1) * ukca_config%row_length
     if (species(1:4) == 'OH  ' .OR. species(1:4) == 'HO2 ') then
       if (cosza(location) > 0.0 .AND. intcosza(location) > 1.0e-1) then
-        field(:) = field(:) * rsec_per_day * (cosza(location) / intcosza(location))
-      else
         !$acc kernels
         !$acc loop gang vector independent
         do idx = LBOUND(field, dim=1), UBOUND(field, dim=1), 1
-          field(idx) = 0.0
+          field(idx) = field(idx) * rsec_per_day * (cosza(location) / intcosza(location))
+        enddo
+        !$acc end kernels
+      else
+        !$acc kernels
+        !$acc loop gang vector independent
+        do idx_1 = LBOUND(field, dim=1), UBOUND(field, dim=1), 1
+          field(idx_1) = 0.0
         enddo
         !$acc end kernels
       end if
@@ -164,11 +180,11 @@ module ukca_diurnal_oxidant
         if (daylen_secs < daylen_cutoff) then
           daylen_secs = rsec_per_day
         end if
-        if (cosza(location) > 0.0 .AND. intcosza(location) > 1.0e-1 .AND. daylen_secs < rsec_per_day) then
+        if ((cosza(location) > 0.0 .AND. intcosza(location) > 1.0e-1) .AND. daylen_secs < rsec_per_day) then
           !$acc kernels
           !$acc loop gang vector independent
-          do idx_1 = LBOUND(field, dim=1), UBOUND(field, dim=1), 1
-            field(idx_1) = 0.0
+          do idx_2 = LBOUND(field, dim=1), UBOUND(field, dim=1), 1
+            field(idx_2) = 0.0
           enddo
           !$acc end kernels
         end if
@@ -192,32 +208,32 @@ module ukca_diurnal_oxidant
     if (species(1:4) == 'O3  ') then
       !$acc kernels
       !$acc loop gang vector independent
-      do idx_2 = LBOUND(o3_offline_diag, dim=2), UBOUND(o3_offline_diag, dim=2), 1
-        o3_offline_diag(location,idx_2) = field(idx_2 + (LBOUND(field, dim=1) - LBOUND(o3_offline_diag, dim=2)))
+      do idx_3 = LBOUND(o3_offline_diag, dim=2), UBOUND(o3_offline_diag, dim=2), 1
+        o3_offline_diag(location,idx_3) = field(idx_3 + (LBOUND(field, dim=1) - LBOUND(o3_offline_diag, dim=2)))
       enddo
       !$acc end kernels
     else
       if (species(1:4) == 'OH  ') then
         !$acc kernels
         !$acc loop gang vector independent
-        do idx_3 = LBOUND(oh_offline_diag, dim=2), UBOUND(oh_offline_diag, dim=2), 1
-          oh_offline_diag(location,idx_3) = field(idx_3 + (LBOUND(field, dim=1) - LBOUND(oh_offline_diag, dim=2)))
+        do idx_4 = LBOUND(oh_offline_diag, dim=2), UBOUND(oh_offline_diag, dim=2), 1
+          oh_offline_diag(location,idx_4) = field(idx_4 + (LBOUND(field, dim=1) - LBOUND(oh_offline_diag, dim=2)))
         enddo
         !$acc end kernels
       else
         if (species(1:4) == 'NO3 ') then
           !$acc kernels
           !$acc loop gang vector independent
-          do idx_4 = LBOUND(no3_offline_diag, dim=2), UBOUND(no3_offline_diag, dim=2), 1
-            no3_offline_diag(location,idx_4) = field(idx_4 + (LBOUND(field, dim=1) - LBOUND(no3_offline_diag, dim=2)))
+          do idx_5 = LBOUND(no3_offline_diag, dim=2), UBOUND(no3_offline_diag, dim=2), 1
+            no3_offline_diag(location,idx_5) = field(idx_5 + (LBOUND(field, dim=1) - LBOUND(no3_offline_diag, dim=2)))
           enddo
           !$acc end kernels
         else
           if (species(1:4) == 'HO2 ') then
             !$acc kernels
             !$acc loop gang vector independent
-            do idx_5 = LBOUND(ho2_offline_diag, dim=2), UBOUND(ho2_offline_diag, dim=2), 1
-              ho2_offline_diag(location,idx_5) = field(idx_5 + (LBOUND(field, dim=1) - LBOUND(ho2_offline_diag, dim=2)))
+            do idx_6 = LBOUND(ho2_offline_diag, dim=2), UBOUND(ho2_offline_diag, dim=2), 1
+              ho2_offline_diag(location,idx_6) = field(idx_6 + (LBOUND(field, dim=1) - LBOUND(ho2_offline_diag, dim=2)))
             enddo
             !$acc end kernels
           end if
@@ -227,6 +243,7 @@ module ukca_diurnal_oxidant
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
     end if
+    call nvtxEndRange()
     return
 
   end subroutine ukca_set_diurnal_ox_col
@@ -249,6 +266,8 @@ module ukca_diurnal_oxidant
     CHARACTER(LEN = *), PARAMETER :: RoutineName = 'UKCA_INT_COSZ'
     integer :: widx2
     integer :: widx1
+    integer :: widx2_1
+    integer :: widx1_1
     integer :: idx
     integer :: idx_1
     integer :: idx_2
@@ -257,6 +276,7 @@ module ukca_diurnal_oxidant
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
+    call nvtxStartRange(ModuleName // ':' // RoutineName)
     decls = ASIN(sindec)
     tan_decls = TAN(decls)
     if (ABS(tan_decls) < EPSILON(0.0)) then
@@ -289,7 +309,7 @@ module ukca_diurnal_oxidant
     enddo
     !$acc end kernels
     ! PSyclone CodeBlock (unsupported code) reason:
-    !  - Only WHERE constructs using explicit array notation including ranges (e.g. 'my_array(1,:)') are supported but found '(Level_4_Expr(Intrinsic_Function_Reference(Intrinsic_Name('ABS'), Actual_Arg_Spec_List(',', (Name('cos_hs'),))), '<', Real_Literal_Constant('1.0', None)),)'
+    !  - PSyclone doesn't yet support reference to imported symbols inside WHERE clauses.
     WHERE (ABS(cos_hs) < 1.0)
       hs = ACOS(cos_hs)
       int_zenith_angle = (rsec_per_day / pi) * (hs * sin_latitude * sindec + cos_latitude * COS(decls) * SIN(hs))
@@ -313,6 +333,7 @@ module ukca_diurnal_oxidant
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
     end if
+    call nvtxEndRange()
     return
 
   end subroutine ukca_int_cosz
@@ -323,6 +344,7 @@ module ukca_diurnal_oxidant
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
+    call nvtxStartRange(ModuleName // ':' // RoutineName)
     if (ALLOCATED(daylength1d)) then
       DEALLOCATE(daylength1d)
     end if
@@ -335,6 +357,7 @@ module ukca_diurnal_oxidant
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
     end if
+    call nvtxEndRange()
 
   end subroutine dealloc_diurnal_oxidant
 

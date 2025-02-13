@@ -1,6 +1,7 @@
 module ukca_conserve_mod
   use ukca_config_specification_mod, only : ukca_config
   use yomhook, only : dr_hook, lhook
+  use nvtx
   use parkind1, only : jpim, jprb
   use umPrintMgr, only : printstatus, prstatus_normal, prstatus_oper, ummessage, umprint
   implicit none
@@ -136,6 +137,7 @@ module ukca_conserve_mod
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
+    call nvtxStartRange(ModuleName // ':' // RoutineName)
     if (firstcall) then
       if (ntracers /= jpctr) then
         errcode = 1
@@ -908,6 +910,7 @@ module ukca_conserve_mod
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
     end if
+    call nvtxEndRange()
     return
 
   end subroutine ukca_conserve

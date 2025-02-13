@@ -92,7 +92,7 @@ module asad_ftoy_mod
         !$acc loop seq
         do j = 1, nstst, 1
           js = nlstst(j)
-          if (ctype(js) == jpfm) then
+          if (ctype(js) == jpfm(:)) then
             ifam = moffam(js)
             imaj = majors(ifam)
             if (imaj /= js) then
@@ -100,13 +100,13 @@ module asad_ftoy_mod
               ilstmin(istmin) = js
             end if
           else
-            if (ctype(js) == jpif) then
+            if (ctype(js) == jpif(:)) then
               istmin = istmin + 1
               ilstmin(istmin) = js
               ift = ift + 1
               ilft(ift) = js
             else
-              if (ctype(js) == jpna) then
+              if (ctype(js) == jpna(:)) then
                 istmin = istmin + 1
                 ilstmin(istmin) = js
               else
@@ -340,7 +340,7 @@ module asad_ftoy_mod
         js = nlmajmin(j)
         ifam = moffam(js)
         imaj = majors(ifam)
-        if (ctype(js) /= jpif) then
+        if (ctype(js) /= jpif(:)) then
           !$acc loop gang vector independent
           do jl = 1, n_points, 1
             y(jl,js) = y(jl,imaj) * ratio(jl,js)

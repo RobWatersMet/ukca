@@ -17,6 +17,7 @@ module ukca_chemistry_cleanup_mod
     use errormessagelength_mod, only : errormessagelength
     use parkind1, only : jpim, jprb
     use yomhook, only : dr_hook, lhook
+    use nvtx
     logical, parameter :: after_chem = .false.
     integer(kind=jpim), parameter :: zhook_in = 0
     integer(kind=jpim), parameter :: zhook_out = 1
@@ -57,6 +58,7 @@ module ukca_chemistry_cleanup_mod
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
+    call nvtxStartRange(ModuleName // ':' // RoutineName)
     if (ukca_config%l_ukca_offline_be) then
       return
     end if
@@ -149,6 +151,7 @@ module ukca_chemistry_cleanup_mod
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
     end if
+    call nvtxEndRange()
 
   end subroutine ukca_chemistry_cleanup
 

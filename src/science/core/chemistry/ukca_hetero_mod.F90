@@ -1,5 +1,6 @@
 module ukca_hetero_mod
   use yomhook, only : dr_hook, lhook
+  use nvtx
   use parkind1, only : jpim, jprb
   implicit none
   real, parameter, private :: rho1 = 1.35
@@ -125,10 +126,16 @@ module ukca_hetero_mod
     integer :: idx_32
     integer :: idx_33
     integer :: idx_34
+    integer :: idx_35
+    integer :: idx_36
+    integer :: idx_37
+    integer :: idx_38
+    integer :: idx_39
 
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
+    call nvtxStartRange(ModuleName // ':' // RoutineName)
     gam1(:) = [0.2, 0.004, 0.1, 0.0004, 0.003, 0.0, 0.0, 0.0, 0.0, 0.0, 6.0, 0.0, 7.0]
     gam2(:) = [0.3, 0.3, 0.2, 0.02, 0.03, 0.25, 0.3, 1.0, 2.0, 3.0, 4.0, 5.0, 0.0]
     gam3(:) = [0.0, 0.0, 0.0, 0.1, 0.0, 0.0, 0.9, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
@@ -331,110 +338,115 @@ module ukca_hetero_mod
       enddo
       !$acc end kernels
     else
-      zh2o(:) = wp
+      !$acc kernels
+      !$acc loop gang vector independent
+      do idx_5 = 1, n_points, 1
+        zh2o(idx_5) = wp(idx_5 + (LBOUND(wp, dim=1) - 1))
+      enddo
+      !$acc end kernels
     end if
     if (ihcl > 0) then
       !$acc kernels
       !$acc loop gang vector independent
-      do idx_5 = 1, n_points, 1
-        zhcl(idx_5) = f(idx_5 + (LBOUND(f, dim=1) - 1),ihcl)
+      do idx_6 = 1, n_points, 1
+        zhcl(idx_6) = f(idx_6 + (LBOUND(f, dim=1) - 1),ihcl)
       enddo
       !$acc end kernels
     else
       !$acc kernels
       !$acc loop gang vector independent
-      do idx_6 = 1, n_points, 1
-        zhcl(idx_6) = 0.0
+      do idx_7 = 1, n_points, 1
+        zhcl(idx_7) = 0.0
       enddo
       !$acc end kernels
     end if
     if (iclono2 > 0) then
       !$acc kernels
       !$acc loop gang vector independent
-      do idx_7 = 1, n_points, 1
-        zclono2(idx_7) = f(idx_7 + (LBOUND(f, dim=1) - 1),iclono2)
+      do idx_8 = 1, n_points, 1
+        zclono2(idx_8) = f(idx_8 + (LBOUND(f, dim=1) - 1),iclono2)
       enddo
       !$acc end kernels
     else
       !$acc kernels
       !$acc loop gang vector independent
-      do idx_8 = 1, n_points, 1
-        zclono2(idx_8) = 0.0
+      do idx_9 = 1, n_points, 1
+        zclono2(idx_9) = 0.0
       enddo
       !$acc end kernels
     end if
     if (in2o5 > 0) then
       !$acc kernels
       !$acc loop gang vector independent
-      do idx_9 = 1, n_points, 1
-        zn2o5(idx_9) = f(idx_9 + (LBOUND(f, dim=1) - 1),in2o5)
+      do idx_10 = 1, n_points, 1
+        zn2o5(idx_10) = f(idx_10 + (LBOUND(f, dim=1) - 1),in2o5)
       enddo
       !$acc end kernels
     else
       !$acc kernels
       !$acc loop gang vector independent
-      do idx_10 = 1, n_points, 1
-        zn2o5(idx_10) = 0.0
+      do idx_11 = 1, n_points, 1
+        zn2o5(idx_11) = 0.0
       enddo
       !$acc end kernels
     end if
     if (ihocl > 0) then
       !$acc kernels
       !$acc loop gang vector independent
-      do idx_11 = 1, n_points, 1
-        zhocl(idx_11) = f(idx_11 + (LBOUND(f, dim=1) - 1),ihocl)
+      do idx_12 = 1, n_points, 1
+        zhocl(idx_12) = f(idx_12 + (LBOUND(f, dim=1) - 1),ihocl)
       enddo
       !$acc end kernels
     else
       !$acc kernels
       !$acc loop gang vector independent
-      do idx_12 = 1, n_points, 1
-        zhocl(idx_12) = 0.0
+      do idx_13 = 1, n_points, 1
+        zhocl(idx_13) = 0.0
       enddo
       !$acc end kernels
     end if
     if (ihobr > 0) then
       !$acc kernels
       !$acc loop gang vector independent
-      do idx_13 = 1, n_points, 1
-        zhobr(idx_13) = f(idx_13 + (LBOUND(f, dim=1) - 1),ihobr)
+      do idx_14 = 1, n_points, 1
+        zhobr(idx_14) = f(idx_14 + (LBOUND(f, dim=1) - 1),ihobr)
       enddo
       !$acc end kernels
     else
       !$acc kernels
       !$acc loop gang vector independent
-      do idx_14 = 1, n_points, 1
-        zhobr(idx_14) = 0.0
+      do idx_15 = 1, n_points, 1
+        zhobr(idx_15) = 0.0
       enddo
       !$acc end kernels
     end if
     if (ihbr > 0) then
       !$acc kernels
       !$acc loop gang vector independent
-      do idx_15 = 1, n_points, 1
-        zhbr(idx_15) = f(idx_15 + (LBOUND(f, dim=1) - 1),ihbr)
+      do idx_16 = 1, n_points, 1
+        zhbr(idx_16) = f(idx_16 + (LBOUND(f, dim=1) - 1),ihbr)
       enddo
       !$acc end kernels
     else
       !$acc kernels
       !$acc loop gang vector independent
-      do idx_16 = 1, n_points, 1
-        zhbr(idx_16) = 0.0
+      do idx_17 = 1, n_points, 1
+        zhbr(idx_17) = 0.0
       enddo
       !$acc end kernels
     end if
     if (ibrono2 > 0) then
       !$acc kernels
       !$acc loop gang vector independent
-      do idx_17 = 1, n_points, 1
-        zbrono2(idx_17) = f(idx_17 + (LBOUND(f, dim=1) - 1),ibrono2)
+      do idx_18 = 1, n_points, 1
+        zbrono2(idx_18) = f(idx_18 + (LBOUND(f, dim=1) - 1),ibrono2)
       enddo
       !$acc end kernels
     else
       !$acc kernels
       !$acc loop gang vector independent
-      do idx_18 = 1, n_points, 1
-        zbrono2(idx_18) = 0.0
+      do idx_19 = 1, n_points, 1
+        zbrono2(idx_19) = 0.0
       enddo
       !$acc end kernels
     end if
@@ -445,16 +457,16 @@ module ukca_hetero_mod
     if (ihno3 > 0) then
       !$acc kernels
       !$acc loop gang vector independent
-      do idx_19 = LBOUND(f, dim=1), UBOUND(f, dim=1), 1
-        f(idx_19,ihno3) = zhno3(idx_19 + (1 - LBOUND(f, dim=1)))
+      do idx_20 = LBOUND(f, dim=1), UBOUND(f, dim=1), 1
+        f(idx_20,ihno3) = zhno3(idx_20 + (1 - LBOUND(f, dim=1)))
       enddo
       !$acc end kernels
     end if
     if (ih2o > 0) then
       !$acc kernels
       !$acc loop gang vector independent
-      do idx_20 = LBOUND(f, dim=1), UBOUND(f, dim=1), 1
-        f(idx_20,ih2o) = zh2o(idx_20 + (1 - LBOUND(f, dim=1)))
+      do idx_21 = LBOUND(f, dim=1), UBOUND(f, dim=1), 1
+        f(idx_21,ih2o) = zh2o(idx_21 + (1 - LBOUND(f, dim=1)))
       enddo
       !$acc end kernels
     end if
@@ -482,40 +494,40 @@ module ukca_hetero_mod
       if (n_clono2_h2o > 0) then
         !$acc kernels
         !$acc loop gang vector independent
-        do idx_21 = LBOUND(rk, dim=1), UBOUND(rk, dim=1), 1
-          rk(idx_21,n_clono2_h2o) = hk(idx_21 + (LBOUND(hk, dim=1) - LBOUND(rk, dim=1)),1)
+        do idx_22 = LBOUND(rk, dim=1), UBOUND(rk, dim=1), 1
+          rk(idx_22,n_clono2_h2o) = hk(idx_22 + (LBOUND(hk, dim=1) - LBOUND(rk, dim=1)),1)
         enddo
         !$acc end kernels
       end if
       if (n_clono2_hcl > 0) then
         !$acc kernels
         !$acc loop gang vector independent
-        do idx_22 = LBOUND(rk, dim=1), UBOUND(rk, dim=1), 1
-          rk(idx_22,n_clono2_hcl) = hk(idx_22 + (LBOUND(hk, dim=1) - LBOUND(rk, dim=1)),2)
+        do idx_23 = LBOUND(rk, dim=1), UBOUND(rk, dim=1), 1
+          rk(idx_23,n_clono2_hcl) = hk(idx_23 + (LBOUND(hk, dim=1) - LBOUND(rk, dim=1)),2)
         enddo
         !$acc end kernels
       end if
       if (n_hocl_hcl > 0) then
         !$acc kernels
         !$acc loop gang vector independent
-        do idx_23 = LBOUND(rk, dim=1), UBOUND(rk, dim=1), 1
-          rk(idx_23,n_hocl_hcl) = hk(idx_23 + (LBOUND(hk, dim=1) - LBOUND(rk, dim=1)),3)
+        do idx_24 = LBOUND(rk, dim=1), UBOUND(rk, dim=1), 1
+          rk(idx_24,n_hocl_hcl) = hk(idx_24 + (LBOUND(hk, dim=1) - LBOUND(rk, dim=1)),3)
         enddo
         !$acc end kernels
       end if
       if (n_n2o5_h2o > 0) then
         !$acc kernels
         !$acc loop gang vector independent
-        do idx_24 = LBOUND(rk, dim=1), UBOUND(rk, dim=1), 1
-          rk(idx_24,n_n2o5_h2o) = hk(idx_24 + (LBOUND(hk, dim=1) - LBOUND(rk, dim=1)),4)
+        do idx_25 = LBOUND(rk, dim=1), UBOUND(rk, dim=1), 1
+          rk(idx_25,n_n2o5_h2o) = hk(idx_25 + (LBOUND(hk, dim=1) - LBOUND(rk, dim=1)),4)
         enddo
         !$acc end kernels
       end if
       if (n_n2o5_hcl > 0) then
         !$acc kernels
         !$acc loop gang vector independent
-        do idx_25 = LBOUND(rk, dim=1), UBOUND(rk, dim=1), 1
-          rk(idx_25,n_n2o5_hcl) = hk(idx_25 + (LBOUND(hk, dim=1) - LBOUND(rk, dim=1)),5)
+        do idx_26 = LBOUND(rk, dim=1), UBOUND(rk, dim=1), 1
+          rk(idx_26,n_n2o5_hcl) = hk(idx_26 + (LBOUND(hk, dim=1) - LBOUND(rk, dim=1)),5)
         enddo
         !$acc end kernels
       end if
@@ -535,43 +547,52 @@ module ukca_hetero_mod
         end if
         !$acc kernels
         !$acc loop gang vector independent collapse(2)
-        do idx_26 = LBOUND(kpsc, dim=2), UBOUND(kpsc, dim=2), 1
-          do idx_27 = 1, n_points, 1
-            kpsc(idx_27,idx_26) = 0.0
+        do idx_27 = LBOUND(kpsc, dim=2), UBOUND(kpsc, dim=2), 1
+          do idx_28 = 1, n_points, 1
+            kpsc(idx_28,idx_27) = 0.0
           enddo
         enddo
         !$acc loop seq
         do jh = 1, n_hk, 1
-          c_cf(:) = 0.25 * SQRT(8.0 * boltzmann / (pi * mm_arr(jh) * amu) * zt(:))
+          !$acc loop gang vector independent
+          do idx_29 = 1, n_points, 1
+            c_cf(idx_29) = 0.25 * SQRT((8.0 * boltzmann) / (pi * mm_arr(jh) * amu) * zt(idx_29))
+          enddo
           if (gppsc) then
             if (gpsimp) then
               !$acc loop gang vector independent
-              do idx_28 = 1, n_points, 1
-                kpsc(idx_28,jh) = 4.6e-5 * fpsc1(idx_28)
+              do idx_30 = 1, n_points, 1
+                kpsc(idx_30,jh) = 4.6e-5 * fpsc1(idx_30)
               enddo
             else
-              psc1sa(:) = (m_hno3 + 3.0 * m_h2o) * amu * 3.0e5 * shno3(1:n_points) / (rho1 * rad1)
-              psc2sa(:) = m_h2o * amu * 3.0e5 * sh2o(1:n_points) / (rho2 * rad2)
+              !$acc loop gang vector independent
+              do idx_31 = 1, n_points, 1
+                psc1sa(idx_31) = (m_hno3 + 3.0 * m_h2o) * amu * 3.0e5 * shno3(idx_31) / (rho1 * rad1)
+              enddo
+              !$acc loop gang vector independent
+              do idx_32 = 1, n_points, 1
+                psc2sa(idx_32) = m_h2o * amu * 3.0e5 * sh2o(idx_32) / (rho2 * rad2)
+              enddo
               if (gam1(jh) >= 1.0) then
                 !$acc loop gang vector independent
-                do idx_29 = 1, n_points, 1
-                  kpsc(idx_29,jh) = c_cf(idx_29) * psc1sa(idx_29) * gam_calc(idx_29,INT(gam1(jh)))
+                do idx_33 = 1, n_points, 1
+                  kpsc(idx_33,jh) = c_cf(idx_33) * psc1sa(idx_33) * gam_calc(idx_33,INT(gam1(jh)))
                 enddo
               else
                 !$acc loop gang vector independent
-                do idx_30 = 1, n_points, 1
-                  kpsc(idx_30,jh) = c_cf(idx_30) * psc1sa(idx_30) * gam1(jh)
+                do idx_34 = 1, n_points, 1
+                  kpsc(idx_34,jh) = c_cf(idx_34) * psc1sa(idx_34) * gam1(jh)
                 enddo
               end if
               if (gam2(jh) >= 1.0) then
                 !$acc loop gang vector independent
-                do idx_31 = 1, n_points, 1
-                  kpsc(idx_31,jh) = kpsc(idx_31,jh) + c_cf(idx_31) * psc2sa(idx_31) * gam_calc(idx_31,INT(gam2(jh)))
+                do idx_35 = 1, n_points, 1
+                  kpsc(idx_35,jh) = kpsc(idx_35,jh) + c_cf(idx_35) * psc2sa(idx_35) * gam_calc(idx_35,INT(gam2(jh)))
                 enddo
               else
                 !$acc loop gang vector independent
-                do idx_32 = 1, n_points, 1
-                  kpsc(idx_32,jh) = kpsc(idx_32,jh) + c_cf(idx_32) * psc2sa(idx_32) * gam2(jh)
+                do idx_36 = 1, n_points, 1
+                  kpsc(idx_36,jh) = kpsc(idx_36,jh) + c_cf(idx_36) * psc2sa(idx_36) * gam2(jh)
                 enddo
               end if
             end if
@@ -579,13 +600,13 @@ module ukca_hetero_mod
           if (ukca_config%i_ukca_hetconfig > 0) then
             if (jh <= 3 .OR. jh == 8) then
               !$acc loop gang vector independent
-              do idx_33 = 1, n_points, 1
-                kpsc(idx_33,jh) = kpsc(idx_33,jh) + c_cf(idx_33) * 100.0 * za(idx_33) * gam3calc(idx_33,jh)
+              do idx_37 = 1, n_points, 1
+                kpsc(idx_37,jh) = kpsc(idx_37,jh) + c_cf(idx_37) * 100.0 * za(idx_37) * gam3calc(idx_37,jh)
               enddo
             else
               !$acc loop gang vector independent
-              do idx_34 = 1, n_points, 1
-                kpsc(idx_34,jh) = kpsc(idx_34,jh) + c_cf(idx_34) * 100.0 * za(idx_34) * gam3(jh)
+              do idx_38 = 1, n_points, 1
+                kpsc(idx_38,jh) = kpsc(idx_38,jh) + c_cf(idx_38) * 100.0 * za(idx_38) * gam3(jh)
               enddo
             end if
           end if
@@ -658,10 +679,16 @@ module ukca_hetero_mod
         rk(:, n_n2o5_hbr) = 0.0
       END WHERE
     end if
-    sphno3 = shno3
+    !$acc kernels
+    !$acc loop gang vector independent
+    do idx_39 = LBOUND(sphno3, dim=1), UBOUND(sphno3, dim=1), 1
+      sphno3(idx_39) = shno3(idx_39 + (LBOUND(shno3, dim=1) - LBOUND(sphno3, dim=1)))
+    enddo
+    !$acc end kernels
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
     end if
+    call nvtxEndRange()
     return
 
   end subroutine ukca_hetero
@@ -683,6 +710,7 @@ module ukca_hetero_mod
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
+    call nvtxStartRange(ModuleName // ':' // RoutineName)
     !$acc kernels
     !$acc loop gang vector independent
     do jl = kstart, kend, 1
@@ -700,6 +728,7 @@ module ukca_hetero_mod
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
     end if
+    call nvtxEndRange()
     return
 
   end subroutine ukca_br_gamma
@@ -787,6 +816,7 @@ module ukca_hetero_mod
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
+    call nvtxStartRange(ModuleName // ':' // RoutineName)
     !$acc kernels
     !$acc loop gang vector independent collapse(2)
     do idx = LBOUND(gam3arr, dim=2), UBOUND(gam3arr, dim=2), 1
@@ -842,14 +872,14 @@ module ukca_hetero_mod
       end if
       y1 = a1 * aw ** b1 + c1 * aw + d1
       y2 = a2 * aw ** b2 + c2 * aw + d2
-      ml_h2so4 = y1 + (tt - 190.0) * (y2 - y1) / 70.0
+      ml_h2so4 = y1 + ((tt - 190.0) * (y2 - y1)) / 70.0
       ml_h2so4 = MAX(ml_h2so4, small_value)
-      wt_h2so4 = 9800.0 * ml_h2so4 / (98.0 * ml_h2so4 + 1000.0)
+      wt_h2so4 = (9800.0 * ml_h2so4) / (98.0 * ml_h2so4 + 1000.0)
       z1 = 0.12364 - 5.6e-7 * tt ** 2.0
       z2 = -0.02954 + 1.814e-7 * tt ** 2.0
       z3 = 2.343e-3 - 1.487e-6 * tt - 1.324e-8 * tt ** 2.0
       rho_h2so4 = 1.0 + z1 * ml_h2so4 + z2 * ml_h2so4 ** 1.5 + z3 * ml_h2so4 ** 2.0
-      mr_h2so4 = rho_h2so4 * wt_h2so4 / 9.8
+      mr_h2so4 = (rho_h2so4 * wt_h2so4) / 9.8
       mf_h2so4 = wt_h2so4 / (wt_h2so4 + (100.0 - wt_h2so4) * (98.0 / 18.0))
       if (wt_h2so4 <= 80.0) then
         a = 169.5 + 5.18 * wt_h2so4 - 0.0825 * wt_h2so4 ** 2.0 + 3.27e-3 * wt_h2so4 ** 3.0
@@ -866,19 +896,19 @@ module ukca_hetero_mod
       s_clono2 = 0.306 + 24.0 / tt
       h_clono2 = 1.6e-6 * EXP(4710.0 / tt - s_clono2 * mr_h2so4)
       d_clono2 = 5e-8 * tt / vis_h2so4
-      g_h2o = 4 * h_clono2 * r_vol * tt / c_clono2 * (d_clono2 * k_hydr) ** 0.5
+      g_h2o = (4 * h_clono2 * r_vol * tt / c_clono2) * (d_clono2 * k_hydr) ** 0.5
       h_hcl = (0.094 - 0.61 * mf_h2so4 + 1.2 * mf_h2so4 ** 2) * EXP(-8.68 + (8515.0 - 10718.0 * mf_h2so4 ** 0.7) / tt)
       m_hcl = h_hcl * phcl
       k_hcl = 7.9e11 * ah * d_clono2 * m_hcl
       l_clono2 = (d_clono2 / (k_hydr + k_hcl)) ** 0.5
       f_clono2 = 1 / TANH(radsa / l_clono2) - l_clono2 / radsa
       g_clono2 = f_clono2 * g_h2o * (1 + k_hcl / k_hydr) ** 0.5
-      g_hcl = g_clono2 * k_hcl / (k_hcl + k_hydr)
+      g_hcl = (g_clono2 * k_hcl) / (k_hcl + k_hydr)
       g_s = 66.12 * EXP(-1374.0 / tt) * h_clono2 * m_hcl
       f_hcl = 1 / (1 + 0.612 * (g_s + g_hcl) * (pclono2 / phcl))
       g_s2 = f_hcl * g_s
       g_hcl2 = f_hcl * g_hcl
-      g_b = g_hcl2 + g_clono2 * k_hydr / (k_hcl + k_hydr)
+      g_b = g_hcl2 + (g_clono2 * k_hydr) / (k_hcl + k_hydr)
       if (ABS(g_s2 + g_b) < small_value) then
         gam3arr(jl,1) = 0.0
         gam3arr(jl,2) = 0.0
@@ -909,7 +939,7 @@ module ukca_hetero_mod
       if (ABS(f_hocl) < small_value .OR. ABS(f_hcl) < small_value) then
         gam3arr(jl,3) = 0.0
       else
-        gam_hocl = f_hocl * 4.0 * h_hocl * r_vol * tt / c_hocl * (d_hocl * k_hocl) ** 0.5
+        gam_hocl = (f_hocl * 4.0 * h_hocl * r_vol * tt / c_hocl) * (d_hocl * k_hocl) ** 0.5
         if (gam_hocl * f_hcl < small_value) then
           gam3arr(jl,3) = 0.0
         else
@@ -926,6 +956,7 @@ module ukca_hetero_mod
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
     end if
+    call nvtxEndRange()
     return
 
   end subroutine ukca_shi_liquid_aerosol
@@ -949,6 +980,7 @@ module ukca_hetero_mod
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
+    call nvtxStartRange(ModuleName // ':' // RoutineName)
     if (first_pass) then
       if (firstcall) then
         !$acc kernels
@@ -977,6 +1009,7 @@ module ukca_hetero_mod
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
     end if
+    call nvtxEndRange()
     return
 
   end subroutine ukca_solidphase
@@ -1062,6 +1095,7 @@ module ukca_hetero_mod
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
+    call nvtxStartRange(ModuleName // ':' // RoutineName)
     !$acc kernels
     !$acc loop gang vector independent
     do idx = kstart, kend, 1
@@ -1086,9 +1120,9 @@ module ukca_hetero_mod
     !$acc end kernels
     if (lppsc .OR. lpsa) then
       !$acc kernels
-      zfcnit = 8.0 * boltzmann / (pi * 97.5 * u)
-      zfn2o5 = 8.0 * boltzmann / (pi * 108.0 * u)
-      zfhocl = 8.0 * boltzmann / (pi * 52.5 * u)
+      zfcnit = (8.0 * boltzmann) / (pi * 97.5 * u)
+      zfn2o5 = (8.0 * boltzmann) / (pi * 108.0 * u)
+      zfhocl = (8.0 * boltzmann) / (pi * 52.5 * u)
       !$acc loop gang vector independent
       do idx_5 = kstart, kend, 1
         ccnit(idx_5) = 0.25 * SQRT(zfcnit * t(idx_5))
@@ -1189,6 +1223,7 @@ module ukca_hetero_mod
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
     end if
+    call nvtxEndRange()
     return
 
   end subroutine ukca_calckpsc
@@ -1282,6 +1317,7 @@ module ukca_hetero_mod
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
+    call nvtxStartRange(ModuleName // ':' // RoutineName)
     !$acc kernels
     !$acc loop gang vector independent
     do idx = LBOUND(hshcl, dim=1), UBOUND(hshcl, dim=1), 1
@@ -1370,6 +1406,7 @@ module ukca_hetero_mod
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
     end if
+    call nvtxEndRange()
     return
 
   end subroutine ukca_eqcomp
@@ -1389,6 +1426,7 @@ module ukca_hetero_mod
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
+    call nvtxStartRange(ModuleName // ':' // RoutineName)
     ier = 1
     if (iorder == 0) then
       if (x < xc(1)) then
@@ -1424,6 +1462,7 @@ module ukca_hetero_mod
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
     end if
+    call nvtxEndRanges()
     return
 
   end subroutine ukca_position
@@ -1458,6 +1497,7 @@ module ukca_hetero_mod
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
+    call nvtxStartRange(ModuleName // ':' // RoutineName)
     !$acc kernels
     !$acc loop gang vector independent
     do idx = kstart, kend, 1
@@ -1515,6 +1555,7 @@ module ukca_hetero_mod
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
     end if
+    call nvtxEndRange()
     return
 
   end subroutine ukca_pscpres

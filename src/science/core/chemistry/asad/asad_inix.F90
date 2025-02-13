@@ -47,11 +47,11 @@ module asad_inix_mod
     do js = 1, jpspec, 1
       itype(:) = ctype(js)
       nlall(js) = js
-      if (itype(:) == jpfm .OR. itype(:) == jpif .OR. itype(:) == jpna) then
+      if (itype(:) == jpfm(:) .OR. itype(:) == jpif(:) .OR. itype(:) == jpna(:)) then
         nstst = nstst + 1
         nlstst(nstst) = js
       end if
-      if (itype(:) == jpfm .OR. itype(:) == jpif .OR. itype(:) == jpsp .OR. itype(:) == jpoo) then
+      if (itype(:) == jpfm(:) .OR. itype(:) == jpif(:) .OR. itype(:) == jpsp(:) .OR. itype(:) == jpoo(:)) then
         nf = nf + 1
         nlf(nf) = js
       end if

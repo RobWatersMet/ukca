@@ -102,6 +102,12 @@ module asad_bimol_mod
     integer :: idx_38
     integer :: idx_39
     integer :: idx_40
+    integer :: idx_41
+    integer :: idx_42
+    integer :: idx_43
+    integer :: idx_44
+    integer :: idx_45
+    integer :: idx_46
 
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
@@ -181,28 +187,28 @@ module asad_bimol_mod
         r2(:) = 'C3H8      '
         prods(1) = 'n-PrOO    '
         prods(2) = 'H2O       '
-        iohc3h8a = asad_findreaction(r1,r2,prods,2,spb,nbrkx,jpbk + 1,jpspb)
+        iohc3h8a = asad_findreaction(r1, r2, prods, 2, spb, nbrkx, jpbk + 1, jpspb)
         prods(1) = 'i-PrOO    '
         prods(2) = 'H2O       '
-        iohc3h8b = asad_findreaction(r1,r2,prods,2,spb,nbrkx,jpbk + 1,jpspb)
+        iohc3h8b = asad_findreaction(r1, r2, prods, 2, spb, nbrkx, jpbk + 1, jpspb)
         r1(:) = 'MeOO      '
         r2(:) = 'MeOO      '
         prods(1) = 'MeOH      '
         prods(2) = 'HCHO      '
-        imeoomeooa = asad_findreaction(r1,r2,prods,2,spb,nbrkx,jpbk + 1,jpspb)
+        imeoomeooa = asad_findreaction(r1, r2, prods, 2, spb, nbrkx, jpbk + 1, jpspb)
         prods(1) = 'HO2       '
         prods(2) = 'HCHO      '
         prods(3) = 'HO2       '
         prods(4) = 'HCHO      '
-        imeoomeoob = asad_findreaction(r1,r2,prods,4,spb,nbrkx,jpbk + 1,jpspb)
+        imeoomeoob = asad_findreaction(r1, r2, prods, 4, spb, nbrkx, jpbk + 1, jpspb)
         r1(:) = 'MeOO      '
         r2(:) = 'RO2       '
         prods(1) = 'MeOH      '
         prods(2) = 'HCHO      '
-        imeooro2a = asad_findreaction(r1,r2,prods,2,spb,nbrkx,jpbk + 1,jpspb)
+        imeooro2a = asad_findreaction(r1, r2, prods, 2, spb, nbrkx, jpbk + 1, jpspb)
         prods(1) = 'HO2       '
         prods(2) = 'HCHO      '
-        imeooro2b = asad_findreaction(r1,r2,prods,2,spb,nbrkx,jpbk + 1,jpspb)
+        imeooro2b = asad_findreaction(r1, r2, prods, 2, spb, nbrkx, jpbk + 1, jpspb)
         if ((imeoomeooa /= 0 .AND. imeoomeoob /= 0) .AND. (imeooro2a /= 0 .AND. imeooro2b /= 0)) then
           errcode = 2
           cmessage(:) = 'ASAD_BIMOL: Cannot have both MeOO+MeOO & MeOO+RO2 reactions'
@@ -213,39 +219,39 @@ module asad_bimol_mod
         r1(:) = 'HO2       '
         r2(:) = 'MeOO      '
         prods(1) = 'MeOOH     '
-        imeooho2a = asad_findreaction(r1,r2,prods,1,spb,nbrkx,jpbk + 1,jpspb)
+        imeooho2a = asad_findreaction(r1, r2, prods, 1, spb, nbrkx, jpbk + 1, jpspb)
         prods(1) = 'HCHO      '
-        imeooho2b = asad_findreaction(r1,r2,prods,1,spb,nbrkx,jpbk + 1,jpspb)
+        imeooho2b = asad_findreaction(r1, r2, prods, 1, spb, nbrkx, jpbk + 1, jpspb)
         r1(:) = 'HO2       '
         r2(:) = 'NO        '
         prods(1) = 'HONO2     '
-        iho2no = asad_findreaction(r1,r2,prods,1,spb,nbrkx,jpbk + 1,jpspb)
+        iho2no = asad_findreaction(r1, r2, prods, 1, spb, nbrkx, jpbk + 1, jpspb)
         if (ukca_config%l_ukca_chem_aero) then
           r1(:) = 'DMS       '
           r2(:) = 'OH        '
           prods(1) = 'SO2       '
           if (ukca_config%l_ukca_offline .OR. ukca_config%l_ukca_offline_be) then
             prods(2) = 'DMSO      '
-            idmsoh = asad_findreaction(r1,r2,prods,2,spb,nbrkx,jpbk + 1,jpspb)
+            idmsoh = asad_findreaction(r1, r2, prods, 2, spb, nbrkx, jpbk + 1, jpspb)
           else
             if (ukca_config%l_ukca_strat) then
               prods(2) = 'MSA       '
-              idmsoh = asad_findreaction(r1,r2,prods,2,spb,nbrkx,jpbk + 1,jpspb)
+              idmsoh = asad_findreaction(r1, r2, prods, 2, spb, nbrkx, jpbk + 1, jpspb)
             else
               if (ukca_config%l_ukca_strattrop .AND. ukca_config%i_ukca_chem_version < i_chem_version_121) then
                 if (ukca_config%i_ukca_chem_version >= i_chem_version_117) then
                   prods(2) = 'DMSO      '
                   prods(3) = 'MeOO      '
-                  idmsoh = asad_findreaction(r1,r2,prods,3,spb,nbrkx,jpbk + 1,jpspb)
+                  idmsoh = asad_findreaction(r1, r2, prods, 3, spb, nbrkx, jpbk + 1, jpspb)
                 else
                   prods(2) = 'MSA       '
-                  idmsoh = asad_findreaction(r1,r2,prods,2,spb,nbrkx,jpbk + 1,jpspb)
+                  idmsoh = asad_findreaction(r1, r2, prods, 2, spb, nbrkx, jpbk + 1, jpspb)
                 end if
               else
                 if (ukca_config%l_ukca_tropisop) then
                   prods(2) = 'DMSO      '
                   prods(3) = 'MeOO      '
-                  idmsoh = asad_findreaction(r1,r2,prods,3,spb,nbrkx,jpbk + 1,jpspb)
+                  idmsoh = asad_findreaction(r1, r2, prods, 3, spb, nbrkx, jpbk + 1, jpspb)
                 else
                   idmsoh = 0
                 end if
@@ -287,21 +293,51 @@ module asad_bimol_mod
     do j = 1, jpbk, 1
       jr = nbrkx(j)
       if (ABS(ab(j,2)) < peps .AND. ABS(ab(j,3)) < peps) then
-        rk(1:n_points,jr) = ab(j,1)
+        !$acc kernels
+        !$acc loop gang vector independent
+        do idx_8 = 1, n_points, 1
+          rk(idx_8,jr) = ab(j,1)
+        enddo
+        !$acc end kernels
       else
         if (ABS(ab(j,2)) < peps) then
-          tmp(:) = -ab(j,3) * inv_t(:)
+          !$acc kernels
+          !$acc loop gang vector independent
+          do idx_9 = 1, n_points, 1
+            tmp(idx_9) = -ab(j,3) * inv_t(idx_9)
+          enddo
+          !$acc end kernels
           call exp_v(n_points, tmp, tmp_out)
-          rk(1:n_points,jr) = ab(j,1) * tmp_out(:)
+          !$acc kernels
+          !$acc loop gang vector independent
+          do idx_10 = 1, n_points, 1
+            rk(idx_10,jr) = ab(j,1) * tmp_out(idx_10)
+          enddo
+          !$acc end kernels
         else
           if (ABS(ab(j,3)) < peps) then
             call powr_v(n_points, t300, ab(j,2), tmp1)
-            rk(1:n_points,jr) = ab(j,1) * tmp1(:)
+            !$acc kernels
+            !$acc loop gang vector independent
+            do idx_11 = 1, n_points, 1
+              rk(idx_11,jr) = ab(j,1) * tmp1(idx_11)
+            enddo
+            !$acc end kernels
           else
-            tmp(:) = -ab(j,3) * inv_t(:)
+            !$acc kernels
+            !$acc loop gang vector independent
+            do idx_12 = 1, n_points, 1
+              tmp(idx_12) = -ab(j,3) * inv_t(idx_12)
+            enddo
+            !$acc end kernels
             call exp_v(n_points, tmp, tmp_out)
             call powr_v(n_points, t300, ab(j,2), tmp1)
-            rk(1:n_points,jr) = ab(j,1) * tmp1(:) * tmp_out(:)
+            !$acc kernels
+            !$acc loop gang vector independent
+            do idx_13 = 1, n_points, 1
+              rk(idx_13,jr) = ab(j,1) * tmp1(idx_13) * tmp_out(idx_13)
+            enddo
+            !$acc end kernels
           end if
         end if
       end if
@@ -309,79 +345,79 @@ module asad_bimol_mod
     if (iohco /= 0) then
       !$acc kernels
       !$acc loop gang vector independent
-      do idx_8 = 1, n_points, 1
-        rk(idx_8,iohco) = rk(idx_8,iohco) * (1.0 + tnd(idx_8) / 4.2e19)
+      do idx_14 = 1, n_points, 1
+        rk(idx_14,iohco) = rk(idx_14,iohco) * (1.0 + tnd(idx_14) / 4.2e19)
       enddo
       !$acc end kernels
     end if
     if (iohhno3 /= 0) then
       !$acc kernels
       !$acc loop gang vector independent
-      do idx_9 = 1, n_points, 1
-        tmp(idx_9) = 460.0 * inv_t(idx_9)
-      enddo
-      !$acc end kernels
-      call exp_v(n_points, tmp, tmp_out)
-      !$acc kernels
-      !$acc loop gang vector independent
-      do idx_10 = LBOUND(z1, dim=1), UBOUND(z1, dim=1), 1
-        z1(idx_10) = 2.4e-14 * tmp_out(idx_10 + (1 - LBOUND(z1, dim=1)))
-      enddo
-      !$acc loop gang vector independent
-      do idx_11 = 1, n_points, 1
-        tmp(idx_11) = 1335.0 * inv_t(idx_11)
-      enddo
-      !$acc end kernels
-      call exp_v(n_points, tmp, tmp_out)
-      !$acc kernels
-      !$acc loop gang vector independent
-      do idx_12 = LBOUND(z3, dim=1), UBOUND(z3, dim=1), 1
-        z3(idx_12) = (6.5e-34 * tmp_out(idx_12 + (1 - LBOUND(z3, dim=1)))) * tnd(idx_12 + (1 - LBOUND(z3, dim=1)))
-      enddo
-      !$acc loop gang vector independent
-      do idx_13 = 1, n_points, 1
-        tmp(idx_13) = 2199.0 * inv_t(idx_13)
-      enddo
-      !$acc end kernels
-      call exp_v(n_points, tmp, tmp_out)
-      !$acc kernels
-      !$acc loop gang vector independent
-      do idx_14 = LBOUND(z4, dim=1), UBOUND(z4, dim=1), 1
-        z4(idx_14) = 2.7e-17 * tmp_out(idx_14 + (1 - LBOUND(z4, dim=1)))
-      enddo
-      !$acc loop gang vector independent
       do idx_15 = 1, n_points, 1
-        rk(idx_15,iohhno3) = z1(idx_15 + (LBOUND(z1, dim=1) - 1)) + z3(idx_15 + (LBOUND(z3, dim=1) - 1)) / (1.0 + z3(idx_15 + (LBOUND(z3, dim=1) - 1)) / z4(idx_15 + (LBOUND(z4, dim=1) - 1)))
+        tmp(idx_15) = 460.0 * inv_t(idx_15)
+      enddo
+      !$acc end kernels
+      call exp_v(n_points, tmp, tmp_out)
+      !$acc kernels
+      !$acc loop gang vector independent
+      do idx_16 = LBOUND(z1, dim=1), UBOUND(z1, dim=1), 1
+        z1(idx_16) = 2.4e-14 * tmp_out(idx_16 + (1 - LBOUND(z1, dim=1)))
+      enddo
+      !$acc loop gang vector independent
+      do idx_17 = 1, n_points, 1
+        tmp(idx_17) = 1335.0 * inv_t(idx_17)
+      enddo
+      !$acc end kernels
+      call exp_v(n_points, tmp, tmp_out)
+      !$acc kernels
+      !$acc loop gang vector independent
+      do idx_18 = LBOUND(z3, dim=1), UBOUND(z3, dim=1), 1
+        z3(idx_18) = (6.5e-34 * tmp_out(idx_18 + (1 - LBOUND(z3, dim=1)))) * tnd(idx_18 + (1 - LBOUND(z3, dim=1)))
+      enddo
+      !$acc loop gang vector independent
+      do idx_19 = 1, n_points, 1
+        tmp(idx_19) = 2199.0 * inv_t(idx_19)
+      enddo
+      !$acc end kernels
+      call exp_v(n_points, tmp, tmp_out)
+      !$acc kernels
+      !$acc loop gang vector independent
+      do idx_20 = LBOUND(z4, dim=1), UBOUND(z4, dim=1), 1
+        z4(idx_20) = 2.7e-17 * tmp_out(idx_20 + (1 - LBOUND(z4, dim=1)))
+      enddo
+      !$acc loop gang vector independent
+      do idx_21 = 1, n_points, 1
+        rk(idx_21,iohhno3) = z1(idx_21 + (LBOUND(z1, dim=1) - 1)) + z3(idx_21 + (LBOUND(z3, dim=1) - 1)) / (1.0 + z3(idx_21 + (LBOUND(z3, dim=1) - 1)) / z4(idx_21 + (LBOUND(z4, dim=1) - 1)))
       enddo
       !$acc end kernels
     end if
     if (ih2o /= 0 .AND. iho2 /= 0) then
       !$acc kernels
       !$acc loop gang vector independent
-      do idx_16 = 1, n_points, 1
-        tmp(idx_16) = 2200.0 * inv_t(idx_16)
+      do idx_22 = 1, n_points, 1
+        tmp(idx_22) = 2200.0 * inv_t(idx_22)
       enddo
       !$acc end kernels
       call exp_v(n_points, tmp, tmp_out)
       !$acc kernels
       !$acc loop gang vector independent
-      do idx_17 = 1, n_points, 1
-        rk(idx_17,iho2) = rk(idx_17,iho2) * (1.0 + 1.4e-21 * f(idx_17,ih2o) * tmp_out(idx_17))
+      do idx_23 = 1, n_points, 1
+        rk(idx_23,iho2) = rk(idx_23,iho2) * (1.0 + 1.4e-21 * f(idx_23,ih2o) * tmp_out(idx_23))
       enddo
       !$acc end kernels
     else
       if (ih2o == 0 .AND. iho2 /= 0) then
         !$acc kernels
         !$acc loop gang vector independent
-        do idx_18 = 1, n_points, 1
-          tmp(idx_18) = 2200.0 * inv_t(idx_18)
+        do idx_24 = 1, n_points, 1
+          tmp(idx_24) = 2200.0 * inv_t(idx_24)
         enddo
         !$acc end kernels
         call exp_v(n_points, tmp, tmp_out)
         !$acc kernels
         !$acc loop gang vector independent
-        do idx_19 = 1, n_points, 1
-          rk(idx_19,iho2) = rk(idx_19,iho2) * (1.0 + 1.4e-21 * wp(idx_19) * tnd(idx_19) * tmp_out(idx_19))
+        do idx_25 = 1, n_points, 1
+          rk(idx_25,iho2) = rk(idx_25,iho2) * (1.0 + 1.4e-21 * wp(idx_25) * tnd(idx_25) * tmp_out(idx_25))
         enddo
         !$acc end kernels
       end if
@@ -389,24 +425,24 @@ module asad_bimol_mod
     if (iho2no /= 0) then
       !$acc kernels
       !$acc loop gang vector independent
-      do idx_20 = 1, n_points, 1
-        rk(idx_20,iho2no) = rk(idx_20,iho2no) * (530.0 * inv_t(idx_20) + 8.53e-4 * (1e-2 * p(idx_20)) - 1.73) / 100.0
+      do idx_26 = 1, n_points, 1
+        rk(idx_26,iho2no) = rk(idx_26,iho2no) * (530.0 * inv_t(idx_26) + 8.53e-4 * (1e-2 * p(idx_26)) - 1.73) / 100.0
       enddo
       !$acc end kernels
     end if
     if (ih2o /= 0 .AND. iso3h2o /= 0) then
       !$acc kernels
       !$acc loop gang vector independent
-      do idx_21 = 1, n_points, 1
-        rk(idx_21,iso3h2o) = rk(idx_21,iso3h2o) * f(idx_21,ih2o)
+      do idx_27 = 1, n_points, 1
+        rk(idx_27,iso3h2o) = rk(idx_27,iso3h2o) * f(idx_27,ih2o)
       enddo
       !$acc end kernels
     else
       if (ih2o == 0 .AND. iso3h2o /= 0) then
         !$acc kernels
         !$acc loop gang vector independent
-        do idx_22 = 1, n_points, 1
-          rk(idx_22,iso3h2o) = rk(idx_22,iso3h2o) * wp(idx_22) * tnd(idx_22)
+        do idx_28 = 1, n_points, 1
+          rk(idx_28,iso3h2o) = rk(idx_28,iso3h2o) * wp(idx_28) * tnd(idx_28)
         enddo
         !$acc end kernels
       end if
@@ -414,19 +450,19 @@ module asad_bimol_mod
     if (ics2oh /= 0) then
       !$acc kernels
       !$acc loop gang vector independent
-      do idx_23 = 1, n_points, 1
-        tmp(idx_23) = 3400.0 * inv_t(idx_23)
+      do idx_29 = 1, n_points, 1
+        tmp(idx_29) = 3400.0 * inv_t(idx_29)
       enddo
       !$acc end kernels
       call exp_v(n_points, tmp, tmp_out)
       !$acc kernels
       !$acc loop gang vector independent
-      do idx_24 = LBOUND(z6, dim=1), UBOUND(z6, dim=1), 1
-        z6(idx_24) = 1.81e-3 * tmp_out(idx_24 + (1 - LBOUND(z6, dim=1)))
+      do idx_30 = LBOUND(z6, dim=1), UBOUND(z6, dim=1), 1
+        z6(idx_30) = 1.81e-3 * tmp_out(idx_30 + (1 - LBOUND(z6, dim=1)))
       enddo
       !$acc loop gang vector independent
-      do idx_25 = 1, n_points, 1
-        rk(idx_25,ics2oh) = rk(idx_25,ics2oh) / (t(idx_25) + z6(idx_25 + (LBOUND(z6, dim=1) - 1)))
+      do idx_31 = 1, n_points, 1
+        rk(idx_31,ics2oh) = rk(idx_31,ics2oh) / (t(idx_31) + z6(idx_31 + (LBOUND(z6, dim=1) - 1)))
       enddo
       !$acc end kernels
     end if
@@ -434,89 +470,89 @@ module asad_bimol_mod
       ALLOCATE(alpha(1:n_points))
       !$acc kernels
       !$acc loop gang vector independent
-      do idx_26 = 1, n_points, 1
-        tmp(idx_26) = 7460.0 * inv_t(idx_26)
+      do idx_32 = 1, n_points, 1
+        tmp(idx_32) = 7460.0 * inv_t(idx_32)
       enddo
       !$acc end kernels
       call exp_v(n_points, tmp, tmp_out)
       !$acc kernels
       !$acc loop gang vector independent
-      do idx_27 = LBOUND(alpha, dim=1), UBOUND(alpha, dim=1), 1
-        alpha(idx_27) = 1.106e-31 * tmp_out(idx_27 + (1 - LBOUND(alpha, dim=1))) * tnd(idx_27 + (1 - LBOUND(alpha, dim=1)))
+      do idx_33 = LBOUND(alpha, dim=1), UBOUND(alpha, dim=1), 1
+        alpha(idx_33) = 1.106e-31 * tmp_out(idx_33 + (1 - LBOUND(alpha, dim=1))) * tnd(idx_33 + (1 - LBOUND(alpha, dim=1)))
       enddo
       !$acc loop gang vector independent
-      do idx_28 = 1, n_points, 1
-        rk(idx_28,idmsoh) = rk(idx_28,idmsoh) * alpha(idx_28 + (LBOUND(alpha, dim=1) - 1)) / (1.0 + alpha(idx_28 + (LBOUND(alpha, dim=1) - 1)))
+      do idx_34 = 1, n_points, 1
+        rk(idx_34,idmsoh) = rk(idx_34,idmsoh) * alpha(idx_34 + (LBOUND(alpha, dim=1) - 1)) / (1.0 + alpha(idx_34 + (LBOUND(alpha, dim=1) - 1)))
       enddo
       !$acc end kernels
     end if
     if (iohc3h8a /= 0 .AND. iohc3h8b /= 0) then
       !$acc kernels
       !$acc loop gang vector independent
-      do idx_29 = 1, n_points, 1
-        tmp(idx_29) = -816.0 * inv_t(idx_29)
+      do idx_35 = 1, n_points, 1
+        tmp(idx_35) = -816.0 * inv_t(idx_35)
       enddo
       !$acc end kernels
       call exp_v(n_points, tmp, tmp_out)
       call powr_v(n_points, t, -0.64, tmp1)
       !$acc kernels
       !$acc loop gang vector independent
-      do idx_30 = 1, n_points, 1
-        ratioa2b(idx_30) = 226.0 * tmp1(idx_30) * tmp_out(idx_30)
+      do idx_36 = 1, n_points, 1
+        ratioa2b(idx_36) = 226.0 * tmp1(idx_36) * tmp_out(idx_36)
       enddo
       !$acc loop gang vector independent
-      do idx_31 = 1, n_points, 1
-        rk(idx_31,iohc3h8a) = rk(idx_31,iohc3h8a) * (ratioa2b(idx_31) / (ratioa2b(idx_31) + 1.0))
+      do idx_37 = 1, n_points, 1
+        rk(idx_37,iohc3h8a) = rk(idx_37,iohc3h8a) * (ratioa2b(idx_37) / (ratioa2b(idx_37) + 1.0))
       enddo
       !$acc loop gang vector independent
-      do idx_32 = 1, n_points, 1
-        rk(idx_32,iohc3h8b) = rk(idx_32,iohc3h8b) / (ratioa2b(idx_32) + 1.0)
+      do idx_38 = 1, n_points, 1
+        rk(idx_38,iohc3h8b) = rk(idx_38,iohc3h8b) / (ratioa2b(idx_38) + 1.0)
       enddo
       !$acc end kernels
     end if
     if ((imeoo2a /= 0 .AND. imeoo2b /= 0) .AND. (.NOT.ukca_config%l_ukca_cristrat)) then
       !$acc kernels
       !$acc loop gang vector independent
-      do idx_33 = 1, n_points, 1
-        tmp(idx_33) = 1300.0 * inv_t(idx_33)
+      do idx_39 = 1, n_points, 1
+        tmp(idx_39) = 1300.0 * inv_t(idx_39)
       enddo
       !$acc end kernels
       call exp_v(n_points, tmp, tmp_out)
       !$acc kernels
       !$acc loop gang vector independent
-      do idx_34 = 1, n_points, 1
-        ratiob2total(idx_34) = 1.0 / (1.0 + tmp_out(idx_34) / 33.0)
+      do idx_40 = 1, n_points, 1
+        ratiob2total(idx_40) = 1.0 / (1.0 + tmp_out(idx_40) / 33.0)
       enddo
       !$acc loop gang vector independent
-      do idx_35 = 1, n_points, 1
-        rk(idx_35,imeoo2a) = rk(idx_35,imeoo2a) * (1.0 - ratiob2total(idx_35))
+      do idx_41 = 1, n_points, 1
+        rk(idx_41,imeoo2a) = rk(idx_41,imeoo2a) * (1.0 - ratiob2total(idx_41))
       enddo
       !$acc loop gang vector independent
-      do idx_36 = 1, n_points, 1
-        rk(idx_36,imeoo2b) = rk(idx_36,imeoo2b) * ratiob2total(idx_36)
+      do idx_42 = 1, n_points, 1
+        rk(idx_42,imeoo2b) = rk(idx_42,imeoo2b) * ratiob2total(idx_42)
       enddo
       !$acc end kernels
     end if
     if (imeooho2a /= 0 .AND. imeooho2b /= 0) then
       !$acc kernels
       !$acc loop gang vector independent
-      do idx_37 = 1, n_points, 1
-        tmp(idx_37) = -1160.0 * inv_t(idx_37)
+      do idx_43 = 1, n_points, 1
+        tmp(idx_43) = -1160.0 * inv_t(idx_43)
       enddo
       !$acc end kernels
       call exp_v(n_points, tmp, tmp_out)
       !$acc kernels
       !$acc loop gang vector independent
-      do idx_38 = 1, n_points, 1
-        ratiob2total(idx_38) = 1.0 / (1.0 + 498.0 * tmp_out(idx_38))
+      do idx_44 = 1, n_points, 1
+        ratiob2total(idx_44) = 1.0 / (1.0 + 498.0 * tmp_out(idx_44))
       enddo
       !$acc loop gang vector independent
-      do idx_39 = 1, n_points, 1
-        rk(idx_39,imeooho2a) = rk(idx_39,imeooho2a) * (1.0 - ratiob2total(idx_39))
+      do idx_45 = 1, n_points, 1
+        rk(idx_45,imeooho2a) = rk(idx_45,imeooho2a) * (1.0 - ratiob2total(idx_45))
       enddo
       !$acc loop gang vector independent
-      do idx_40 = 1, n_points, 1
-        rk(idx_40,imeooho2b) = rk(idx_40,imeooho2b) * ratiob2total(idx_40)
+      do idx_46 = 1, n_points, 1
+        rk(idx_46,imeooho2b) = rk(idx_46,imeooho2b) * ratiob2total(idx_46)
       enddo
       !$acc end kernels
     end if

@@ -17,6 +17,7 @@ module ukca_chemistry_ctl_tropraq_mod
     use ukca_chemco_raq_mod, only : ukca_chemco_raq
     use ukca_deriv_raqaero_mod, only : ukca_deriv_raqaero
     use yomhook, only : dr_hook, lhook
+    use nvtx
     use parkind1, only : jpim, jprb
     use ereport_mod, only : ereport
     use umPrintMgr, only : printstatus, prstatus_oper, ummessage, umprint
@@ -171,10 +172,21 @@ module ukca_chemistry_ctl_tropraq_mod
     integer :: idx_36
     integer :: idx_37
     integer :: idx_38
+    integer :: idx_39
+    integer :: idx_40
+    integer :: idx_41
+    integer :: idx_42
+    integer :: idx_43
+    integer :: idx_44
+    integer :: idx_45
+    integer :: idx_46
+    integer :: idx_47
+    integer :: idx_48
 
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
+    call nvtxStartRange(ModuleName // ':' // RoutineName)
     nr = nr_therm + nr_phot
     if (firstcall) then
       n_be_calls = INT(secs_per_step / ukca_config%dts0)
@@ -210,12 +222,17 @@ module ukca_chemistry_ctl_tropraq_mod
       kce = k * theta_field_size
       if (ukca_config%l_ukca_het_psc) then
         if (k <= model_levels) then
-          sph2o(:) = qcf(kcs:kce) / c_h2o
-        else
           !$acc kernels
           !$acc loop gang vector independent
           do idx = LBOUND(sph2o, dim=1), UBOUND(sph2o, dim=1), 1
-            sph2o(idx) = 0.0
+            sph2o(idx) = qcf(idx + (kcs - LBOUND(sph2o, dim=1))) / c_h2o
+          enddo
+          !$acc end kernels
+        else
+          !$acc kernels
+          !$acc loop gang vector independent
+          do idx_1 = LBOUND(sph2o, dim=1), UBOUND(sph2o, dim=1), 1
+            sph2o(idx_1) = 0.0
           enddo
           !$acc end kernels
         end if
@@ -224,8 +241,13 @@ module ukca_chemistry_ctl_tropraq_mod
       do js = 1, jpspec, 1
         do jtr = 1, jpctr, 1
           if (advt(jtr) == speci(js)) then
+            !$acc kernels
             jspf = jspf + 1
-            zftr(:,jspf) = tracer(kcs:kce,jtr) / c_species(jtr)
+            !$acc loop gang vector independent
+            do idx_2 = LBOUND(zftr, dim=1), UBOUND(zftr, dim=1), 1
+              zftr(idx_2,jspf) = tracer(idx_2 + (kcs - LBOUND(zftr, dim=1)),jtr) / c_species(jtr)
+            enddo
+            !$acc end kernels
           end if
         enddo
         if (ukca_config%l_ukca_ro2_ntp) then
@@ -234,8 +256,13 @@ module ukca_chemistry_ctl_tropraq_mod
               l = name2ntpindex(spro2(jro2))
               jna = nlnaro2(jro2)
               if (nadvt(jna) == spro2(jro2)) then
+                !$acc kernels
                 jspf = jspf + 1
-                zftr(:,jspf) = ntp_data(kcs:kce,l) / c_na_species(jna)
+                !$acc loop gang vector independent
+                do idx_3 = LBOUND(zftr, dim=1), UBOUND(zftr, dim=1), 1
+                  zftr(idx_3,jspf) = ntp_data(idx_3 + (kcs - LBOUND(zftr, dim=1)),l) / c_na_species(jna)
+                enddo
+                !$acc end kernels
               else
                 errcode = jro2
                 ! PSyclone CodeBlock (unsupported code) reason:
@@ -271,40 +298,47 @@ module ukca_chemistry_ctl_tropraq_mod
         end if
       end if
       !$acc kernels
-      be_tnd(:) = pres(kcs:kce) / (boltzmann * 1.0e6 * temp(kcs:kce))
       !$acc loop gang vector independent
-      do idx_1 = LBOUND(be_o2, dim=1), UBOUND(be_o2, dim=1), 1
-        be_o2(idx_1) = 0.2095 * be_tnd(idx_1)
+      do idx_4 = LBOUND(be_tnd, dim=1), UBOUND(be_tnd, dim=1), 1
+        be_tnd(idx_4) = pres(idx_4 + (kcs - LBOUND(be_tnd, dim=1))) / (boltzmann * 1.0e6 * temp(idx_4 + (kcs - LBOUND(be_tnd, dim=1))))
       enddo
       !$acc loop gang vector independent
-      do idx_2 = LBOUND(be_h2o, dim=1), UBOUND(be_h2o, dim=1), 1
-        be_h2o(idx_2) = q(idx_2 + (kcs - LBOUND(be_h2o, dim=1))) * be_tnd(idx_2)
+      do idx_5 = LBOUND(be_o2, dim=1), UBOUND(be_o2, dim=1), 1
+        be_o2(idx_5) = 0.2095 * be_tnd(idx_5)
       enddo
       !$acc loop gang vector independent
-      do idx_3 = LBOUND(be_vol, dim=1), UBOUND(be_vol, dim=1), 1
-        be_vol(idx_3) = volume(idx_3 + (kcs - LBOUND(be_vol, dim=1))) * 1.0e6
+      do idx_6 = LBOUND(be_h2o, dim=1), UBOUND(be_h2o, dim=1), 1
+        be_h2o(idx_6) = q(idx_6 + (kcs - LBOUND(be_h2o, dim=1))) * be_tnd(idx_6)
+      enddo
+      !$acc loop gang vector independent
+      do idx_7 = LBOUND(be_vol, dim=1), UBOUND(be_vol, dim=1), 1
+        be_vol(idx_7) = volume(idx_7 + (kcs - LBOUND(be_vol, dim=1))) * 1.0e6
       enddo
       be_rho(:) = pres(kcs:kce) / (rgas * temp(kcs:kce))
       !$acc loop gang vector independent collapse(2)
       do l = 1, jpctr, 1
-        do idx_4 = LBOUND(zftr, dim=1), UBOUND(zftr, dim=1), 1
-          zftr(idx_4,l) = zftr(idx_4,l) * be_tnd(idx_4)
+        do idx_8 = LBOUND(zftr, dim=1), UBOUND(zftr, dim=1), 1
+          zftr(idx_8,l) = zftr(idx_8,l) * be_tnd(idx_8)
         enddo
       enddo
       !$acc end kernels
       if (.NOT.ALLOCATED(zfnatr)) then
         ALLOCATE(zfnatr(1:theta_field_size,1:nnaf))
       end if
-      !$acc kernels
-      !$acc loop gang vector independent
       do js = 1, nnaf, 1
         l = name2ntpindex(nadvt(js))
-        zfnatr(:,js) = ntp_data(kcs:kce,l) / c_na_species(js)
+        !$acc kernels
+        !$acc loop gang vector independent
+        do idx_9 = LBOUND(zfnatr, dim=1), UBOUND(zfnatr, dim=1), 1
+          zfnatr(idx_9,js) = ntp_data(idx_9 + (kcs - LBOUND(zfnatr, dim=1)),l) / c_na_species(js)
+        enddo
+        !$acc end kernels
       enddo
+      !$acc kernels
       !$acc loop gang vector independent collapse(2)
       do l = 1, nnaf, 1
-        do idx_5 = LBOUND(zfnatr, dim=1), UBOUND(zfnatr, dim=1), 1
-          zfnatr(idx_5,l) = zfnatr(idx_5,l) * be_tnd(idx_5 + (LBOUND(be_tnd, dim=1) - LBOUND(zfnatr, dim=1)))
+        do idx_10 = LBOUND(zfnatr, dim=1), UBOUND(zfnatr, dim=1), 1
+          zfnatr(idx_10,l) = zfnatr(idx_10,l) * be_tnd(idx_10 + (LBOUND(be_tnd, dim=1) - LBOUND(zfnatr, dim=1)))
         enddo
       enddo
       !$acc end kernels
@@ -321,44 +355,44 @@ module ukca_chemistry_ctl_tropraq_mod
       if (ukca_config%l_ukca_raq .OR. ukca_config%l_ukca_raqaero) then
         !$acc kernels
         !$acc loop gang vector independent
-        do idx_6 = LBOUND(be_rh_frac, dim=1), UBOUND(be_rh_frac, dim=1), 1
-          be_rh_frac(idx_6) = rh(idx_6 + (kcs - LBOUND(be_rh_frac, dim=1)))
+        do idx_11 = LBOUND(be_rh_frac, dim=1), UBOUND(be_rh_frac, dim=1), 1
+          be_rh_frac(idx_11) = rh(idx_11 + (kcs - LBOUND(be_rh_frac, dim=1)))
         enddo
         !$acc loop gang vector independent
-        do idx_7 = LBOUND(be_so4_aitken, dim=1), UBOUND(be_so4_aitken, dim=1), 1
-          be_so4_aitken(idx_7) = so4_aitken(idx_7 + (kcs - LBOUND(be_so4_aitken, dim=1)))
+        do idx_12 = LBOUND(be_so4_aitken, dim=1), UBOUND(be_so4_aitken, dim=1), 1
+          be_so4_aitken(idx_12) = so4_aitken(idx_12 + (kcs - LBOUND(be_so4_aitken, dim=1)))
         enddo
         !$acc loop gang vector independent
-        do idx_8 = LBOUND(be_so4_accum, dim=1), UBOUND(be_so4_accum, dim=1), 1
-          be_so4_accum(idx_8) = so4_accum(idx_8 + (kcs - LBOUND(be_so4_accum, dim=1)))
+        do idx_13 = LBOUND(be_so4_accum, dim=1), UBOUND(be_so4_accum, dim=1), 1
+          be_so4_accum(idx_13) = so4_accum(idx_13 + (kcs - LBOUND(be_so4_accum, dim=1)))
         enddo
         !$acc loop gang vector independent
-        do idx_9 = LBOUND(be_soot_fresh, dim=1), UBOUND(be_soot_fresh, dim=1), 1
-          be_soot_fresh(idx_9) = soot_fresh(idx_9 + (kcs - LBOUND(be_soot_fresh, dim=1)))
+        do idx_14 = LBOUND(be_soot_fresh, dim=1), UBOUND(be_soot_fresh, dim=1), 1
+          be_soot_fresh(idx_14) = soot_fresh(idx_14 + (kcs - LBOUND(be_soot_fresh, dim=1)))
         enddo
         !$acc loop gang vector independent
-        do idx_10 = LBOUND(be_soot_aged, dim=1), UBOUND(be_soot_aged, dim=1), 1
-          be_soot_aged(idx_10) = soot_aged(idx_10 + (kcs - LBOUND(be_soot_aged, dim=1)))
+        do idx_15 = LBOUND(be_soot_aged, dim=1), UBOUND(be_soot_aged, dim=1), 1
+          be_soot_aged(idx_15) = soot_aged(idx_15 + (kcs - LBOUND(be_soot_aged, dim=1)))
         enddo
         !$acc loop gang vector independent
-        do idx_11 = LBOUND(be_ocff_fresh, dim=1), UBOUND(be_ocff_fresh, dim=1), 1
-          be_ocff_fresh(idx_11) = ocff_fresh(idx_11 + (kcs - LBOUND(be_ocff_fresh, dim=1)))
+        do idx_16 = LBOUND(be_ocff_fresh, dim=1), UBOUND(be_ocff_fresh, dim=1), 1
+          be_ocff_fresh(idx_16) = ocff_fresh(idx_16 + (kcs - LBOUND(be_ocff_fresh, dim=1)))
         enddo
         !$acc loop gang vector independent
-        do idx_12 = LBOUND(be_ocff_aged, dim=1), UBOUND(be_ocff_aged, dim=1), 1
-          be_ocff_aged(idx_12) = ocff_aged(idx_12 + (kcs - LBOUND(be_ocff_aged, dim=1)))
+        do idx_17 = LBOUND(be_ocff_aged, dim=1), UBOUND(be_ocff_aged, dim=1), 1
+          be_ocff_aged(idx_17) = ocff_aged(idx_17 + (kcs - LBOUND(be_ocff_aged, dim=1)))
         enddo
         !$acc loop gang vector independent
-        do idx_13 = LBOUND(be_biogenic, dim=1), UBOUND(be_biogenic, dim=1), 1
-          be_biogenic(idx_13) = biogenic(idx_13 + (kcs - LBOUND(be_biogenic, dim=1)))
+        do idx_18 = LBOUND(be_biogenic, dim=1), UBOUND(be_biogenic, dim=1), 1
+          be_biogenic(idx_18) = biogenic(idx_18 + (kcs - LBOUND(be_biogenic, dim=1)))
         enddo
         !$acc loop gang vector independent
-        do idx_14 = LBOUND(be_sea_salt_film, dim=1), UBOUND(be_sea_salt_film, dim=1), 1
-          be_sea_salt_film(idx_14) = sea_salt_film(idx_14 + (kcs - LBOUND(be_sea_salt_film, dim=1)))
+        do idx_19 = LBOUND(be_sea_salt_film, dim=1), UBOUND(be_sea_salt_film, dim=1), 1
+          be_sea_salt_film(idx_19) = sea_salt_film(idx_19 + (kcs - LBOUND(be_sea_salt_film, dim=1)))
         enddo
         !$acc loop gang vector independent
-        do idx_15 = LBOUND(be_sea_salt_jet, dim=1), UBOUND(be_sea_salt_jet, dim=1), 1
-          be_sea_salt_jet(idx_15) = sea_salt_jet(idx_15 + (kcs - LBOUND(be_sea_salt_jet, dim=1)))
+        do idx_20 = LBOUND(be_sea_salt_jet, dim=1), UBOUND(be_sea_salt_jet, dim=1), 1
+          be_sea_salt_jet(idx_20) = sea_salt_jet(idx_20 + (kcs - LBOUND(be_sea_salt_jet, dim=1)))
         enddo
         !$acc end kernels
         if (.NOT.ALLOCATED(be_hrc)) then
@@ -366,8 +400,8 @@ module ukca_chemistry_ctl_tropraq_mod
         end if
         !$acc kernels
         !$acc loop gang vector independent
-        do idx_16 = LBOUND(stratflag, dim=1), UBOUND(stratflag, dim=1), 1
-          stratflag(idx_16) = l_stratosphere(idx_16 + (kcs - LBOUND(stratflag, dim=1)))
+        do idx_21 = LBOUND(stratflag, dim=1), UBOUND(stratflag, dim=1), 1
+          stratflag(idx_21) = l_stratosphere(idx_21 + (kcs - LBOUND(stratflag, dim=1)))
         enddo
         !$acc end kernels
         call ukca_chemco_raq(nr_therm, theta_field_size, temp(kcs:kce), be_tnd, be_h2o, be_o2, qcl(kcs:kce), cloud_frac(kcs:kce), be_frdiss, be_rho, be_rh_frac, be_so4_aitken, be_so4_accum, be_soot_fresh, be_soot_aged, be_ocff_fresh, be_ocff_aged, be_biogenic, be_sea_salt_film, be_sea_salt_jet, stratflag, be_rc, be_hrc, h_plus(kcs:kce))
@@ -376,9 +410,9 @@ module ukca_chemistry_ctl_tropraq_mod
       end if
       !$acc kernels
       !$acc loop gang vector independent collapse(2)
-      do idx_17 = LBOUND(be_y, dim=2), UBOUND(be_y, dim=2), 1
-        do idx_18 = LBOUND(be_y, dim=1), UBOUND(be_y, dim=1), 1
-          be_y(idx_18,idx_17) = 0.0
+      do idx_22 = LBOUND(be_y, dim=2), UBOUND(be_y, dim=2), 1
+        do idx_23 = LBOUND(be_y, dim=1), UBOUND(be_y, dim=1), 1
+          be_y(idx_23,idx_22) = 0.0
         enddo
       enddo
       !$acc end kernels
@@ -387,8 +421,8 @@ module ukca_chemistry_ctl_tropraq_mod
           if (speci(i) == advt(j)) then
             !$acc kernels
             !$acc loop gang vector independent
-            do idx_19 = LBOUND(be_y, dim=1), UBOUND(be_y, dim=1), 1
-              be_y(idx_19,i) = zftr(idx_19,j)
+            do idx_24 = LBOUND(be_y, dim=1), UBOUND(be_y, dim=1), 1
+              be_y(idx_24,i) = zftr(idx_24,j)
             enddo
             !$acc end kernels
             ! PSyclone CodeBlock (unsupported code) reason:
@@ -402,8 +436,8 @@ module ukca_chemistry_ctl_tropraq_mod
           if (speci(i) == nadvt(j)) then
             !$acc kernels
             !$acc loop gang vector independent
-            do idx_20 = LBOUND(be_y, dim=1), UBOUND(be_y, dim=1), 1
-              be_y(idx_20,i) = zfnatr(idx_20 + (LBOUND(zfnatr, dim=1) - LBOUND(be_y, dim=1)),j)
+            do idx_25 = LBOUND(be_y, dim=1), UBOUND(be_y, dim=1), 1
+              be_y(idx_25,i) = zfnatr(idx_25 + (LBOUND(zfnatr, dim=1) - LBOUND(be_y, dim=1)),j)
             enddo
             !$acc end kernels
             ! PSyclone CodeBlock (unsupported code) reason:
@@ -415,39 +449,39 @@ module ukca_chemistry_ctl_tropraq_mod
       if (ukca_config%l_ukca_aerchem .OR. ukca_config%l_ukca_raqaero) then
         !$acc kernels
         !$acc loop gang vector independent
-        do idx_21 = LBOUND(so2_wetox_h2o2, dim=1), UBOUND(so2_wetox_h2o2, dim=1), 1
-          so2_wetox_h2o2(idx_21) = 0.0
+        do idx_26 = LBOUND(so2_wetox_h2o2, dim=1), UBOUND(so2_wetox_h2o2, dim=1), 1
+          so2_wetox_h2o2(idx_26) = 0.0
         enddo
         !$acc loop gang vector independent
-        do idx_22 = LBOUND(so2_dryox_oh, dim=1), UBOUND(so2_dryox_oh, dim=1), 1
-          so2_dryox_oh(idx_22) = 0.0
+        do idx_27 = LBOUND(so2_dryox_oh, dim=1), UBOUND(so2_dryox_oh, dim=1), 1
+          so2_dryox_oh(idx_27) = 0.0
         enddo
         !$acc loop gang vector independent
-        do idx_23 = LBOUND(so2_wetox_o3, dim=1), UBOUND(so2_wetox_o3, dim=1), 1
-          so2_wetox_o3(idx_23) = 0.0
+        do idx_28 = LBOUND(so2_wetox_o3, dim=1), UBOUND(so2_wetox_o3, dim=1), 1
+          so2_wetox_o3(idx_28) = 0.0
         enddo
         !$acc end kernels
       else
         !$acc kernels
         !$acc loop gang vector independent
-        do idx_24 = kcs, kce, 1
-          delso2_wet_h2o2(idx_24) = 0.0
+        do idx_29 = kcs, kce, 1
+          delso2_wet_h2o2(idx_29) = 0.0
         enddo
         !$acc loop gang vector independent
-        do idx_25 = kcs, kce, 1
-          delso2_wet_o3(idx_25) = 0.0
+        do idx_30 = kcs, kce, 1
+          delso2_wet_o3(idx_30) = 0.0
         enddo
         !$acc loop gang vector independent
-        do idx_26 = kcs, kce, 1
-          delh2so4_chem(idx_26) = 0.0
+        do idx_31 = kcs, kce, 1
+          delh2so4_chem(idx_31) = 0.0
         enddo
         !$acc loop gang vector independent
-        do idx_27 = kcs, kce, 1
-          delso2_drydep(idx_27) = 0.0
+        do idx_32 = kcs, kce, 1
+          delso2_drydep(idx_32) = 0.0
         enddo
         !$acc loop gang vector independent
-        do idx_28 = kcs, kce, 1
-          delso2_wetdep(idx_28) = 0.0
+        do idx_33 = kcs, kce, 1
+          delso2_wetdep(idx_33) = 0.0
         enddo
         !$acc end kernels
       end if
@@ -461,8 +495,8 @@ module ukca_chemistry_ctl_tropraq_mod
             if (uph2so4inaer == 1) then
               !$acc kernels
               !$acc loop gang vector independent
-              do idx_29 = LBOUND(ystore, dim=1), UBOUND(ystore, dim=1), 1
-                ystore(idx_29) = be_y(idx_29 + (LBOUND(be_y, dim=1) - LBOUND(ystore, dim=1)),nn_h2so4)
+              do idx_34 = LBOUND(ystore, dim=1), UBOUND(ystore, dim=1), 1
+                ystore(idx_34) = be_y(idx_34 + (LBOUND(be_y, dim=1) - LBOUND(ystore, dim=1)),nn_h2so4)
               enddo
               !$acc end kernels
             end if
@@ -470,8 +504,8 @@ module ukca_chemistry_ctl_tropraq_mod
             if (uph2so4inaer == 1) then
               !$acc kernels
               !$acc loop gang vector independent
-              do idx_30 = LBOUND(be_y, dim=1), UBOUND(be_y, dim=1), 1
-                be_y(idx_30,nn_h2so4) = ystore(idx_30 + (LBOUND(ystore, dim=1) - LBOUND(be_y, dim=1)))
+              do idx_35 = LBOUND(be_y, dim=1), UBOUND(be_y, dim=1), 1
+                be_y(idx_35,nn_h2so4) = ystore(idx_35 + (LBOUND(ystore, dim=1) - LBOUND(be_y, dim=1)))
               enddo
               !$acc end kernels
             end if
@@ -494,8 +528,8 @@ module ukca_chemistry_ctl_tropraq_mod
           if (advt(j) == speci(i)) then
             !$acc kernels
             !$acc loop gang vector independent
-            do idx_31 = LBOUND(zftr, dim=1), UBOUND(zftr, dim=1), 1
-              zftr(idx_31,j) = be_y(idx_31,i)
+            do idx_36 = LBOUND(zftr, dim=1), UBOUND(zftr, dim=1), 1
+              zftr(idx_36,j) = be_y(idx_36,i)
             enddo
             !$acc end kernels
             ! PSyclone CodeBlock (unsupported code) reason:
@@ -505,9 +539,11 @@ module ukca_chemistry_ctl_tropraq_mod
         enddo
       enddo
       !$acc kernels
-      !$acc loop gang vector independent
+      !$acc loop gang vector independent collapse(2)
       do js = 1, jpctr, 1
-        tracer(kcs:kce,js) = zftr(:,js) / be_tnd(:) * c_species(js)
+        do idx_37 = kcs, kce, 1
+          tracer(idx_37,js) = zftr(idx_37 + (LBOUND(zftr, dim=1) - kcs),js) / be_tnd(idx_37 + (LBOUND(be_tnd, dim=1) - kcs)) * c_species(js)
+        enddo
       enddo
       !$acc end kernels
       do j = 1, nnaf, 1
@@ -515,8 +551,8 @@ module ukca_chemistry_ctl_tropraq_mod
           if (nadvt(j) == speci(i)) then
             !$acc kernels
             !$acc loop gang vector independent
-            do idx_32 = LBOUND(zfnatr, dim=1), UBOUND(zfnatr, dim=1), 1
-              zfnatr(idx_32,j) = be_y(idx_32 + (LBOUND(be_y, dim=1) - LBOUND(zfnatr, dim=1)),i) / be_tnd(idx_32 + (LBOUND(be_tnd, dim=1) - LBOUND(zfnatr, dim=1)))
+            do idx_38 = LBOUND(zfnatr, dim=1), UBOUND(zfnatr, dim=1), 1
+              zfnatr(idx_38,j) = be_y(idx_38 + (LBOUND(be_y, dim=1) - LBOUND(zfnatr, dim=1)),i) / be_tnd(idx_38 + (LBOUND(be_tnd, dim=1) - LBOUND(zfnatr, dim=1)))
             enddo
             !$acc end kernels
             ! PSyclone CodeBlock (unsupported code) reason:
@@ -525,41 +561,54 @@ module ukca_chemistry_ctl_tropraq_mod
           end if
         enddo
       enddo
-      !$acc kernels
-      !$acc loop seq
       do js = 1, nnaf, 1
         l = name2ntpindex(nadvt(js))
-        ntp_data(kcs:kce,l) = zfnatr(:,js) * c_na_species(js)
+        !$acc kernels
+        !$acc loop gang vector independent
+        do idx_39 = kcs, kce, 1
+          ntp_data(idx_39,l) = zfnatr(idx_39 + (LBOUND(zfnatr, dim=1) - kcs),js) * c_na_species(js)
+        enddo
+        !$acc end kernels
       enddo
-      trop_ch4_mol(kcs:kce) = zftr(:,n_ch4) * volume(kcs:kce) * 1.0e6 / avogadro
+      !$acc kernels
       !$acc loop gang vector independent
-      do idx_33 = kcs, kce, 1
-        strat_ch4_mol(idx_33) = trop_ch4_mol(idx_33)
+      do idx_40 = kcs, kce, 1
+        trop_ch4_mol(idx_40) = zftr(idx_40 + (LBOUND(zftr, dim=1) - kcs),n_ch4) * volume(idx_40) * 1.0e6 / avogadro
       enddo
-      trop_o3_mol(kcs:kce) = zftr(:,n_o3) * volume(kcs:kce) * 1.0e6 / avogadro
-      trop_oh_mol(kcs:kce) = be_y(:,nn_oh) * volume(kcs:kce) * 1.0e6 / avogadro
+      !$acc loop gang vector independent
+      do idx_41 = kcs, kce, 1
+        strat_ch4_mol(idx_41) = trop_ch4_mol(idx_41)
+      enddo
+      !$acc loop gang vector independent
+      do idx_42 = kcs, kce, 1
+        trop_o3_mol(idx_42) = zftr(idx_42 + (LBOUND(zftr, dim=1) - kcs),n_o3) * volume(idx_42) * 1.0e6 / avogadro
+      enddo
+      !$acc loop gang vector independent
+      do idx_43 = kcs, kce, 1
+        trop_oh_mol(idx_43) = be_y(idx_43 + (LBOUND(be_y, dim=1) - kcs),nn_oh) * volume(idx_43) * 1.0e6 / avogadro
+      enddo
       !$acc end kernels
       if (ukca_config%l_ukca_aerchem .OR. ukca_config%l_ukca_raqaero) then
         !$acc kernels
         !$acc loop gang vector independent
-        do idx_34 = kcs, kce, 1
-          delso2_wet_h2o2(idx_34) = so2_wetox_h2o2(idx_34 + (LBOUND(so2_wetox_h2o2, dim=1) - kcs))
+        do idx_44 = kcs, kce, 1
+          delso2_wet_h2o2(idx_44) = so2_wetox_h2o2(idx_44 + (LBOUND(so2_wetox_h2o2, dim=1) - kcs))
         enddo
         !$acc loop gang vector independent
-        do idx_35 = kcs, kce, 1
-          delso2_wet_o3(idx_35) = so2_wetox_o3(idx_35 + (LBOUND(so2_wetox_o3, dim=1) - kcs))
+        do idx_45 = kcs, kce, 1
+          delso2_wet_o3(idx_45) = so2_wetox_o3(idx_45 + (LBOUND(so2_wetox_o3, dim=1) - kcs))
         enddo
         !$acc loop gang vector independent
-        do idx_36 = kcs, kce, 1
-          delh2so4_chem(idx_36) = so2_dryox_oh(idx_36 + (LBOUND(so2_dryox_oh, dim=1) - kcs))
+        do idx_46 = kcs, kce, 1
+          delh2so4_chem(idx_46) = so2_dryox_oh(idx_46 + (LBOUND(so2_dryox_oh, dim=1) - kcs))
         enddo
         !$acc loop gang vector independent
-        do idx_37 = kcs, kce, 1
-          delso2_drydep(idx_37) = be_dryrt(idx_37 + (LBOUND(be_dryrt, dim=1) - kcs),nn_so2) * be_y(idx_37 + (LBOUND(be_y, dim=1) - kcs),nn_so2) * dts
+        do idx_47 = kcs, kce, 1
+          delso2_drydep(idx_47) = be_dryrt(idx_47 + (LBOUND(be_dryrt, dim=1) - kcs),nn_so2) * be_y(idx_47 + (LBOUND(be_y, dim=1) - kcs),nn_so2) * dts
         enddo
         !$acc loop gang vector independent
-        do idx_38 = kcs, kce, 1
-          delso2_wetdep(idx_38) = be_wetrt(idx_38 + (LBOUND(be_wetrt, dim=1) - kcs),nn_so2) * be_y(idx_38 + (LBOUND(be_y, dim=1) - kcs),nn_so2) * dts
+        do idx_48 = kcs, kce, 1
+          delso2_wetdep(idx_48) = be_wetrt(idx_48 + (LBOUND(be_wetrt, dim=1) - kcs),nn_so2) * be_y(idx_48 + (LBOUND(be_y, dim=1) - kcs),nn_so2) * dts
         enddo
         !$acc end kernels
       end if
@@ -593,6 +642,7 @@ module ukca_chemistry_ctl_tropraq_mod
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
     end if
+    call nvtxEndRange()
     return
 
   end subroutine ukca_chemistry_ctl_tropraq

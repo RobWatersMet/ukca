@@ -46,7 +46,7 @@ module asad_fyfixr_mod
       js = nlmajmin(j)
       ifam = moffam(js)
       imaj = majors(ifam)
-      if (ctype(js) /= jpif) then
+      if (ctype(js) /= jpif(:)) then
         !$acc loop gang vector independent
         do jl = 1, n_points, 1
           y(jl,js) = y(jl,imaj) * ratio(jl,js)

@@ -12,6 +12,7 @@ module ukca_deriv_raq_mod
     use yomhook, only : dr_hook, lhook
     use parkind1, only : jpim, jprb
     use ukca_um_legacy_mod, only : oneover_v
+    use nvtx
     integer(kind=jpim), parameter :: zhook_in = 0
     integer(kind=jpim), parameter :: zhook_out = 1
     integer, intent(in) :: nr_therm
@@ -338,6 +339,7 @@ module ukca_deriv_raq_mod
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
+    call nvtxStartRange(ModuleName // ':' // RoutineName)
     !$acc kernels
     recip_avogad = 1.0 / avogadro
     !$acc loop gang vector independent
@@ -1734,6 +1736,7 @@ module ukca_deriv_raq_mod
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
     end if
+    call nvtxEndRange()
     return
 
   end subroutine ukca_deriv_raq

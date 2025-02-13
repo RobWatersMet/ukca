@@ -35,6 +35,10 @@ module asad_inicnt_mod
     integer :: idx_3
     integer :: idx_4
     integer :: idx_5
+    integer :: idx_6
+    integer :: idx_7
+    integer :: idx_8
+    integer :: idx_9
 
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
@@ -87,19 +91,39 @@ module asad_inicnt_mod
           if (ukca_config%l_ukca_offline .OR. ukca_config%l_ukca_offline_be) then
             if (species(1:4) == 'OH  ') then
               y_out(:) = RESHAPE(oh_offline(1:row_length,1:rows,nlev), [klen])
-              y_out(:) = y_out(:) / c_oh
+              !$acc kernels
+              !$acc loop gang vector independent
+              do idx_5 = LBOUND(y_out, dim=1), UBOUND(y_out, dim=1), 1
+                y_out(idx_5) = y_out(idx_5) / c_oh
+              enddo
+              !$acc end kernels
             else
               if (species(1:4) == 'O3  ') then
                 y_out(:) = RESHAPE(o3_offline(1:row_length,1:rows,nlev), [klen])
-                y_out(:) = y_out(:) / c_o3
+                !$acc kernels
+                !$acc loop gang vector independent
+                do idx_6 = LBOUND(y_out, dim=1), UBOUND(y_out, dim=1), 1
+                  y_out(idx_6) = y_out(idx_6) / c_o3
+                enddo
+                !$acc end kernels
               else
                 if (species(1:4) == 'NO3 ') then
                   y_out(:) = RESHAPE(no3_offline(1:row_length,1:rows,nlev), [klen])
-                  y_out(:) = y_out(:) / c_no3
+                  !$acc kernels
+                  !$acc loop gang vector independent
+                  do idx_7 = LBOUND(y_out, dim=1), UBOUND(y_out, dim=1), 1
+                    y_out(idx_7) = y_out(idx_7) / c_no3
+                  enddo
+                  !$acc end kernels
                 else
                   if (species(1:4) == 'HO2 ') then
                     y_out(:) = RESHAPE(ho2_offline(1:row_length,1:rows,nlev), [klen])
-                    y_out(:) = y_out(:) / c_ho2
+                    !$acc kernels
+                    !$acc loop gang vector independent
+                    do idx_8 = LBOUND(y_out, dim=1), UBOUND(y_out, dim=1), 1
+                      y_out(idx_8) = y_out(idx_8) / c_ho2
+                    enddo
+                    !$acc end kernels
                   else
                     errcode = 125
                     cmessage(:) = ' Species ' // species // ' is not treated by this routine'
@@ -118,8 +142,8 @@ module asad_inicnt_mod
     end if
     !$acc kernels
     !$acc loop gang vector independent
-    do idx_5 = LBOUND(y_out, dim=1), UBOUND(y_out, dim=1), 1
-      y_out(idx_5) = y_out(idx_5) * tnd(idx_5 + (LBOUND(tnd, dim=1) - LBOUND(y_out, dim=1)))
+    do idx_9 = LBOUND(y_out, dim=1), UBOUND(y_out, dim=1), 1
+      y_out(idx_9) = y_out(idx_9) * tnd(idx_9 + (LBOUND(tnd, dim=1) - LBOUND(y_out, dim=1)))
     enddo
     !$acc end kernels
     if (lhook) then

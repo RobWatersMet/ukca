@@ -68,22 +68,22 @@ module asad_fyinit_mod
         iftr = 0
         !$acc loop seq
         do js = 1, jpspec, 1
-          if (ctype(js) == jpna) then
+          if (ctype(js) == jpna(:)) then
             iss = iss + 1
             ilss(iss) = js
           end if
-          if (ctype(js) == jpco) then
+          if (ctype(js) == jpco(:)) then
             ict = ict + 1
             ilct(ict) = js
           end if
-          if (ctype(js) == jpcf) then
+          if (ctype(js) == jpcf(:)) then
             icf = icf + 1
             ilcf(icf) = js
             if (speci(js) == 'RO2       ') then
               jsro2 = js
             end if
           end if
-          if (ctype(js) == jpif .OR. ctype(js) == jpsp .OR. ctype(js) == jpoo) then
+          if (ctype(js) == jpif(:) .OR. ctype(js) == jpsp(:) .OR. ctype(js) == jpoo(:)) then
             iftr = iftr + 1
             ilftr(iftr) = js
           end if

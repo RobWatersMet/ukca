@@ -202,8 +202,6 @@ END TYPE wetdep
     jppj = SIZE(ratj_defs)
     if (.NOT.ALLOCATED(ratj_data)) then
       ALLOCATE(ratj_data(1:jppj,1:jpspj))
-      !$acc kernels
-      !$acc loop gang vector independent
       do i = 1, jppj, 1
         ratj_data(i,1) = ratj_defs(i)%react1
         ratj_data(i,2) = ratj_defs(i)%react2
@@ -212,16 +210,12 @@ END TYPE wetdep
         ratj_data(i,5) = ratj_defs(i)%prod3
         ratj_data(i,6) = ratj_defs(i)%prod4
       enddo
-      !$acc end kernels
     end if
     if (.NOT.ALLOCATED(ratj_varnames)) then
       ALLOCATE(ratj_varnames(1:jppj))
-      !$acc kernels
-      !$acc loop gang vector independent
       do i = 1, jppj, 1
         ratj_varnames(i) = ratj_defs(i)%fname
       enddo
-      !$acc end kernels
     end if
     data_ptr => ratj_data(:,:)
     varnames_ptr => ratj_varnames(:)

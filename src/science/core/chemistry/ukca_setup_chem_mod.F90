@@ -41,6 +41,7 @@ module ukca_setup_chem_mod
     use umPrintMgr, only : printstatus, prstatus_diag, ummessage, umprint
     use parkind1, only : jpim, jprb
     use yomhook, only : dr_hook, lhook
+    use nvtx
     use ukca_chem_offline, only : ndry_offline, nwet_offline
     use ukca_chem_aer, only : ndry_aer_aer, nwet_aer_aer
     use ukca_chem1_dat, only : ndry_trop, nwet_trop
@@ -57,6 +58,7 @@ module ukca_setup_chem_mod
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
+    call nvtxStartRange(ModuleName // ':' // RoutineName)
     if (psyclone_internal_cmp(ukca_config%i_ukca_chem, i_ukca_chem_off)) then
       ukca_config%l_ukca_chem = .false.
       ukca_config%ukca_int_method = int_method_none
@@ -394,6 +396,7 @@ module ukca_setup_chem_mod
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
     end if
+    call nvtxEndRange()
 
   end subroutine ukca_setup_chem
 

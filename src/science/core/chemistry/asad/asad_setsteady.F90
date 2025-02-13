@@ -30,6 +30,15 @@ module asad_setsteady_mod
     real(kind=jprb) :: zhook_handle
     CHARACTER(LEN = *), PARAMETER :: RoutineName = 'ASAD_SETSTEADY'
     integer :: idx
+    integer :: idx_1
+    integer :: idx_2
+    integer :: idx_3
+    integer :: idx_4
+    integer :: idx_5
+    integer :: idx_6
+    integer :: idx_7
+    integer :: idx_8
+    integer :: idx_9
 
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
@@ -37,16 +46,40 @@ module asad_setsteady_mod
     call nvtxStartRange(ModuleName // ':' // RoutineName)
     !$acc kernels
     nsst = 0
-    nssi = 0
     !$acc loop gang vector independent
-    do idx = 1, jpss, 1
-      indss(idx) = 0
+    do idx = LBOUND(nssi, dim=1), UBOUND(nssi, dim=1), 1
+      nssi(idx) = 0
     enddo
-    nssrt = 0
-    nssrx = 0
-    nsspt = 0
-    nssri = 0
-    nsspi = 0
+    !$acc loop gang vector independent
+    do idx_1 = 1, jpss, 1
+      indss(idx_1) = 0
+    enddo
+    !$acc loop gang vector independent
+    do idx_2 = LBOUND(nssrt, dim=1), UBOUND(nssrt, dim=1), 1
+      nssrt(idx_2) = 0
+    enddo
+    !$acc loop gang vector independent collapse(2)
+    do idx_3 = LBOUND(nssrx, dim=2), UBOUND(nssrx, dim=2), 1
+      do idx_4 = LBOUND(nssrx, dim=1), UBOUND(nssrx, dim=1), 1
+        nssrx(idx_4,idx_3) = 0
+      enddo
+    enddo
+    !$acc loop gang vector independent
+    do idx_5 = LBOUND(nsspt, dim=1), UBOUND(nsspt, dim=1), 1
+      nsspt(idx_5) = 0
+    enddo
+    !$acc loop gang vector independent collapse(2)
+    do idx_6 = LBOUND(nssri, dim=2), UBOUND(nssri, dim=2), 1
+      do idx_7 = LBOUND(nssri, dim=1), UBOUND(nssri, dim=1), 1
+        nssri(idx_7,idx_6) = 0
+      enddo
+    enddo
+    !$acc loop gang vector independent collapse(2)
+    do idx_8 = LBOUND(nsspi, dim=2), UBOUND(nsspi, dim=2), 1
+      do idx_9 = LBOUND(nsspi, dim=1), UBOUND(nsspi, dim=1), 1
+        nsspi(idx_9,idx_8) = 0
+      enddo
+    enddo
     ix = 0
     !$acc loop seq
     do js = 1, jpspec, 1

@@ -13,6 +13,7 @@ MODULE ukca_chemco_raq_mod
     USE ereport_mod, ONLY: ereport
     USE errormessagelength_mod, ONLY: errormessagelength
     USE yomhook, ONLY: lhook, dr_hook
+    USE nvtx
     USE parkind1, ONLY: jprb, jpim
     USE ukca_config_constants_mod, ONLY: rho_water, avogadro
     USE ukca_config_specification_mod, ONLY: ukca_config
@@ -108,6 +109,7 @@ MODULE ukca_chemco_raq_mod
     REAL(KIND = jprb) :: zhook_handle
     CHARACTER(LEN = *), PARAMETER :: RoutineName = 'UKCA_CHEMCO_RAQ'
     IF (lhook) CALL dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
+    CALL nvtxStartRange(ModuleName // ':' // RoutineName)
     IF (first_pass) THEN
       IF (first) THEN
         CALL ukca_chemco_raq_init(nr, npdep)
@@ -257,6 +259,7 @@ MODULE ukca_chemco_raq_mod
       rc(:, 196) = 0.0
     END IF
     IF (lhook) CALL dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
+    CALL nvtxEndRange
     RETURN
   END SUBROUTINE ukca_chemco_raq
 END MODULE ukca_chemco_raq_mod

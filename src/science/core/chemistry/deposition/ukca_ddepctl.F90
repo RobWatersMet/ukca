@@ -1,277 +1,251 @@
-! *****************************COPYRIGHT*******************************
-!
-! (c) [University of Cambridge] [2008]. All rights reserved.
-! This routine has been licensed to the Met Office for use and
-! distribution under the UKCA collaboration agreement, subject
-! to the terms and conditions set out therein.
-! [Met Office Ref SC138]
-!
-! *****************************COPYRIGHT*******************************
-!
-!  Purpose: To assign dry deposition rates in s-1 to array dpd in
-!           ASAD module asad_mod. This is passed for use in UKCA chemistry.
-!
-!  Part of the UKCA model, a community model supported by
-!  The Met Office and NCAS, with components provided initially
-!  by The University of Cambridge, University of Leeds and
-!  The Met. Office.  See www.ukca.ac.uk
-!
-!           Called from UKCA_CHEMISTRY_CTRL.
-!
-! Code Owner: Please refer to the UM file CodeOwners.txt
-! This file belongs in section: UKCA
-!
-! Code description:
-!   Language: FORTRAN 90
-!   This code is written to UMDP3 v6 programming standards.
-!
-! ---------------------------------------------------------------------
-!
-MODULE ukca_ddepctl_mod
+module ukca_ddepctl_mod
+  implicit none
+  character(len = *), parameter, private :: ModuleName = 'UKCA_DDEPCTL_MOD'
+  public
 
-IMPLICIT NONE
+  contains
+  subroutine ukca_ddepctl(row_length, rows, bl_levels, ntype, npft, land_points, land_index, tile_pts, tile_index, timestep, sinlat, frac_types, t_surf, p_surf, dzl, zbl, surf_hf, u_s, rh, stcon, soilmc_lp, fland, seaice_frac, laift_lp, canhtft_lp, z0tile_lp, t0tile_lp, nlev_with_ddep, zdryrt, len_stashwork, stashwork)
+    use ukca_config_specification_mod, only : ukca_config
+    use ukca_config_constants_mod, only : rho_water, tfs
+    use asad_mod, only : jpdd
+    use yomhook, only : dr_hook, lhook
+    use parkind1, only : jpim, jprb
+    use ukca_aerod_mod, only : ukca_aerod
+    use ukca_ddcalc_mod, only : ukca_ddcalc
+    use ukca_surfddr_mod, only : ukca_surfddr
+    use nvtx
+    integer(kind=jpim), parameter :: zhook_in = 0
+    integer(kind=jpim), parameter :: zhook_out = 1
+    integer, intent(in) :: row_length
+    integer, intent(in) :: rows
+    integer, intent(in) :: bl_levels
+    integer, intent(in) :: land_points
+    integer, intent(in) :: ntype
+    integer, intent(in) :: npft
+    integer, dimension(land_points), intent(in) :: land_index
+    integer, dimension(ntype), intent(in) :: tile_pts
+    integer, dimension(land_points,ntype), intent(in) :: tile_index
+    real, intent(in) :: timestep
+    real, dimension(row_length,rows), intent(in) :: sinlat
+    real, dimension(:,:), intent(in) :: frac_types
+    real, dimension(row_length,rows), intent(in) :: t_surf
+    real, dimension(row_length,rows), intent(in) :: p_surf
+    real, dimension(row_length,rows,bl_levels), intent(in) :: dzl
+    real, dimension(row_length,rows), intent(in) :: zbl
+    real, dimension(row_length,rows), intent(in) :: surf_hf
+    real, dimension(row_length,rows), intent(in) :: u_s
+    real, dimension(row_length,rows), intent(in) :: rh
+    real, dimension(row_length,rows), intent(in) :: seaice_frac
+    real, dimension(row_length,rows,npft), intent(in) :: stcon
+    real, dimension(land_points), intent(in) :: soilmc_lp
+    real, dimension(land_points), intent(in) :: fland
+    real, dimension(land_points,npft), intent(in) :: laift_lp
+    real, dimension(land_points,npft), intent(in) :: canhtft_lp
+    real, dimension(land_points,ntype), intent(in) :: z0tile_lp
+    real, dimension(land_points,ntype), intent(in) :: t0tile_lp
+    integer, intent(in) :: len_stashwork
+    real, dimension(len_stashwork), intent(inout) :: stashwork
+    integer, dimension(row_length,rows), intent(out) :: nlev_with_ddep
+    real, dimension(row_length,rows,jpdd), intent(out) :: zdryrt
+    integer :: i
+    integer :: j
+    integer :: k
+    integer :: l
+    integer :: m
+    integer :: n
+    integer :: lake
+    real :: seafrac
+    real :: lftotal
+    real, dimension(row_length,rows) :: smr
+    real, dimension(row_length,rows) :: land_fraction
+    real, dimension(row_length,rows,npft) :: lai_ft
+    real, dimension(row_length,rows,npft) :: canht_ft
+    real, dimension(row_length,rows,ntype) :: z0tile
+    real, dimension(row_length,rows,ntype) :: t0tile
+    real, dimension(row_length,rows) :: o3_stom_frac
+    real, dimension(row_length,rows,ntype) :: resa
+    real, dimension(row_length,rows,jpdd) :: rb
+    real, dimension(row_length,rows,ntype,jpdd) :: rc
+    real, dimension(row_length,rows,ntype) :: gsf
+    real, dimension(row_length,rows) :: so4_vd
+    real(kind=jprb) :: zhook_handle
+    CHARACTER(LEN = *), PARAMETER :: RoutineName = 'UKCA_DDEPCTL'
+    integer :: idx
+    integer :: idx_1
+    integer :: idx_2
+    integer :: idx_3
+    integer :: idx_4
+    integer :: idx_5
+    integer :: idx_6
+    integer :: idx_7
+    integer :: idx_8
+    integer :: idx_9
+    integer :: idx_10
+    integer :: idx_11
+    integer :: idx_12
+    integer :: idx_13
+    integer :: idx_14
+    integer :: idx_15
+    integer :: idx_16
+    integer :: idx_17
+    integer :: idx_18
 
-CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName = 'UKCA_DDEPCTL_MOD'
+    if (lhook) then
+      call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
+    end if
+    call nvtxStartRange(ModuleName // ':' // RoutineName)
+    !$acc kernels
+    !$acc loop gang vector independent collapse(2)
+    do idx = 1, rows, 1
+      do idx_1 = 1, row_length, 1
+        land_fraction(idx_1,idx) = 0.0
+      enddo
+    enddo
+    !$acc loop gang vector independent collapse(2)
+    do idx_2 = 1, rows, 1
+      do idx_3 = 1, row_length, 1
+        smr(idx_3,idx_2) = 0.0
+      enddo
+    enddo
+    !$acc loop gang vector independent collapse(3)
+    do idx_4 = 1, npft, 1
+      do idx_5 = 1, rows, 1
+        do idx_6 = 1, row_length, 1
+          lai_ft(idx_6,idx_5,idx_4) = 0.0
+        enddo
+      enddo
+    enddo
+    !$acc loop gang vector independent collapse(3)
+    do idx_7 = 1, npft, 1
+      do idx_8 = 1, rows, 1
+        do idx_9 = 1, row_length, 1
+          canht_ft(idx_9,idx_8,idx_7) = 0.0
+        enddo
+      enddo
+    enddo
+    !$acc loop gang vector independent collapse(3)
+    do idx_10 = 1, ntype, 1
+      do idx_11 = 1, rows, 1
+        do idx_12 = 1, row_length, 1
+          z0tile(idx_12,idx_11,idx_10) = 0.0
+        enddo
+      enddo
+    enddo
+    !$acc loop gang vector independent collapse(3)
+    do idx_13 = 1, ntype, 1
+      do idx_14 = 1, rows, 1
+        do idx_15 = 1, row_length, 1
+          t0tile(idx_15,idx_14,idx_13) = 0.0
+        enddo
+      enddo
+    enddo
+    !$acc loop gang vector independent collapse(3)
+    do idx_16 = 1, ntype, 1
+      do idx_17 = 1, rows, 1
+        do idx_18 = 1, row_length, 1
+          gsf(idx_18,idx_17,idx_16) = 0.0
+        enddo
+      enddo
+    enddo
+    !$acc loop seq
+    do l = 1, land_points, 1
+      j = (land_index(l) - 1) / row_length + 1
+      i = land_index(l) - (j - 1) * row_length
+      smr(i,j) = soilmc_lp(l) / (ukca_config%dzsoil_layer1 * rho_water)
+      land_fraction(i,j) = fland(l)
+    enddo
+    !$acc loop gang vector independent collapse(1)
+    do m = 1, npft, 1
+      !$acc loop seq
+      do n = 1, tile_pts(m), 1
+        l = tile_index(n,m)
+        j = (land_index(l) - 1) / row_length + 1
+        i = land_index(l) - (j - 1) * row_length
+        lai_ft(i,j,m) = laift_lp(l,m)
+        canht_ft(i,j,m) = canhtft_lp(l,m)
+      enddo
+    enddo
+    !$acc loop gang vector independent collapse(1)
+    do m = 1, ntype, 1
+      !$acc loop seq
+      do n = 1, tile_pts(m), 1
+        l = tile_index(n,m)
+        j = (land_index(l) - 1) / row_length + 1
+        i = land_index(l) - (j - 1) * row_length
+        z0tile(i,j,m) = z0tile_lp(l,m)
+        t0tile(i,j,m) = t0tile_lp(l,m)
+        gsf(i,j,m) = frac_types(l,m)
+      enddo
+    enddo
+    lake = ukca_config%i_lake
+    !$acc end kernels
+    do k = 1, rows, 1
+      do i = 1, row_length, 1
+        if (gsf(i,k,lake) == 1.0) then
+          land_fraction(i,k) = 0.0
+        end if
+        seafrac = 1.0 - land_fraction(i,k)
+        if (land_fraction(i,k) < 1.0 .AND. gsf(i,k,lake) < 1.0) then
+          gsf(i,k,lake) = seafrac
+          if (land_fraction(i,k) > 0.0) then
+            lftotal = 0.0
+            n = 0
+            do j = 1, ntype, 1
+              n = n + 1
+              if (j == lake) then
+                ! PSyclone CodeBlock (unsupported code) reason:
+                !  - Unsupported statement: Cycle_Stmt
+                CYCLE
+              end if
+              lftotal = lftotal + gsf(i,k,n)
+            enddo
+            n = 0
+            do j = 1, ntype, 1
+              n = n + 1
+              if (j == lake) then
+                ! PSyclone CodeBlock (unsupported code) reason:
+                !  - Unsupported statement: Cycle_Stmt
+                CYCLE
+              end if
+              gsf(i,k,n) = gsf(i,k,n) * land_fraction(i,k) / lftotal
+            enddo
+          end if
+        end if
+        if (seaice_frac(i,k) > 0.0) then
+          gsf(i,k,lake) = (1.0 - seaice_frac(i,k)) * seafrac
+          gsf(i,k,ntype) = gsf(i,k,ntype) + seaice_frac(i,k) * seafrac
+        end if
+      enddo
+    enddo
+    !$acc kernels
+    !$acc loop gang vector independent collapse(3)
+    do n = 1, ntype, 1
+      do k = 1, rows, 1
+        do i = 1, row_length, 1
+          if (t0tile(i,k,n) < 100.0) then
+            t0tile(i,k,n) = t_surf(i,k)
+          end if
+        enddo
+      enddo
+    enddo
+    !$acc loop gang vector independent collapse(2)
+    do k = 1, rows, 1
+      do i = 1, row_length, 1
+        if (seaice_frac(i,k) > 0.0) then
+          t0tile(i,k,lake) = tfs
+        end if
+      enddo
+    enddo
+    !$acc end kernels
+    call ukca_aerod(row_length, rows, ntype, npft, lake, t_surf, p_surf, surf_hf, u_s, canht_ft, gsf, zbl, z0tile, resa, rb, so4_vd)
+    call ukca_surfddr(row_length, rows, ntype, npft, sinlat, t_surf, p_surf, rh, smr, u_s, gsf, stcon, t0tile, lai_ft, so4_vd, rc, o3_stom_frac)
+    call ukca_ddcalc(row_length, rows, bl_levels, ntype, npft, timestep, dzl, zbl, gsf, resa, rb, rc, nlev_with_ddep, zdryrt, len_stashwork, stashwork)
+    if (lhook) then
+      call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
+    end if
+    call nvtxEndRange()
+    return
 
-CONTAINS
+  end subroutine ukca_ddepctl
 
-SUBROUTINE ukca_ddepctl(row_length, rows, bl_levels, ntype,                    &
-  npft, land_points, land_index, tile_pts, tile_index, timestep,               &
-  sinlat, frac_types, t_surf, p_surf, dzl, zbl, surf_hf, u_s,                  &
-  rh, stcon, soilmc_lp, fland, seaice_frac, laift_lp,                          &
-  canhtft_lp, z0tile_lp, t0tile_lp,                                            &
-  nlev_with_ddep, zdryrt, len_stashwork, stashwork)
-
-USE ukca_config_specification_mod, ONLY: ukca_config
-USE ukca_config_constants_mod, ONLY: tfs, rho_water
-USE asad_mod, ONLY: jpdd
-USE yomhook,             ONLY: lhook, dr_hook
-USE parkind1,            ONLY: jprb, jpim
-
-USE ukca_aerod_mod, ONLY: ukca_aerod
-USE ukca_ddcalc_mod, ONLY: ukca_ddcalc
-USE ukca_surfddr_mod, ONLY: ukca_surfddr
-
-IMPLICIT NONE
-
-INTEGER, INTENT(IN) :: row_length
-INTEGER, INTENT(IN) :: rows
-INTEGER, INTENT(IN) :: bl_levels
-INTEGER, INTENT(IN) :: land_points
-INTEGER, INTENT(IN) :: ntype
-INTEGER, INTENT(IN) :: npft
-INTEGER, INTENT(IN) :: land_index(land_points)
-
-INTEGER, INTENT(IN) :: tile_pts(ntype)
-INTEGER, INTENT(IN) :: tile_index(land_points,ntype)
-
-REAL, INTENT(IN) :: timestep
-
-REAL, INTENT(IN) :: sinlat(row_length,rows)
-REAL, INTENT(IN) :: frac_types(:,:)
-REAL, INTENT(IN) :: t_surf(row_length,rows)
-REAL, INTENT(IN) :: p_surf(row_length,rows)
-REAL, INTENT(IN) :: dzl(row_length,rows,bl_levels)
-REAL, INTENT(IN) :: zbl(row_length,rows)
-REAL, INTENT(IN) :: surf_hf(row_length,rows)
-REAL, INTENT(IN) :: u_s(row_length,rows)
-REAL, INTENT(IN) :: rh(row_length,rows)
-REAL, INTENT(IN) :: seaice_frac(row_length,rows)
-REAL, INTENT(IN) :: stcon(row_length,rows,npft)
-REAL, INTENT(IN) :: soilmc_lp(land_points)
-REAL, INTENT(IN) :: fland(land_points)
-REAL, INTENT(IN) :: laift_lp(land_points,npft)
-REAL, INTENT(IN) :: canhtft_lp(land_points,npft)
-REAL, INTENT(IN) :: z0tile_lp(land_points,ntype)
-REAL, INTENT(IN) :: t0tile_lp(land_points,ntype)
-
-! Diagnostics array
-INTEGER, INTENT(IN)  :: len_stashwork
-REAL, INTENT(IN OUT) :: stashwork (len_stashwork)
-
-INTEGER, INTENT(OUT) :: nlev_with_ddep(row_length,rows)
-
-REAL, INTENT(OUT) :: zdryrt(row_length,rows,jpdd)
-
-!     Local variables
-
-INTEGER :: i, j, k, l, m, n
-
-INTEGER :: lake ! Surface type index for type 'lake'
-
-REAL :: seafrac ! Fraction of sea in grid square
-REAL :: lftotal ! Sum of land tile fractions
-
-REAL :: smr(row_length,rows)           ! soil moisture as volume fraction
-REAL :: land_fraction(row_length,rows)
-REAL :: lai_ft(row_length,rows,npft)
-REAL :: canht_ft(row_length,rows,npft)
-REAL :: z0tile(row_length,rows,ntype)
-REAL :: t0tile(row_length,rows,ntype)
-REAL :: o3_stom_frac(row_length,rows)
-
-! Aerodynamic resistance (s m-1)
-REAL :: resa(row_length,rows,ntype)
-
-! Quasi-laminar resistance (s m-1)
-REAL :: rb(row_length,rows,jpdd)
-
-! Surface resistance (s m-1)
-REAL :: rc(row_length,rows,ntype,jpdd)
-
-! Global surface fraction array
-REAL :: gsf(row_length,rows,ntype)
-
-! Sulphate aerosol dep velocity (m s-1)
-REAL:: so4_vd(row_length,rows)
-
-
-INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
-INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
-REAL(KIND=jprb)               :: zhook_handle
-
-CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_DDEPCTL'
-
-!
-! Set up global surface fraction array, gsf
-! Tile fractions (in array frac_types) are only defined over land.
-! Set water fractions over the sea. Add sea ice and sea fractions to gsf.
-! Adjust tile fractions so they add up to 1. If gsf has the water tile
-! fraction = 1.0, set the land fraction to 0.0
-!
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-land_fraction = 0.0
-smr           = 0.0
-lai_ft        = 0.0
-canht_ft      = 0.0
-z0tile        = 0.0
-t0tile        = 0.0
-gsf           = 0.0
-!
-! Expand arrays from land points to lon-lat grid
-!
-DO l = 1, land_points
-  j = (land_index(l)-1)/row_length + 1
-  i = land_index(l) - (j-1)*row_length
-  smr(i,j) = soilmc_lp(l)/(ukca_config%dzsoil_layer1*rho_water)
-  land_fraction(i,j) = fland(l)
-END DO
-!
-DO m = 1, npft
-  DO n = 1, tile_pts(m)
-    l = tile_index(n,m)
-    j = (land_index(l)-1)/row_length + 1
-    i = land_index(l) - (j-1)*row_length
-    lai_ft(i,j,m) = laift_lp(l,m)
-    canht_ft(i,j,m) = canhtft_lp(l,m)
-  END DO
-END DO
-!
-DO m = 1, ntype
-  DO n = 1, tile_pts(m)
-    l = tile_index(n,m)
-    j = (land_index(l)-1)/row_length + 1
-    i = land_index(l) - (j-1)*row_length
-    z0tile(i,j,m) = z0tile_lp(l,m)
-    t0tile(i,j,m) = t0tile_lp(l,m)
-    gsf(i,j,m) = frac_types(l,m)
-  END DO
-END DO
-!
-! Add in sea ice data and coastal land fractions to gsf array.
-!
-lake = ukca_config%i_lake
-DO k = 1, rows
-  DO i = 1, row_length
-    IF (gsf(i,k,lake) == 1.0) land_fraction(i,k) = 0.0
-    seafrac = 1.0 - land_fraction(i,k)
-    IF (land_fraction(i,k) < 1.0 .AND. gsf(i,k,lake) < 1.0) THEN
-      gsf(i,k,lake) = seafrac
-      IF (land_fraction(i,k) > 0.0) THEN
-        lftotal = 0.0
-        n = 0
-        DO j = 1, ntype
-          n = n + 1
-          IF (j == lake) CYCLE      ! ignore water
-          lftotal = lftotal + gsf(i,k,n)
-        END DO
-        n = 0
-        DO j = 1, ntype
-          n = n + 1
-          IF (j == lake) CYCLE      ! ignore water
-          gsf(i,k,n) = gsf(i,k,n) * land_fraction(i,k) / lftotal
-        END DO
-      END IF
-    END IF
-    IF (seaice_frac(i,k) > 0.0) THEN
-      gsf(i,k,lake) = (1.0 - seaice_frac(i,k)) * seafrac
-      gsf(i,k,ntype) = gsf(i,k,ntype) + seaice_frac(i,k) * seafrac
-
-      ! The equation above, involving sea ice, implicitly assumes that
-      ! the last surface type is ice. This is valid for 3 out of the 4 allowed
-      ! UKCA surface tile configurations, 5 pft/9 tile, 9 pft/13 tile and
-      ! 13 pft/17 tile, as ice is usually the last surface type. However, it is
-      ! not valid for the fourth UKCA surface tile configuration
-      ! (13 pft/27 tile), where the last surface type is element 10 of
-      ! elevated ice.
-
-      ! To maintain outputs and comparisons with known good output for UKESM1
-      ! and UKESM1.1, the UKCA code is left unchanged and this comment added.
-      ! The equation has been corrected in the equivalent JULES-based
-      ! deposition routines, with ntype replaced by ice. This will ensure
-      ! that the allocation of sea ice to ice is correct in all surface tile
-      ! configurations, especially those where ice is not the last surface
-      ! type, e.g., in UKESM2, where element 10 of elevated rock will be
-      ! the last surface type.
-
-    END IF
-  END DO
-END DO
-!
-! Set all tile temperatures to t0 where undefined.
-!
-DO n = 1, ntype
-  DO k = 1, rows
-    DO i = 1, row_length
-      IF (t0tile(i,k,n) < 100.0) t0tile(i,k,n) = t_surf(i,k)
-    END DO
-  END DO
-END DO
-!
-! Set up tile temperatures where a mixture of sea and sea ice is
-! present. Set sea to freezing temperature (tfs) and ice to sea ice
-! temperature.
-!
-DO k = 1, rows
-  DO i = 1, row_length
-    IF (seaice_frac(i,k) > 0.0) THEN
-      !           t0tile(i,k,ntype) = sicetemp(i,k)
-      t0tile(i,k,lake) = tfs
-    END IF
-  END DO
-END DO
-!
-! Calculate aerodynamic and quasi-laminar resistances (Resa, Rb).
-!
-CALL ukca_aerod(row_length, rows, ntype, npft, lake, t_surf, p_surf,           &
-  surf_hf, u_s, canht_ft, gsf, zbl, z0tile, resa, rb, so4_vd)
-!
-! Calculate surface resistance term Rc
-!
-CALL ukca_surfddr(row_length, rows, ntype, npft,                               &
-        sinlat, t_surf, p_surf, rh, smr, u_s, gsf, stcon, t0tile,              &
-        lai_ft, so4_vd, rc, o3_stom_frac)
-!
-! Combine resistance terms to calculate overall dry deposition
-! velocity, and hence first-order rate constant describing
-! dry deposition rate
-!
-CALL ukca_ddcalc(row_length, rows, bl_levels, ntype,                           &
-  npft, timestep, dzl, zbl, gsf, resa, rb, rc,                                 &
-  nlev_with_ddep, zdryrt, len_stashwork, stashwork)
-
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
-RETURN
-!
-END SUBROUTINE ukca_ddepctl
-END MODULE ukca_ddepctl_mod
+end module ukca_ddepctl_mod

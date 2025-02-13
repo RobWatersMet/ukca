@@ -8,6 +8,7 @@ module ukca_deriv_raqaero_mod
     use asad_mod, only : jppj, jpspec
     use ukca_config_specification_mod, only : ukca_config
     use yomhook, only : dr_hook, lhook
+    use nvtx
     use parkind1, only : jpim, jprb
     use ukca_um_legacy_mod, only : oneover_v
     integer(kind=jpim), parameter :: zhook_in = 0
@@ -347,6 +348,7 @@ module ukca_deriv_raqaero_mod
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
+    call nvtxStartRange(ModuleName // ':' // RoutineName)
     !$acc kernels
     !$acc loop gang vector independent
     do idx = LBOUND(delta_so2_wetox_h2o2, dim=1), UBOUND(delta_so2_wetox_h2o2, dim=1), 1
@@ -1794,6 +1796,7 @@ module ukca_deriv_raqaero_mod
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
     end if
+    call nvtxEndRange()
     return
 
   end subroutine ukca_deriv_raqaero

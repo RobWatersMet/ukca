@@ -24,6 +24,7 @@ module ukca_chemistry_ctl_be_mod
     use ukca_environment_fields_mod, only : surf_wetness
     use ukca_config_specification_mod, only : ukca_config
     use yomhook, only : dr_hook, lhook
+    use nvtx
     use parkind1, only : jpim, jprb
     use ereport_mod, only : ereport
     use umPrintMgr, only : printstatus, prstatus_oper, ummessage, umprint
@@ -136,11 +137,15 @@ module ukca_chemistry_ctl_be_mod
     integer :: idx_28
     integer :: idx_29
     integer :: idx_30
+    integer :: idx_31
+    integer :: idx_32
+    integer :: idx_33
     integer :: widx1
 
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
+    call nvtxStartRange(ModuleName // ':' // RoutineName)
     nr = jpbk + jptk + jphk
     secs_per_step = REAL(chem_timestep)
     if (.NOT.ALLOCATED(dflux)) then
@@ -248,42 +253,49 @@ module ukca_chemistry_ctl_be_mod
       enddo
       !$acc end kernels
       if (ukca_config%l_fix_ukca_offox_h2o_fac) then
-        zq(:) = q(kcs:kce) / c_h2o
-      else
         !$acc kernels
         !$acc loop gang vector independent
         do idx_15 = LBOUND(zq, dim=1), UBOUND(zq, dim=1), 1
-          zq(idx_15) = q(idx_15 + (kcs - LBOUND(zq, dim=1)))
+          zq(idx_15) = q(idx_15 + (kcs - LBOUND(zq, dim=1))) / c_h2o
+        enddo
+        !$acc end kernels
+      else
+        !$acc kernels
+        !$acc loop gang vector independent
+        do idx_16 = LBOUND(zq, dim=1), UBOUND(zq, dim=1), 1
+          zq(idx_16) = q(idx_16 + (kcs - LBOUND(zq, dim=1)))
         enddo
         !$acc end kernels
       end if
       if (k <= model_levels) then
         !$acc kernels
         !$acc loop gang vector independent
-        do idx_16 = LBOUND(zclw, dim=1), UBOUND(zclw, dim=1), 1
-          zclw(idx_16) = qcl(idx_16 + (kcs - LBOUND(zclw, dim=1)))
+        do idx_17 = LBOUND(zclw, dim=1), UBOUND(zclw, dim=1), 1
+          zclw(idx_17) = qcl(idx_17 + (kcs - LBOUND(zclw, dim=1)))
         enddo
         !$acc loop gang vector independent
-        do idx_17 = LBOUND(zfcloud, dim=1), UBOUND(zfcloud, dim=1), 1
-          zfcloud(idx_17) = cloud_frac(idx_17 + (kcs - LBOUND(zfcloud, dim=1)))
+        do idx_18 = LBOUND(zfcloud, dim=1), UBOUND(zfcloud, dim=1), 1
+          zfcloud(idx_18) = cloud_frac(idx_18 + (kcs - LBOUND(zfcloud, dim=1)))
         enddo
         !$acc end kernels
       else
         !$acc kernels
         !$acc loop gang vector independent
-        do idx_18 = LBOUND(zclw, dim=1), UBOUND(zclw, dim=1), 1
-          zclw(idx_18) = 0.0
+        do idx_19 = LBOUND(zclw, dim=1), UBOUND(zclw, dim=1), 1
+          zclw(idx_19) = 0.0
         enddo
         !$acc loop gang vector independent
-        do idx_19 = LBOUND(zfcloud, dim=1), UBOUND(zfcloud, dim=1), 1
-          zfcloud(idx_19) = 0.0
+        do idx_20 = LBOUND(zfcloud, dim=1), UBOUND(zfcloud, dim=1), 1
+          zfcloud(idx_20) = 0.0
         enddo
         !$acc end kernels
       end if
       !$acc kernels
-      !$acc loop gang vector independent
+      !$acc loop gang vector independent collapse(2)
       do js = 1, jpctr, 1
-        zftr(:,js) = tracer(kcs:kce,js) / c_species(js)
+        do idx_21 = LBOUND(zftr, dim=1), UBOUND(zftr, dim=1), 1
+          zftr(idx_21,js) = tracer(idx_21 + (kcs - LBOUND(zftr, dim=1)),js) / c_species(js)
+        enddo
       enddo
       !$acc end kernels
       call ukca_be_wetdep(theta_field_size, wetrt(:,k,:), zwetrt)
@@ -298,8 +310,8 @@ module ukca_chemistry_ctl_be_mod
       !$acc kernels
       !$acc loop gang vector independent collapse(2)
       do js = 1, jpctr, 1
-        do idx_20 = LBOUND(f, dim=1), UBOUND(f, dim=1), 1
-          f(idx_20,js) = zftr(idx_20 + (LBOUND(zftr, dim=1) - LBOUND(f, dim=1)),js) * tnd(idx_20 + (LBOUND(tnd, dim=1) - LBOUND(f, dim=1)))
+        do idx_22 = LBOUND(f, dim=1), UBOUND(f, dim=1), 1
+          f(idx_22,js) = zftr(idx_22 + (LBOUND(zftr, dim=1) - LBOUND(f, dim=1)),js) * tnd(idx_22 + (LBOUND(tnd, dim=1) - LBOUND(f, dim=1)))
         enddo
       enddo
       !$acc end kernels
@@ -309,8 +321,8 @@ module ukca_chemistry_ctl_be_mod
       if (uph2so4inaer == 1) then
         !$acc kernels
         !$acc loop gang vector independent
-        do idx_21 = LBOUND(ystore, dim=1), UBOUND(ystore, dim=1), 1
-          ystore(idx_21) = y(idx_21 + (LBOUND(y, dim=1) - LBOUND(ystore, dim=1)),nn_h2so4)
+        do idx_23 = LBOUND(ystore, dim=1), UBOUND(ystore, dim=1), 1
+          ystore(idx_23) = y(idx_23 + (LBOUND(y, dim=1) - LBOUND(ystore, dim=1)),nn_h2so4)
         enddo
         !$acc end kernels
       end if
@@ -318,15 +330,20 @@ module ukca_chemistry_ctl_be_mod
       if (uph2so4inaer == 1) then
         !$acc kernels
         !$acc loop gang vector independent
-        do idx_22 = LBOUND(y, dim=1), UBOUND(y, dim=1), 1
-          y(idx_22,nn_h2so4) = ystore(idx_22 + (LBOUND(ystore, dim=1) - LBOUND(y, dim=1)))
+        do idx_24 = LBOUND(y, dim=1), UBOUND(y, dim=1), 1
+          y(idx_24,nn_h2so4) = ystore(idx_24 + (LBOUND(ystore, dim=1) - LBOUND(y, dim=1)))
         enddo
         !$acc end kernels
       end if
       do j = 1, jpctr, 1
         do i = 1, jpspec, 1
           if (advt(j) == speci(i)) then
-            tracer(kcs:kce,j) = y(:,i) / tnd(:) * c_species(j)
+            !$acc kernels
+            !$acc loop gang vector independent
+            do idx_25 = kcs, kce, 1
+              tracer(idx_25,j) = y(idx_25 + (LBOUND(y, dim=1) - kcs),i) / tnd(idx_25 + (LBOUND(tnd, dim=1) - kcs)) * c_species(j)
+            enddo
+            !$acc end kernels
             ! PSyclone CodeBlock (unsupported code) reason:
             !  - Unsupported statement: Exit_Stmt
             EXIT
@@ -335,24 +352,24 @@ module ukca_chemistry_ctl_be_mod
       enddo
       !$acc kernels
       !$acc loop gang vector independent
-      do idx_23 = kcs, kce, 1
-        delso2_wet_h2o2(idx_23) = so2_wetox_h2o2(idx_23 + (LBOUND(so2_wetox_h2o2, dim=1) - kcs))
-      enddo
-      !$acc loop gang vector independent
-      do idx_24 = kcs, kce, 1
-        delso2_wet_o3(idx_24) = so2_wetox_o3(idx_24 + (LBOUND(so2_wetox_o3, dim=1) - kcs))
-      enddo
-      !$acc loop gang vector independent
-      do idx_25 = kcs, kce, 1
-        delh2so4_chem(idx_25) = so2_dryox_oh(idx_25 + (LBOUND(so2_dryox_oh, dim=1) - kcs))
-      enddo
-      !$acc loop gang vector independent
       do idx_26 = kcs, kce, 1
-        delso2_drydep(idx_26) = zdryrt(idx_26 + (LBOUND(zdryrt, dim=1) - kcs),nn_so2) * y(idx_26 + (LBOUND(y, dim=1) - kcs),nn_so2) * dts
+        delso2_wet_h2o2(idx_26) = so2_wetox_h2o2(idx_26 + (LBOUND(so2_wetox_h2o2, dim=1) - kcs))
       enddo
       !$acc loop gang vector independent
       do idx_27 = kcs, kce, 1
-        delso2_wetdep(idx_27) = zwetrt(idx_27 + (LBOUND(zwetrt, dim=1) - kcs),nn_so2) * y(idx_27 + (LBOUND(y, dim=1) - kcs),nn_so2) * dts
+        delso2_wet_o3(idx_27) = so2_wetox_o3(idx_27 + (LBOUND(so2_wetox_o3, dim=1) - kcs))
+      enddo
+      !$acc loop gang vector independent
+      do idx_28 = kcs, kce, 1
+        delh2so4_chem(idx_28) = so2_dryox_oh(idx_28 + (LBOUND(so2_dryox_oh, dim=1) - kcs))
+      enddo
+      !$acc loop gang vector independent
+      do idx_29 = kcs, kce, 1
+        delso2_drydep(idx_29) = zdryrt(idx_29 + (LBOUND(zdryrt, dim=1) - kcs),nn_so2) * y(idx_29 + (LBOUND(y, dim=1) - kcs),nn_so2) * dts
+      enddo
+      !$acc loop gang vector independent
+      do idx_30 = kcs, kce, 1
+        delso2_wetdep(idx_30) = zwetrt(idx_30 + (LBOUND(zwetrt, dim=1) - kcs),nn_so2) * y(idx_30 + (LBOUND(y, dim=1) - kcs),nn_so2) * dts
       enddo
       !$acc end kernels
       if (lflux) then
@@ -360,24 +377,24 @@ module ukca_chemistry_ctl_be_mod
         !$acc loop seq
         do i = 1, jpbk, 1
           !$acc loop gang vector independent
-          do idx_28 = LBOUND(prk, dim=1), UBOUND(prk, dim=1), 1
-            prk(idx_28,ibimol(i)) = dflux(idx_28 + (LBOUND(dflux, dim=1) - LBOUND(prk, dim=1)),i)
+          do idx_31 = LBOUND(prk, dim=1), UBOUND(prk, dim=1), 1
+            prk(idx_31,ibimol(i)) = dflux(idx_31 + (LBOUND(dflux, dim=1) - LBOUND(prk, dim=1)),i)
           enddo
         enddo
         j = jpbk
         !$acc loop seq
         do i = 1, jptk, 1
           !$acc loop gang vector independent
-          do idx_29 = LBOUND(prk, dim=1), UBOUND(prk, dim=1), 1
-            prk(idx_29,itrimol(i)) = dflux(idx_29 + (LBOUND(dflux, dim=1) - LBOUND(prk, dim=1)),i + j)
+          do idx_32 = LBOUND(prk, dim=1), UBOUND(prk, dim=1), 1
+            prk(idx_32,itrimol(i)) = dflux(idx_32 + (LBOUND(dflux, dim=1) - LBOUND(prk, dim=1)),i + j)
           enddo
         enddo
         j = jpbk + jptk
         !$acc loop seq
         do i = 1, jphk, 1
           !$acc loop gang vector independent
-          do idx_30 = LBOUND(prk, dim=1), UBOUND(prk, dim=1), 1
-            prk(idx_30,ihetero(i)) = dflux(idx_30 + (LBOUND(dflux, dim=1) - LBOUND(prk, dim=1)),i + j)
+          do idx_33 = LBOUND(prk, dim=1), UBOUND(prk, dim=1), 1
+            prk(idx_33,ihetero(i)) = dflux(idx_33 + (LBOUND(dflux, dim=1) - LBOUND(prk, dim=1)),i + j)
           enddo
         enddo
         !$acc end kernels
@@ -399,6 +416,7 @@ module ukca_chemistry_ctl_be_mod
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
     end if
+    call nvtxEndRange()
     return
 
   end subroutine ukca_chemistry_ctl_be
@@ -414,6 +432,7 @@ module ukca_chemistry_ctl_be_mod
     use umPrintMgr, only : ummessage, umprint
     use ereport_mod, only : ereport
     use yomhook, only : dr_hook, lhook
+    use nvtx
     use parkind1, only : jpim, jprb
     integer(kind=jpim), parameter :: zhook_in = 0
     integer(kind=jpim), parameter :: zhook_out = 1
@@ -444,10 +463,16 @@ module ukca_chemistry_ctl_be_mod
     integer :: idx_3
     integer :: idx_4
     integer :: idx_5
+    integer :: idx_6
+    integer :: idx_7
+    integer :: idx_8
+    integer :: idx_9
+    integer :: idx_10
 
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
+    call nvtxStartRange(ModuleName // ':' // RoutineName)
     !$acc kernels
     npnts = theta_field_size
     !$acc loop gang vector independent
@@ -477,22 +502,38 @@ module ukca_chemistry_ctl_be_mod
       if (.NOT.ALLOCATED(ihetero)) then
         ALLOCATE(ihetero(1:jphk))
       end if
-      ibimol(:) = imdi
-      itrimol(:) = imdi
-      ihetero(:) = imdi
+      !$acc kernels
+      !$acc loop gang vector independent
+      do idx_3 = LBOUND(ibimol, dim=1), UBOUND(ibimol, dim=1), 1
+        ibimol(idx_3) = imdi
+      enddo
+      !$acc loop gang vector independent
+      do idx_4 = LBOUND(itrimol, dim=1), UBOUND(itrimol, dim=1), 1
+        itrimol(idx_4) = imdi
+      enddo
+      !$acc loop gang vector independent
+      do idx_5 = LBOUND(ihetero, dim=1), UBOUND(ihetero, dim=1), 1
+        ihetero(idx_5) = imdi
+      enddo
       frac_dms_so2 = rmdi
       frac_dms_dmso = rmdi
       frac_dmso_so2 = rmdi
       frac_monoterp_sec_org(3) = rmdi
-      rc(:,:) = rmdi
+      !$acc loop gang vector independent collapse(2)
+      do idx_6 = LBOUND(rc, dim=2), UBOUND(rc, dim=2), 1
+        do idx_7 = LBOUND(rc, dim=1), UBOUND(rc, dim=1), 1
+          rc(idx_7,idx_6) = rmdi
+        enddo
+      enddo
       errcode = 0
+      !$acc end kernels
       do i = 1, jpbk, 1
         r1(:) = ratb_defs(i)%react1
         r2(:) = ratb_defs(i)%react2
         p1(:) = ratb_defs(i)%prod1
         p2(:) = ratb_defs(i)%prod2
         prods(:) = [p1, p2]
-        ibimol(i) = asad_findreaction(r1,r2,prods,2,spb,nbrkx,jpbk + 1,jpspb)
+        ibimol(i) = asad_findreaction(r1, r2, prods, 2, spb, nbrkx, jpbk + 1, jpspb)
         if (ibimol(i) == imdi) then
           errcode = i
         end if
@@ -529,7 +570,7 @@ module ukca_chemistry_ctl_be_mod
         p1(:) = ratt_defs(i)%prod1
         p2(:) = ratt_defs(i)%prod2
         prods(:) = [p1, p2]
-        itrimol(i) = asad_findreaction(r1,r2,prods,2,spt,ntrkx,jptk + 1,jpspt)
+        itrimol(i) = asad_findreaction(r1, r2, prods, 2, spt, ntrkx, jptk + 1, jpspt)
         if (itrimol(i) == imdi) then
           errcode = i
         end if
@@ -545,7 +586,7 @@ module ukca_chemistry_ctl_be_mod
         p1(:) = rath_defs(i)%prod1
         p2(:) = rath_defs(i)%prod2
         prods(:) = [p1, p2]
-        ihetero(i) = asad_findreaction(r1,r2,prods,2,sph,nhrkx,jphk + 1,jpsph)
+        ihetero(i) = asad_findreaction(r1, r2, prods, 2, sph, nhrkx, jphk + 1, jpsph)
         if (ihetero(i) == imdi) then
           errcode = i
         end if
@@ -558,22 +599,22 @@ module ukca_chemistry_ctl_be_mod
     !$acc kernels
     !$acc loop gang vector independent collapse(2)
     do i = 1, jpbk, 1
-      do idx_3 = LBOUND(rc, dim=1), UBOUND(rc, dim=1), 1
-        rc(idx_3,i) = rk(idx_3 + (LBOUND(rk, dim=1) - LBOUND(rc, dim=1)),ibimol(i))
+      do idx_8 = LBOUND(rc, dim=1), UBOUND(rc, dim=1), 1
+        rc(idx_8,i) = rk(idx_8 + (LBOUND(rk, dim=1) - LBOUND(rc, dim=1)),ibimol(i))
       enddo
     enddo
     j = jpbk
     !$acc loop gang vector independent collapse(2)
     do i = 1, jptk, 1
-      do idx_4 = LBOUND(rc, dim=1), UBOUND(rc, dim=1), 1
-        rc(idx_4,i + j) = rk(idx_4 + (LBOUND(rk, dim=1) - LBOUND(rc, dim=1)),itrimol(i))
+      do idx_9 = LBOUND(rc, dim=1), UBOUND(rc, dim=1), 1
+        rc(idx_9,i + j) = rk(idx_9 + (LBOUND(rk, dim=1) - LBOUND(rc, dim=1)),itrimol(i))
       enddo
     enddo
     j = jpbk + jptk
     !$acc loop gang vector independent collapse(2)
     do i = 1, jphk, 1
-      do idx_5 = LBOUND(rc, dim=1), UBOUND(rc, dim=1), 1
-        rc(idx_5,i + j) = rk(idx_5 + (LBOUND(rk, dim=1) - LBOUND(rc, dim=1)),ihetero(i))
+      do idx_10 = LBOUND(rc, dim=1), UBOUND(rc, dim=1), 1
+        rc(idx_10,i + j) = rk(idx_10 + (LBOUND(rk, dim=1) - LBOUND(rc, dim=1)),ihetero(i))
       enddo
     enddo
     !$acc end kernels
@@ -597,6 +638,7 @@ module ukca_chemistry_ctl_be_mod
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
     end if
+    call nvtxEndRange()
     return
 
   end subroutine ukca_chemco_be_offline
@@ -604,6 +646,7 @@ module ukca_chemistry_ctl_be_mod
     use asad_mod, only : jpspec
     use ukca_um_legacy_mod, only : oneover_v
     use yomhook, only : dr_hook, lhook
+    use nvtx
     use parkind1, only : jpim, jprb
     integer(kind=jpim), parameter :: zhook_in = 0
     integer(kind=jpim), parameter :: zhook_out = 1
@@ -685,6 +728,7 @@ module ukca_chemistry_ctl_be_mod
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
+    call nvtxStartRange(ModuleName // ':' // RoutineName)
     !$acc kernels
     npnts = theta_field_size
     !$acc loop gang vector independent
@@ -857,7 +901,7 @@ module ukca_chemistry_ctl_be_mod
       enddo
       !$acc loop gang vector independent
       do idx_36 = LBOUND(so2_wetox_o3, dim=1), UBOUND(so2_wetox_o3, dim=1), 1
-        so2_wetox_o3(idx_36) = so2_wetox_o3(idx_36) + (rc(idx_36 + (LBOUND(rc, dim=1) - LBOUND(so2_wetox_o3, dim=1)),12) + rc(idx_36 + (LBOUND(rc, dim=1) - LBOUND(so2_wetox_o3, dim=1)),13)) * y(idx_36,3) * y(idx_36,8) * dts
+        so2_wetox_o3(idx_36) = so2_wetox_o3(idx_36) + ((rc(idx_36 + (LBOUND(rc, dim=1) - LBOUND(so2_wetox_o3, dim=1)),12) + rc(idx_36 + (LBOUND(rc, dim=1) - LBOUND(so2_wetox_o3, dim=1)),13)) * y(idx_36,3) * y(idx_36,8)) * dts
       enddo
       !$acc loop gang vector independent
       do idx_37 = LBOUND(so2_dryox_oh, dim=1), UBOUND(so2_dryox_oh, dim=1), 1
@@ -925,6 +969,7 @@ module ukca_chemistry_ctl_be_mod
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
     end if
+    call nvtxEndRange()
     return
 
   end subroutine ukca_deriv_offline

@@ -219,7 +219,7 @@ module asad_cdrive_mod
     !$acc kernels
     !$acc loop seq
     do js = 1, jpspec, 1
-      if (ctype(js) == jpif) then
+      if (ctype(js) == jpif(:)) then
         ifam = moffam(js)
         itr = madvtr(js)
         iodd = nodd(js)

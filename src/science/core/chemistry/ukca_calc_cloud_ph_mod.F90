@@ -13,6 +13,7 @@ module ukca_calc_cloud_ph_mod
     use ukca_config_specification_mod, only : ukca_config
     use parkind1, only : jpim, jprb
     use yomhook, only : dr_hook, lhook
+    use nvtx
     real, parameter :: kgpcm3_to_ugpm3 = 1.0e15
     integer(kind=jpim), parameter :: zhook_in = 0
     integer(kind=jpim), parameter :: zhook_out = 1
@@ -39,15 +40,26 @@ module ukca_calc_cloud_ph_mod
     real :: fit_3
     real(kind=jprb) :: zhook_handle
     CHARACTER(LEN = *), PARAMETER :: RoutineName = 'UKCA_CALC_CLOUD_PH'
+    integer :: idx
+    integer :: idx_1
+    integer :: idx_2
 
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
+    call nvtxStartRange(ModuleName // ':' // RoutineName)
     !$acc kernels
     fit_1 = ukca_config%ph_fit_coeff_a
     fit_2 = ukca_config%ph_fit_coeff_b
     fit_3 = ukca_config%ph_fit_intercept
-    aird(:,:,:) = pres(:,:,:) / (temp(:,:,:) * boltzmann * 1.0e6)
+    !$acc loop gang vector independent collapse(3)
+    do idx = LBOUND(aird, dim=3), UBOUND(aird, dim=3), 1
+      do idx_1 = LBOUND(aird, dim=2), UBOUND(aird, dim=2), 1
+        do idx_2 = LBOUND(aird, dim=1), UBOUND(aird, dim=1), 1
+          aird(idx_2,idx_1,idx) = pres(idx_2,idx_1,idx) / (temp(idx_2,idx_1,idx) * boltzmann * 1.0e6)
+        enddo
+      enddo
+    enddo
     !$acc loop seq
     do k = 1, model_levels, 1
       !$acc loop seq
@@ -74,6 +86,7 @@ module ukca_calc_cloud_ph_mod
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
     end if
+    call nvtxEndRange()
 
   end subroutine ukca_calc_cloud_ph
 

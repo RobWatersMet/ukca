@@ -20,6 +20,7 @@ module ukca_chemistry_setup_mod
     use parkind1, only : jpim, jprb
     use umPrintMgr, only : ummessage, umprint
     use yomhook, only : dr_hook, lhook
+    use nvtx
     logical, parameter :: before_chem = .true.
     integer(kind=jpim), parameter :: zhook_in = 0
     integer(kind=jpim), parameter :: zhook_out = 1
@@ -93,6 +94,7 @@ module ukca_chemistry_setup_mod
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
+    call nvtxStartRange(ModuleName // ':' // RoutineName)
     tropraq = ukca_config%l_ukca_trop .OR. ukca_config%l_ukca_aerchem .OR. ukca_config%l_ukca_raq .OR. ukca_config%l_ukca_raqaero
     if (firstcall .AND. (.NOT.ukca_config%l_ukca_offline_be)) then
       if (ukca_config%l_ukca_advh2o .AND. n_h2o == 0) then
@@ -199,6 +201,7 @@ module ukca_chemistry_setup_mod
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
     end if
+    call nvtxEndRange()
 
   end subroutine ukca_chemistry_setup
 

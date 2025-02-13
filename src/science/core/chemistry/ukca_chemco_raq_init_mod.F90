@@ -21,6 +21,7 @@ module ukca_chemco_raq_init_mod
   subroutine ukca_chemco_raq_init(nr, npdep)
     use ukca_config_specification_mod, only : ukca_config
     use yomhook, only : dr_hook, lhook
+    use nvtx
     use parkind1, only : jpim, jprb
     use umprintmgr, only : ummessage, umprint
     use ereport_mod, only : ereport
@@ -43,6 +44,7 @@ module ukca_chemco_raq_init_mod
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
+    call nvtxStartRange(ModuleName // ':' // RoutineName)
     if (ukca_config%l_ukca_raqaero) then
       if (nr /= 197) then
         cmessage(:) = 'Invalid number of thermal reactions for RAQ-AERO chemistry'
@@ -286,6 +288,7 @@ module ukca_chemco_raq_init_mod
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
     end if
+    call nvtxEndRange()
     return
 
   end subroutine ukca_chemco_raq_init
