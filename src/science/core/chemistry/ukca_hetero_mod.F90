@@ -1462,7 +1462,7 @@ module ukca_hetero_mod
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
     end if
-    call nvtxEndRanges()
+    call nvtxEndRange()
     return
 
   end subroutine ukca_position
