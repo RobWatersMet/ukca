@@ -1,835 +1,803 @@
-module ukca_aerod_mod
-  implicit none
-  character(len = *), parameter, private :: ModuleName = 'UKCA_AEROD_MOD'
-  public
+! *****************************COPYRIGHT*******************************
+! (C) Crown copyright Met Office. All rights reserved.
+! For further details please refer to the file COPYRIGHT.txt
+! which you should have received as part of this distribution.
+! *****************************COPYRIGHT*******************************
+!
+! Description:
+!  Calculates aerodynamic and quasi-laminar resistances.
+!  Returns Resa, Rb
+!
+!  Part of the UKCA model, a community model supported by
+!  The Met Office and NCAS, with components provided initially
+!  by The University of Cambridge, University of Leeds and
+!  The Met. Office.  See www.ukca.ac.uk
+!
+!   Called from UKCA_CHEMISTRY_CTL.
+!
+! Code Owner: Please refer to the UM file CodeOwners.txt
+! This file belongs in section: UKCA
+!
+! Code description:
+!   Language: FORTRAN 90
+!   This code is written to UMDP3 v6 programming standards.
+!
+!------------------------------------------------------------------
+MODULE ukca_aerod_mod
 
-  contains
-  subroutine ukca_aerod(row_length, rows, ntype, npft, nwater, t0, p0, hflx, u_s, canht, gsf, zbl, z0tile, resa, rb, so4_vd)
-    use asad_mod, only : jpdd, ndepd, nldepd, speci
-    use ukca_config_specification_mod, only : ukca_config
-    use ukca_constants, only : m_air, m_alkaooh, m_anhy, m_arnoh14, m_arnoh17, m_aroh14, m_aroh17, m_aromooh, m_asoa, m_asvoc1, m_asvoc2, m_bsoa, m_bsvoc1, m_bsvoc2, m_buooh, m_carb10, m_carb11a, m_carb12, m_carb13, m_carb14, m_carb15, m_carb16, m_carb17, m_carb9, m_ccarb12, m_cri, m_dhcarb9, m_dhpcarb9, m_dhpr12ooh, m_dmso, m_etcho, m_etco3h, m_etoh, m_gly, m_h2o, m_h2so4, m_hbr, m_hcho, m_hcl, m_hmml, m_hobr, m_hoc2h4no3, m_hoc2h4ooh, m_hoch2cho, m_hoch2co3h, m_hocl, m_hono, m_hpucarb12, m_hucarb9, m_iepox, m_isooh, m_isosoa, m_isosvoc1, m_isosvoc2, m_macr, m_macrooh, m_mecho, m_mecoch2ooh, m_mekooh, m_meoh, m_mgly, m_monoterp, m_mpan, m_msa, m_mvkooh, m_nald, m_noa, m_nrn12ooh, m_nrn6ooh, m_nrn9ooh, m_nrtn28ooh, m_nrtx28ooh, m_nru12ooh, m_nru14ooh, m_nucarb12, m_onitu, m_pan, m_phan, m_ppan, m_proh, m_ra13no3, m_ra13ooh, m_ra16no3, m_ra16ooh, m_ra19no3, m_ra19ooh, m_rcooh25, m_rn12no3, m_rn12ooh, m_rn14ooh, m_rn15no3, m_rn15ooh, m_rn16ooh, m_rn17ooh, m_rn18no3, m_rn18ooh, m_rn19ooh, m_rn9no3, m_rn9ooh, m_rtn10ooh, m_rtn14ooh, m_rtn23no3, m_rtn23ooh, m_rtn24ooh, m_rtn25no3, m_rtn25ooh, m_rtn26ooh, m_rtn26pan, m_rtn28no3, m_rtn28ooh, m_rtx22no3, m_rtx22ooh, m_rtx24no3, m_rtx24ooh, m_rtx28no3, m_rtx28ooh, m_ru10no3, m_ru12no3, m_ru12pan, m_sec_org, m_sec_org_i, m_tncarb10, m_tncarb11, m_tncarb12, m_tncarb15, m_tncarb26, m_txcarb22, m_txcarb24, m_ucarb12, m_udcarb11, m_udcarb14, m_udcarb8
-    use ukca_um_legacy_mod, only : gg=>g, vkman
-    use ukca_config_constants_mod, only : rmol
-    use parkind1, only : jpim, jprb
-    use yomhook, only : dr_hook, lhook
-    use ereport_mod, only : ereport
-    use errormessagelength_mod, only : errormessagelength
-    use nvtx
-    real, parameter :: r_null = 1.0e50
-    integer(kind=jpim), parameter :: zhook_in = 0
-    integer(kind=jpim), parameter :: zhook_out = 1
-    integer, intent(in) :: row_length
-    integer, intent(in) :: rows
-    integer, intent(in) :: ntype
-    integer, intent(in) :: npft
-    integer, intent(in) :: nwater
-    real, dimension(row_length,rows), intent(in) :: t0
-    real, dimension(row_length,rows), intent(in) :: p0
-    real, dimension(row_length,rows), intent(in) :: hflx
-    real, dimension(row_length,rows), intent(in) :: u_s
-    real, dimension(row_length,rows,npft), intent(in) :: canht
-    real, dimension(row_length,rows,ntype), intent(in) :: gsf
-    real, dimension(row_length,rows), intent(in) :: zbl
-    real, dimension(row_length,rows,ntype), intent(inout) :: z0tile
-    real, dimension(row_length,rows,ntype), intent(out) :: resa
-    real, dimension(row_length,rows,jpdd), intent(out) :: rb
-    real, dimension(row_length,rows), intent(out) :: so4_vd
-    logical, save :: first = .true.
-    integer :: i
-    integer :: j
-    integer :: k
-    integer :: n
-    real, save :: cp = 1004.67
-    real, save :: pr = 0.72
-    real, save :: vair296 = 1830.0e-8
-    real, save :: twoth = 2.0 / 3.0
-    real, save :: zref = 50.0
-    real, save :: d_h2o = 2.08e-5
-    real :: b0
-    real :: b1
-    real :: sc_pr
-    real, save :: reus
-    real, allocatable, dimension(:), save :: d0
-    real, dimension(row_length,rows) :: l
-    real, dimension(row_length,rows) :: rho_air
-    real, dimension(row_length,rows) :: kva
-    real, dimension(row_length,rows) :: ustar
-    real, dimension(row_length,rows,npft) :: d
-    real, dimension(row_length,rows,ntype) :: z
-    real, dimension(row_length,rows,ntype) :: psi
-    real :: bl_l
-    real(kind=jprb) :: zhook_handle
-    CHARACTER(LEN = *), PARAMETER :: RoutineName = 'UKCA_AEROD'
-    CHARACTER(LEN = errormessagelength) :: cmessage
-    integer :: icode
-    integer :: idx
-    integer :: idx_1
-    integer :: idx_2
+IMPLICIT NONE
 
-    if (lhook) then
-      call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
-    end if
-    call nvtxStartRange(ModuleName // ':' // RoutineName)
-    if (first) then
-      ALLOCATE(d0(1:jpdd))
-      !$acc kernels
-      !$acc loop gang vector independent
-      do idx = LBOUND(d0, dim=1), UBOUND(d0, dim=1), 1
-        d0(idx) = -1.0
-      enddo
-      !$acc end kernels
-      !$acc kernels
-      !$acc loop gang vector independent
-      do j = 1, ndepd, 1
-        if (speci(nldepd(j)) == 'O3        ' .OR. (speci(nldepd(j)) == 'NO2       ' .OR. (speci(nldepd(j)) == 'O3S       ' .OR. speci(nldepd(j)) == 'NO3       '))) then
-          d0(j) = 1.4e-5
-        else
-          if (speci(nldepd(j)) == 'NO        ') then
-            if (ukca_config%l_fix_improve_drydep) then
-              d0(j) = 2.3e-5
-            else
-              d0(j) = 8.4e-5
-            end if
-          else
-            if (speci(nldepd(j)) == 'HNO3      ' .OR. (speci(nldepd(j)) == 'HONO2     ' .OR. (speci(nldepd(j)) == 'ISON      ' .OR. (speci(nldepd(j)) == 'B2ndry    ' .OR. (speci(nldepd(j)) == 'A2ndry    ' .OR. (speci(nldepd(j)) == 'N2O5      ' .OR. (speci(nldepd(j)) == 'HO2NO2    ' .OR. (speci(nldepd(j)) == 'HNO4      ' .OR. speci(nldepd(j)) == 'RU14NO3   ')))))))) then
-              d0(j) = 1.2e-5
-            else
-              if (speci(nldepd(j)) == 'H2O2      ' .OR. speci(nldepd(j)) == 'HOOH      ') then
-                d0(j) = 1.46e-5
-              else
-                if (speci(nldepd(j)) == 'CH3OOH    ' .OR. (speci(nldepd(j)) == 'MeOOH     ' .OR. speci(nldepd(j)) == 'HCOOH     ')) then
-                  d0(j) = 1.27e-5
-                else
-                  if (speci(nldepd(j)) == 'C2H5OOH   ' .OR. (speci(nldepd(j)) == 'EtOOH     ' .OR. (speci(nldepd(j)) == 'MeCO3H    ' .OR. (speci(nldepd(j)) == 'MeCO2H    ' .OR. (speci(nldepd(j)) == 'HACET     ' .OR. speci(nldepd(j)) == 'CARB7     '))))) then
-                    d0(j) = 1.12e-5
-                  else
-                    if (speci(nldepd(j)) == 'n_C3H7OOH ' .OR. (speci(nldepd(j)) == 'i_C3H7OOH ' .OR. (speci(nldepd(j)) == 'n-PrOOH   ' .OR. (speci(nldepd(j)) == 'i-PrOOH   ' .OR. (speci(nldepd(j)) == 'PropeOOH  ' .OR. speci(nldepd(j)) == 'RN10OOH   '))))) then
-                      d0(j) = 1.01e-5
-                    else
-                      if (speci(nldepd(j)) == 'MeCOCH2OOH') then
-                        d0(j) = d_h2o * SQRT(m_h2o / m_mecoch2ooh)
-                      else
-                        if (speci(nldepd(j)) == 'ISOOH     ' .OR. speci(nldepd(j)) == 'RU14OOH   ') then
-                          d0(j) = d_h2o * SQRT(m_h2o / m_isooh)
-                        else
-                          if (speci(nldepd(j)) == 'HONO      ') then
-                            d0(j) = d_h2o * SQRT(m_h2o / m_hono)
-                          else
-                            if (speci(nldepd(j)) == 'MACROOH   ' .OR. speci(nldepd(j)) == 'RU10OOH   ') then
-                              d0(j) = d_h2o * SQRT(m_h2o / m_macrooh)
-                            else
-                              if (speci(nldepd(j)) == 'MEKOOH    ' .OR. speci(nldepd(j)) == 'RN11OOH   ') then
-                                d0(j) = d_h2o * SQRT(m_h2o / m_mekooh)
-                              else
-                                if (speci(nldepd(j)) == 'ALKAOOH   ' .OR. speci(nldepd(j)) == 'RN8OOH    ') then
-                                  d0(j) = d_h2o * SQRT(m_h2o / m_alkaooh)
-                                else
-                                  if (speci(nldepd(j)) == 'AROMOOH   ') then
-                                    d0(j) = d_h2o * SQRT(m_h2o / m_aromooh)
-                                  else
-                                    if (speci(nldepd(j)) == 'BSVOC1    ') then
-                                      d0(j) = d_h2o * SQRT(m_h2o / m_bsvoc1)
-                                    else
-                                      if (speci(nldepd(j)) == 'BSVOC2    ') then
-                                        d0(j) = d_h2o * SQRT(m_h2o / m_bsvoc2)
-                                      else
-                                        if (speci(nldepd(j)) == 'ASVOC1    ') then
-                                          d0(j) = d_h2o * SQRT(m_h2o / m_asvoc1)
-                                        else
-                                          if (speci(nldepd(j)) == 'ASVOC2    ') then
-                                            d0(j) = d_h2o * SQRT(m_h2o / m_asvoc2)
-                                          else
-                                            if (speci(nldepd(j)) == 'ISOSVOC1  ') then
-                                              d0(j) = d_h2o * SQRT(m_h2o / m_isosvoc1)
-                                            else
-                                              if (speci(nldepd(j)) == 'ISOSVOC2  ') then
-                                                d0(j) = d_h2o * SQRT(m_h2o / m_isosvoc2)
-                                              else
-                                                if (speci(nldepd(j)) == 'PAN       ') then
-                                                  if (ukca_config%l_fix_improve_drydep) then
-                                                    d0(j) = d_h2o * SQRT(m_h2o / m_pan)
-                                                  else
-                                                    d0(j) = 0.31e-5
-                                                  end if
-                                                else
-                                                  if (speci(nldepd(j)) == 'PPAN      ') then
-                                                    d0(j) = d_h2o * SQRT(m_h2o / m_ppan)
-                                                  else
-                                                    if (speci(nldepd(j)) == 'MPAN      ') then
-                                                      d0(j) = d_h2o * SQRT(m_h2o / m_mpan)
-                                                    else
-                                                      if (speci(nldepd(j)) == 'ONITU     ') then
-                                                        d0(j) = d_h2o * SQRT(m_h2o / m_onitu)
-                                                      else
-                                                        if (speci(nldepd(j)) == 'CO        ') then
-                                                          d0(j) = 1.86e-5
-                                                        else
-                                                          if (speci(nldepd(j)) == 'CH4       ') then
-                                                            if (ukca_config%l_fix_improve_drydep) then
-                                                              d0(j) = 2.2e-5
-                                                            else
-                                                              d0(j) = 5.74e-5
-                                                            end if
-                                                          else
-                                                            if (speci(nldepd(j)) == 'NH3       ') then
-                                                              d0(j) = 2.08e-5
-                                                            else
-                                                              if (speci(nldepd(j)) == 'H2        ') then
-                                                                d0(j) = 6.7e-5
-                                                              else
-                                                                if (speci(nldepd(j)) == 'SO2       ') then
-                                                                  d0(j) = 1.2e-5
-                                                                else
-                                                                  if (speci(nldepd(j)) == 'DMSO      ') then
-                                                                    d0(j) = d_h2o * SQRT(m_h2o / m_dmso)
-                                                                  else
-                                                                    if (speci(nldepd(j)) == 'Sec_Org   ') then
-                                                                      d0(j) = d_h2o * SQRT(m_h2o / m_sec_org)
-                                                                    else
-                                                                      if (speci(nldepd(j)) == 'SEC_ORG_I ') then
-                                                                        d0(j) = d_h2o * SQRT(m_h2o / m_sec_org_i)
-                                                                      else
-                                                                        if (speci(nldepd(j)) == 'H2SO4     ') then
-                                                                          d0(j) = d_h2o * SQRT(m_h2o / m_h2so4)
-                                                                        else
-                                                                          if (speci(nldepd(j)) == 'MSA       ') then
-                                                                            d0(j) = d_h2o * SQRT(m_h2o / m_msa)
-                                                                          else
-                                                                            if (speci(nldepd(j)) == 'MVKOOH    ') then
-                                                                              d0(j) = d_h2o * SQRT(m_h2o / m_mvkooh)
-                                                                            else
-                                                                              if (speci(nldepd(j)) == 's-BuOOH   ' .OR. speci(nldepd(j)) == 'RN13OOH   ') then
-                                                                                d0(j) = d_h2o * SQRT(m_h2o / m_buooh)
-                                                                              else
-                                                                                if (speci(nldepd(j)) == 'ORGNIT    ') then
-                                                                                  d0(j) = 1.0e-5
-                                                                                else
-                                                                                  if (speci(nldepd(j)) == 'BSOA      ') then
-                                                                                    d0(j) = d_h2o * SQRT(m_h2o / m_bsoa)
-                                                                                  else
-                                                                                    if (speci(nldepd(j)) == 'ASOA      ') then
-                                                                                      d0(j) = d_h2o * SQRT(m_h2o / m_asoa)
-                                                                                    else
-                                                                                      if (speci(nldepd(j)) == 'ISOSOA    ') then
-                                                                                        d0(j) = d_h2o * SQRT(m_h2o / m_isosoa)
-                                                                                      else
-                                                                                        if (speci(nldepd(j)) == 'HCHO      ') then
-                                                                                          d0(j) = d_h2o * SQRT(m_h2o / m_hcho)
-                                                                                        else
-                                                                                          if (speci(nldepd(j)) == 'MeCHO     ') then
-                                                                                            d0(j) = d_h2o * SQRT(m_h2o / m_mecho)
-                                                                                          else
-                                                                                            if (speci(nldepd(j)) == 'EtCHO     ') then
-                                                                                              d0(j) = d_h2o * SQRT(m_h2o / m_etcho)
-                                                                                            else
-                                                                                              if (speci(nldepd(j)) == 'MACR      ' .OR. speci(nldepd(j)) == 'UCARB10   ') then
-                                                                                                d0(j) = d_h2o * SQRT(m_h2o / m_macr)
-                                                                                              else
-                                                                                                if (speci(nldepd(j)) == 'NALD      ') then
-                                                                                                  d0(j) = d_h2o * SQRT(m_h2o / m_nald)
-                                                                                                else
-                                                                                                  if (speci(nldepd(j)) == 'GLY       ' .OR. speci(nldepd(j)) == 'CARB3     ') then
-                                                                                                    d0(j) = d_h2o * SQRT(m_h2o / m_gly)
-                                                                                                  else
-                                                                                                    if (speci(nldepd(j)) == 'MGLY      ' .OR. speci(nldepd(j)) == 'CARB6     ') then
-                                                                                                      d0(j) = d_h2o * SQRT(m_h2o / m_mgly)
-                                                                                                    else
-                                                                                                      if (speci(nldepd(j)) == 'MeOH      ') then
-                                                                                                        d0(j) = d_h2o * SQRT(m_h2o / m_meoh)
-                                                                                                      else
-                                                                                                        if (speci(nldepd(j)) == 'Monoterp  ' .OR. (speci(nldepd(j)) == 'APINENE   ' .OR. speci(nldepd(j)) == 'BPINENE   ')) then
-                                                                                                          d0(j) = d_h2o * SQRT(m_h2o / m_monoterp)
-                                                                                                        else
-                                                                                                          if (speci(nldepd(j)) == 'HBr       ') then
-                                                                                                            d0(j) = d_h2o * SQRT(m_h2o / m_hbr)
-                                                                                                          else
-                                                                                                            if (speci(nldepd(j)) == 'HOBr      ') then
-                                                                                                              d0(j) = d_h2o * SQRT(m_h2o / m_hobr)
-                                                                                                            else
-                                                                                                              if (speci(nldepd(j)) == 'HCl       ') then
-                                                                                                                d0(j) = d_h2o * SQRT(m_h2o / m_hcl)
-                                                                                                              else
-                                                                                                                if (speci(nldepd(j)) == 'HOCl      ') then
-                                                                                                                  d0(j) = d_h2o * SQRT(m_h2o / m_hocl)
-                                                                                                                else
-                                                                                                                  if (speci(nldepd(j)) == 'EtOH      ') then
-                                                                                                                    d0(j) = d_h2o * SQRT(m_h2o / m_etoh)
-                                                                                                                  else
-                                                                                                                    if (speci(nldepd(j)) == 'i-PrOH    ' .OR. speci(nldepd(j)) == 'n-PrOH    ') then
-                                                                                                                      d0(j) = d_h2o * SQRT(m_h2o / m_proh)
-                                                                                                                    else
-                                                                                                                      if (speci(nldepd(j)) == 'HOC2H4OOH ') then
-                                                                                                                        d0(j) = d_h2o * SQRT(m_h2o / m_hoc2h4ooh)
-                                                                                                                      else
-                                                                                                                        if (speci(nldepd(j)) == 'HOCH2CHO  ') then
-                                                                                                                          d0(j) = d_h2o * SQRT(m_h2o / m_hoch2cho)
-                                                                                                                        else
-                                                                                                                          if (speci(nldepd(j)) == 'EtCO3H    ') then
-                                                                                                                            d0(j) = d_h2o * SQRT(m_h2o / m_etco3h)
-                                                                                                                          else
-                                                                                                                            if (speci(nldepd(j)) == 'HOCH2CO3H ') then
-                                                                                                                              d0(j) = d_h2o * SQRT(m_h2o / m_hoch2co3h)
-                                                                                                                            else
-                                                                                                                              if (speci(nldepd(j)) == 'PHAN      ') then
-                                                                                                                                d0(j) = d_h2o * SQRT(m_h2o / m_phan)
-                                                                                                                              else
-                                                                                                                                if (speci(nldepd(j)) == 'NOA       ') then
-                                                                                                                                  d0(j) = d_h2o * SQRT(m_h2o / m_noa)
-                                                                                                                                else
-                                                                                                                                  if (speci(nldepd(j)) == 'HOC2H4NO3 ') then
-                                                                                                                                    d0(j) = d_h2o * SQRT(m_h2o / m_hoc2h4no3)
-                                                                                                                                  else
-                                                                                                                                    if (speci(nldepd(j)) == 'RTX24NO3  ') then
-                                                                                                                                      d0(j) = d_h2o * SQRT(m_h2o / m_rtx24no3)
-                                                                                                                                    else
-                                                                                                                                      if (speci(nldepd(j)) == 'RN9NO3    ') then
-                                                                                                                                        d0(j) = d_h2o * SQRT(m_h2o / m_rn9no3)
-                                                                                                                                      else
-                                                                                                                                        if (speci(nldepd(j)) == 'RN12NO3   ') then
-                                                                                                                                          d0(j) = d_h2o * SQRT(m_h2o / m_rn12no3)
-                                                                                                                                        else
-                                                                                                                                          if (speci(nldepd(j)) == 'RN15NO3   ') then
-                                                                                                                                            d0(j) = d_h2o * SQRT(m_h2o / m_rn15no3)
-                                                                                                                                          else
-                                                                                                                                            if (speci(nldepd(j)) == 'RN18NO3   ') then
-                                                                                                                                              d0(j) = d_h2o * SQRT(m_h2o / m_rn18no3)
-                                                                                                                                            else
-                                                                                                                                              if (speci(nldepd(j)) == 'RTN28NO3  ') then
-                                                                                                                                                d0(j) = d_h2o * SQRT(m_h2o / m_rtn28no3)
-                                                                                                                                              else
-                                                                                                                                                if (speci(nldepd(j)) == 'RTN25NO3  ') then
-                                                                                                                                                  d0(j) = d_h2o * SQRT(m_h2o / m_rtn25no3)
-                                                                                                                                                else
-                                                                                                                                                  if (speci(nldepd(j)) == 'RTN23NO3  ') then
-                                                                                                                                                    d0(j) = d_h2o * SQRT(m_h2o / m_rtn23no3)
-                                                                                                                                                  else
-                                                                                                                                                    if (speci(nldepd(j)) == 'RTX28NO3  ') then
-                                                                                                                                                      d0(j) = d_h2o * SQRT(m_h2o / m_rtx28no3)
-                                                                                                                                                    else
-                                                                                                                                                      if (speci(nldepd(j)) == 'RTX22NO3  ') then
-                                                                                                                                                        d0(j) = d_h2o * SQRT(m_h2o / m_rtx22no3)
-                                                                                                                                                      else
-                                                                                                                                                        if (speci(nldepd(j)) == 'RN16OOH   ') then
-                                                                                                                                                          d0(j) = d_h2o * SQRT(m_h2o / m_rn16ooh)
-                                                                                                                                                        else
-                                                                                                                                                          if (speci(nldepd(j)) == 'RN19OOH   ') then
-                                                                                                                                                            d0(j) = d_h2o * SQRT(m_h2o / m_rn19ooh)
-                                                                                                                                                          else
-                                                                                                                                                            if (speci(nldepd(j)) == 'RN14OOH   ') then
-                                                                                                                                                              d0(j) = d_h2o * SQRT(m_h2o / m_rn14ooh)
-                                                                                                                                                            else
-                                                                                                                                                              if (speci(nldepd(j)) == 'RN17OOH   ') then
-                                                                                                                                                                d0(j) = d_h2o * SQRT(m_h2o / m_rn17ooh)
-                                                                                                                                                              else
-                                                                                                                                                                if (speci(nldepd(j)) == 'NRU14OOH  ') then
-                                                                                                                                                                  d0(j) = d_h2o * SQRT(m_h2o / m_nru14ooh)
-                                                                                                                                                                else
-                                                                                                                                                                  if (speci(nldepd(j)) == 'NRU12OOH  ') then
-                                                                                                                                                                    d0(j) = d_h2o * SQRT(m_h2o / m_nru12ooh)
-                                                                                                                                                                  else
-                                                                                                                                                                    if (speci(nldepd(j)) == 'RN9OOH    ') then
-                                                                                                                                                                      d0(j) = d_h2o * SQRT(m_h2o / m_rn9ooh)
-                                                                                                                                                                    else
-                                                                                                                                                                      if (speci(nldepd(j)) == 'RN12OOH   ') then
-                                                                                                                                                                        d0(j) = d_h2o * SQRT(m_h2o / m_rn12ooh)
-                                                                                                                                                                      else
-                                                                                                                                                                        if (speci(nldepd(j)) == 'RN15OOH   ') then
-                                                                                                                                                                          d0(j) = d_h2o * SQRT(m_h2o / m_rn15ooh)
-                                                                                                                                                                        else
-                                                                                                                                                                          if (speci(nldepd(j)) == 'RN18OOH   ') then
-                                                                                                                                                                            d0(j) = d_h2o * SQRT(m_h2o / m_rn18ooh)
-                                                                                                                                                                          else
-                                                                                                                                                                            if (speci(nldepd(j)) == 'NRN6OOH   ') then
-                                                                                                                                                                              d0(j) = d_h2o * SQRT(m_h2o / m_nrn6ooh)
-                                                                                                                                                                            else
-                                                                                                                                                                              if (speci(nldepd(j)) == 'NRN9OOH   ') then
-                                                                                                                                                                                d0(j) = d_h2o * SQRT(m_h2o / m_nrn9ooh)
-                                                                                                                                                                              else
-                                                                                                                                                                                if (speci(nldepd(j)) == 'NRN12OOH  ') then
-                                                                                                                                                                                  d0(j) = d_h2o * SQRT(m_h2o / m_nrn12ooh)
-                                                                                                                                                                                else
-                                                                                                                                                                                  if (speci(nldepd(j)) == 'RA13OOH   ') then
-                                                                                                                                                                                    d0(j) = d_h2o * SQRT(m_h2o / m_ra13ooh)
-                                                                                                                                                                                  else
-                                                                                                                                                                                    if (speci(nldepd(j)) == 'RA16OOH   ') then
-                                                                                                                                                                                      d0(j) = d_h2o * SQRT(m_h2o / m_ra16ooh)
-                                                                                                                                                                                    else
-                                                                                                                                                                                      if (speci(nldepd(j)) == 'RA19OOH   ') then
-                                                                                                                                                                                        d0(j) = d_h2o * SQRT(m_h2o / m_ra19ooh)
-                                                                                                                                                                                      else
-                                                                                                                                                                                        if (speci(nldepd(j)) == 'RTN28OOH  ') then
-                                                                                                                                                                                          d0(j) = d_h2o * SQRT(m_h2o / m_rtn28ooh)
-                                                                                                                                                                                        else
-                                                                                                                                                                                          if (speci(nldepd(j)) == 'NRTN28OOH ') then
-                                                                                                                                                                                            d0(j) = d_h2o * SQRT(m_h2o / m_nrtn28ooh)
-                                                                                                                                                                                          else
-                                                                                                                                                                                            if (speci(nldepd(j)) == 'RTN26OOH  ') then
-                                                                                                                                                                                              d0(j) = d_h2o * SQRT(m_h2o / m_rtn26ooh)
-                                                                                                                                                                                            else
-                                                                                                                                                                                              if (speci(nldepd(j)) == 'RTN25OOH  ') then
-                                                                                                                                                                                                d0(j) = d_h2o * SQRT(m_h2o / m_rtn25ooh)
-                                                                                                                                                                                              else
-                                                                                                                                                                                                if (speci(nldepd(j)) == 'RTN24OOH  ') then
-                                                                                                                                                                                                  d0(j) = d_h2o * SQRT(m_h2o / m_rtn24ooh)
-                                                                                                                                                                                                else
-                                                                                                                                                                                                  if (speci(nldepd(j)) == 'RTN23OOH  ') then
-                                                                                                                                                                                                    d0(j) = d_h2o * SQRT(m_h2o / m_rtn23ooh)
-                                                                                                                                                                                                  else
-                                                                                                                                                                                                    if (speci(nldepd(j)) == 'RTN14OOH  ') then
-                                                                                                                                                                                                      d0(j) = d_h2o * SQRT(m_h2o / m_rtn14ooh)
-                                                                                                                                                                                                    else
-                                                                                                                                                                                                      if (speci(nldepd(j)) == 'RTN10OOH  ') then
-                                                                                                                                                                                                        d0(j) = d_h2o * SQRT(m_h2o / m_rtn10ooh)
-                                                                                                                                                                                                      else
-                                                                                                                                                                                                        if (speci(nldepd(j)) == 'RTX28OOH  ') then
-                                                                                                                                                                                                          d0(j) = d_h2o * SQRT(m_h2o / m_rtx28ooh)
-                                                                                                                                                                                                        else
-                                                                                                                                                                                                          if (speci(nldepd(j)) == 'RTX24OOH  ') then
-                                                                                                                                                                                                            d0(j) = d_h2o * SQRT(m_h2o / m_rtx24ooh)
-                                                                                                                                                                                                          else
-                                                                                                                                                                                                            if (speci(nldepd(j)) == 'RTX22OOH  ') then
-                                                                                                                                                                                                              d0(j) = d_h2o * SQRT(m_h2o / m_rtx22ooh)
-                                                                                                                                                                                                            else
-                                                                                                                                                                                                              if (speci(nldepd(j)) == 'NRTX28OOH ') then
-                                                                                                                                                                                                                d0(j) = d_h2o * SQRT(m_h2o / m_nrtx28ooh)
-                                                                                                                                                                                                              else
-                                                                                                                                                                                                                if (speci(nldepd(j)) == 'CARB14    ') then
-                                                                                                                                                                                                                  d0(j) = d_h2o * SQRT(m_h2o / m_carb14)
-                                                                                                                                                                                                                else
-                                                                                                                                                                                                                  if (speci(nldepd(j)) == 'CARB17    ') then
-                                                                                                                                                                                                                    d0(j) = d_h2o * SQRT(m_h2o / m_carb17)
-                                                                                                                                                                                                                  else
-                                                                                                                                                                                                                    if (speci(nldepd(j)) == 'CARB11A   ') then
-                                                                                                                                                                                                                      d0(j) = d_h2o * SQRT(m_h2o / m_carb11a)
-                                                                                                                                                                                                                    else
-                                                                                                                                                                                                                      if (speci(nldepd(j)) == 'CARB10    ') then
-                                                                                                                                                                                                                        d0(j) = d_h2o * SQRT(m_h2o / m_carb10)
-                                                                                                                                                                                                                      else
-                                                                                                                                                                                                                        if (speci(nldepd(j)) == 'CARB13    ') then
-                                                                                                                                                                                                                          d0(j) = d_h2o * SQRT(m_h2o / m_carb13)
-                                                                                                                                                                                                                        else
-                                                                                                                                                                                                                          if (speci(nldepd(j)) == 'CARB16    ') then
-                                                                                                                                                                                                                            d0(j) = d_h2o * SQRT(m_h2o / m_carb16)
-                                                                                                                                                                                                                          else
-                                                                                                                                                                                                                            if (speci(nldepd(j)) == 'CARB9     ') then
-                                                                                                                                                                                                                              d0(j) = d_h2o * SQRT(m_h2o / m_carb9)
-                                                                                                                                                                                                                            else
-                                                                                                                                                                                                                              if (speci(nldepd(j)) == 'CARB12    ') then
-                                                                                                                                                                                                                                d0(j) = d_h2o * SQRT(m_h2o / m_carb12)
-                                                                                                                                                                                                                              else
-                                                                                                                                                                                                                                if (speci(nldepd(j)) == 'CARB15    ') then
-                                                                                                                                                                                                                                  d0(j) = d_h2o * SQRT(m_h2o / m_carb15)
-                                                                                                                                                                                                                                else
-                                                                                                                                                                                                                                  if (speci(nldepd(j)) == 'UCARB12   ') then
-                                                                                                                                                                                                                                    d0(j) = d_h2o * SQRT(m_h2o / m_ucarb12)
-                                                                                                                                                                                                                                  else
-                                                                                                                                                                                                                                    if (speci(nldepd(j)) == 'NUCARB12  ') then
-                                                                                                                                                                                                                                      d0(j) = d_h2o * SQRT(m_h2o / m_nucarb12)
-                                                                                                                                                                                                                                    else
-                                                                                                                                                                                                                                      if (speci(nldepd(j)) == 'UDCARB8   ') then
-                                                                                                                                                                                                                                        d0(j) = d_h2o * SQRT(m_h2o / m_udcarb8)
-                                                                                                                                                                                                                                      else
-                                                                                                                                                                                                                                        if (speci(nldepd(j)) == 'UDCARB11  ') then
-                                                                                                                                                                                                                                          d0(j) = d_h2o * SQRT(m_h2o / m_udcarb11)
-                                                                                                                                                                                                                                        else
-                                                                                                                                                                                                                                          if (speci(nldepd(j)) == 'UDCARB14  ') then
-                                                                                                                                                                                                                                            d0(j) = d_h2o * SQRT(m_h2o / m_udcarb14)
-                                                                                                                                                                                                                                          else
-                                                                                                                                                                                                                                            if (speci(nldepd(j)) == 'TNCARB26  ') then
-                                                                                                                                                                                                                                              d0(j) = d_h2o * SQRT(m_h2o / m_tncarb26)
-                                                                                                                                                                                                                                            else
-                                                                                                                                                                                                                                              if (speci(nldepd(j)) == 'TNCARB10  ') then
-                                                                                                                                                                                                                                                d0(j) = d_h2o * SQRT(m_h2o / m_tncarb10)
-                                                                                                                                                                                                                                              else
-                                                                                                                                                                                                                                                if (speci(nldepd(j)) == 'TNCARB12  ') then
-                                                                                                                                                                                                                                                  d0(j) = d_h2o * SQRT(m_h2o / m_tncarb12)
-                                                                                                                                                                                                                                                else
-                                                                                                                                                                                                                                                  if (speci(nldepd(j)) == 'TNCARB11  ') then
-                                                                                                                                                                                                                                                    d0(j) = d_h2o * SQRT(m_h2o / m_tncarb11)
-                                                                                                                                                                                                                                                  else
-                                                                                                                                                                                                                                                    if (speci(nldepd(j)) == 'CCARB12   ') then
-                                                                                                                                                                                                                                                      d0(j) = d_h2o * SQRT(m_h2o / m_ccarb12)
-                                                                                                                                                                                                                                                    else
-                                                                                                                                                                                                                                                      if (speci(nldepd(j)) == 'TNCARB15  ') then
-                                                                                                                                                                                                                                                        d0(j) = d_h2o * SQRT(m_h2o / m_tncarb15)
-                                                                                                                                                                                                                                                      else
-                                                                                                                                                                                                                                                        if (speci(nldepd(j)) == 'RCOOH25   ') then
-                                                                                                                                                                                                                                                          d0(j) = d_h2o * SQRT(m_h2o / m_rcooh25)
-                                                                                                                                                                                                                                                        else
-                                                                                                                                                                                                                                                          if (speci(nldepd(j)) == 'TXCARB24  ') then
-                                                                                                                                                                                                                                                            d0(j) = d_h2o * SQRT(m_h2o / m_txcarb24)
-                                                                                                                                                                                                                                                          else
-                                                                                                                                                                                                                                                            if (speci(nldepd(j)) == 'TXCARB22  ') then
-                                                                                                                                                                                                                                                              d0(j) = d_h2o * SQRT(m_h2o / m_txcarb22)
-                                                                                                                                                                                                                                                            else
-                                                                                                                                                                                                                                                              if (speci(nldepd(j)) == 'RU12PAN   ') then
-                                                                                                                                                                                                                                                                d0(j) = d_h2o * SQRT(m_h2o / m_ru12pan)
-                                                                                                                                                                                                                                                              else
-                                                                                                                                                                                                                                                                if (speci(nldepd(j)) == 'RTN26PAN  ') then
-                                                                                                                                                                                                                                                                  d0(j) = d_h2o * SQRT(m_h2o / m_rtn26pan)
-                                                                                                                                                                                                                                                                else
-                                                                                                                                                                                                                                                                  if (speci(nldepd(j)) == 'AROH14    ') then
-                                                                                                                                                                                                                                                                    d0(j) = d_h2o * SQRT(m_h2o / m_aroh14)
-                                                                                                                                                                                                                                                                  else
-                                                                                                                                                                                                                                                                    if (speci(nldepd(j)) == 'AROH17    ') then
-                                                                                                                                                                                                                                                                      d0(j) = d_h2o * SQRT(m_h2o / m_aroh17)
-                                                                                                                                                                                                                                                                    else
-                                                                                                                                                                                                                                                                      if (speci(nldepd(j)) == 'ARNOH14   ') then
-                                                                                                                                                                                                                                                                        d0(j) = d_h2o * SQRT(m_h2o / m_arnoh14)
-                                                                                                                                                                                                                                                                      else
-                                                                                                                                                                                                                                                                        if (speci(nldepd(j)) == 'ARNOH17   ') then
-                                                                                                                                                                                                                                                                          d0(j) = d_h2o * SQRT(m_h2o / m_arnoh17)
-                                                                                                                                                                                                                                                                        else
-                                                                                                                                                                                                                                                                          if (speci(nldepd(j)) == 'ANHY      ') then
-                                                                                                                                                                                                                                                                            d0(j) = d_h2o * SQRT(m_h2o / m_anhy)
-                                                                                                                                                                                                                                                                          else
-                                                                                                                                                                                                                                                                            if (speci(nldepd(j)) == 'IEPOX     ') then
-                                                                                                                                                                                                                                                                              d0(j) = d_h2o * SQRT(m_h2o / m_iepox)
-                                                                                                                                                                                                                                                                            else
-                                                                                                                                                                                                                                                                              if (speci(nldepd(j)) == 'HMML      ') then
-                                                                                                                                                                                                                                                                                d0(j) = d_h2o * SQRT(m_h2o / m_hmml)
-                                                                                                                                                                                                                                                                              else
-                                                                                                                                                                                                                                                                                if (speci(nldepd(j)) == 'HUCARB9   ') then
-                                                                                                                                                                                                                                                                                  d0(j) = d_h2o * SQRT(m_h2o / m_hucarb9)
-                                                                                                                                                                                                                                                                                else
-                                                                                                                                                                                                                                                                                  if (speci(nldepd(j)) == 'HPUCARB12 ') then
-                                                                                                                                                                                                                                                                                    d0(j) = d_h2o * SQRT(m_h2o / m_hpucarb12)
-                                                                                                                                                                                                                                                                                  else
-                                                                                                                                                                                                                                                                                    if (speci(nldepd(j)) == 'DHPCARB9  ') then
-                                                                                                                                                                                                                                                                                      d0(j) = d_h2o * SQRT(m_h2o / m_dhpcarb9)
-                                                                                                                                                                                                                                                                                    else
-                                                                                                                                                                                                                                                                                      if (speci(nldepd(j)) == 'DHPR12OOH ') then
-                                                                                                                                                                                                                                                                                        d0(j) = d_h2o * SQRT(m_h2o / m_dhpr12ooh)
-                                                                                                                                                                                                                                                                                      else
-                                                                                                                                                                                                                                                                                        if (speci(nldepd(j)) == 'DHCARB9   ') then
-                                                                                                                                                                                                                                                                                          d0(j) = d_h2o * SQRT(m_h2o / m_dhcarb9)
-                                                                                                                                                                                                                                                                                        else
-                                                                                                                                                                                                                                                                                          if (speci(nldepd(j)) == 'RU12NO3   ') then
-                                                                                                                                                                                                                                                                                            d0(j) = d_h2o * SQRT(m_h2o / m_ru12no3)
-                                                                                                                                                                                                                                                                                          else
-                                                                                                                                                                                                                                                                                            if (speci(nldepd(j)) == 'RU10NO3  ') then
-                                                                                                                                                                                                                                                                                              d0(j) = d_h2o * SQRT(m_h2o / m_ru10no3)
-                                                                                                                                                                                                                                                                                            else
-                                                                                                                                                                                                                                                                                              if (speci(nldepd(j)) == 'RU12OOH   ') then
-                                                                                                                                                                                                                                                                                                d0(j) = d_h2o * SQRT(m_h2o / m_cri)
-                                                                                                                                                                                                                                                                                              else
-                                                                                                                                                                                                                                                                                                if (speci(nldepd(j)) == 'RA13NO3   ') then
-                                                                                                                                                                                                                                                                                                  d0(j) = d_h2o * SQRT(m_h2o / m_ra13no3)
-                                                                                                                                                                                                                                                                                                else
-                                                                                                                                                                                                                                                                                                  if (speci(nldepd(j)) == 'RA16NO3   ') then
-                                                                                                                                                                                                                                                                                                    d0(j) = d_h2o * SQRT(m_h2o / m_ra16no3)
-                                                                                                                                                                                                                                                                                                  else
-                                                                                                                                                                                                                                                                                                    if (speci(nldepd(j)) == 'RA19NO3   ') then
-                                                                                                                                                                                                                                                                                                      d0(j) = d_h2o * SQRT(m_h2o / m_ra19no3)
-                                                                                                                                                                                                                                                                                                    end if
-                                                                                                                                                                                                                                                                                                  end if
-                                                                                                                                                                                                                                                                                                end if
-                                                                                                                                                                                                                                                                                              end if
-                                                                                                                                                                                                                                                                                            end if
-                                                                                                                                                                                                                                                                                          end if
-                                                                                                                                                                                                                                                                                        end if
-                                                                                                                                                                                                                                                                                      end if
-                                                                                                                                                                                                                                                                                    end if
-                                                                                                                                                                                                                                                                                  end if
-                                                                                                                                                                                                                                                                                end if
-                                                                                                                                                                                                                                                                              end if
-                                                                                                                                                                                                                                                                            end if
-                                                                                                                                                                                                                                                                          end if
-                                                                                                                                                                                                                                                                        end if
-                                                                                                                                                                                                                                                                      end if
-                                                                                                                                                                                                                                                                    end if
-                                                                                                                                                                                                                                                                  end if
-                                                                                                                                                                                                                                                                end if
-                                                                                                                                                                                                                                                              end if
-                                                                                                                                                                                                                                                            end if
-                                                                                                                                                                                                                                                          end if
-                                                                                                                                                                                                                                                        end if
-                                                                                                                                                                                                                                                      end if
-                                                                                                                                                                                                                                                    end if
-                                                                                                                                                                                                                                                  end if
-                                                                                                                                                                                                                                                end if
-                                                                                                                                                                                                                                              end if
-                                                                                                                                                                                                                                            end if
-                                                                                                                                                                                                                                          end if
-                                                                                                                                                                                                                                        end if
-                                                                                                                                                                                                                                      end if
-                                                                                                                                                                                                                                    end if
-                                                                                                                                                                                                                                  end if
-                                                                                                                                                                                                                                end if
-                                                                                                                                                                                                                              end if
-                                                                                                                                                                                                                            end if
-                                                                                                                                                                                                                          end if
-                                                                                                                                                                                                                        end if
-                                                                                                                                                                                                                      end if
-                                                                                                                                                                                                                    end if
-                                                                                                                                                                                                                  end if
-                                                                                                                                                                                                                end if
-                                                                                                                                                                                                              end if
-                                                                                                                                                                                                            end if
-                                                                                                                                                                                                          end if
-                                                                                                                                                                                                        end if
-                                                                                                                                                                                                      end if
-                                                                                                                                                                                                    end if
-                                                                                                                                                                                                  end if
-                                                                                                                                                                                                end if
-                                                                                                                                                                                              end if
-                                                                                                                                                                                            end if
-                                                                                                                                                                                          end if
-                                                                                                                                                                                        end if
-                                                                                                                                                                                      end if
-                                                                                                                                                                                    end if
-                                                                                                                                                                                  end if
-                                                                                                                                                                                end if
-                                                                                                                                                                              end if
-                                                                                                                                                                            end if
-                                                                                                                                                                          end if
-                                                                                                                                                                        end if
-                                                                                                                                                                      end if
-                                                                                                                                                                    end if
-                                                                                                                                                                  end if
-                                                                                                                                                                end if
-                                                                                                                                                              end if
-                                                                                                                                                            end if
-                                                                                                                                                          end if
-                                                                                                                                                        end if
-                                                                                                                                                      end if
-                                                                                                                                                    end if
-                                                                                                                                                  end if
-                                                                                                                                                end if
-                                                                                                                                              end if
-                                                                                                                                            end if
-                                                                                                                                          end if
-                                                                                                                                        end if
-                                                                                                                                      end if
-                                                                                                                                    end if
-                                                                                                                                  end if
-                                                                                                                                end if
-                                                                                                                              end if
-                                                                                                                            end if
-                                                                                                                          end if
-                                                                                                                        end if
-                                                                                                                      end if
-                                                                                                                    end if
-                                                                                                                  end if
-                                                                                                                end if
-                                                                                                              end if
-                                                                                                            end if
-                                                                                                          end if
-                                                                                                        end if
-                                                                                                      end if
-                                                                                                    end if
-                                                                                                  end if
-                                                                                                end if
-                                                                                              end if
-                                                                                            end if
-                                                                                          end if
-                                                                                        end if
-                                                                                      end if
-                                                                                    end if
-                                                                                  end if
-                                                                                end if
-                                                                              end if
-                                                                            end if
-                                                                          end if
-                                                                        end if
-                                                                      end if
-                                                                    end if
-                                                                  end if
-                                                                end if
-                                                              end if
-                                                            end if
-                                                          end if
-                                                        end if
-                                                      end if
-                                                    end if
-                                                  end if
-                                                end if
-                                              end if
-                                            end if
-                                          end if
-                                        end if
-                                      end if
-                                    end if
-                                  end if
-                                end if
-                              end if
-                            end if
-                          end if
-                        end if
-                      end if
-                    end if
-                  end if
-                end if
-              end if
-            end if
-          end if
-        end if
-      enddo
-      !$acc end kernels
-      do j = 1, ndepd, 1
-        if (d0(j) < 0.0) then
-          cmessage(:) = 'Warning: No dry deposition for ' // speci(nldepd(j)) // ' will be calculated.'
-          icode = -1
-          call ereport(routinename, icode, cmessage)
-        end if
-      enddo
-      reus = -cp / (vkman * gg)
-      first = .false.
-    end if
-    !$acc kernels
-    !$acc loop gang vector independent collapse(2)
-    do k = 1, rows, 1
-      do i = 1, row_length, 1
-        rho_air(i,k) = m_air * p0(i,k) / (rmol * t0(i,k))
-        ustar(i,k) = u_s(i,k)
-        if (ustar(i,k) <= 0.0) then
-          ustar(i,k) = 1.0e-2
-        end if
-      enddo
-    enddo
-    !$acc loop gang vector independent collapse(3)
-    do n = 1, npft, 1
-      do k = 1, rows, 1
-        do i = 1, row_length, 1
-          if (canht(i,k,n) > 0.0) then
-            d(i,k,n) = canht(i,k,n) * 0.70
-          else
-            d(i,k,n) = 0.0
-          end if
-        enddo
-      enddo
-    enddo
-    !$acc loop gang vector independent collapse(3)
-    do n = 1, ntype, 1
-      do k = 1, rows, 1
-        do i = 1, row_length, 1
-          if (z0tile(i,k,n) <= 0.0) then
-            z0tile(i,k,n) = 0.001
-          end if
-          z(i,k,n) = zref
-        enddo
-      enddo
-    enddo
-    !$acc loop gang vector independent collapse(3)
-    do n = 1, npft, 1
-      do k = 1, rows, 1
-        do i = 1, row_length, 1
-          z(i,k,n) = zref - d(i,k,n)
-        enddo
-      enddo
-    enddo
-    !$acc loop gang vector independent collapse(2)
-    do k = 1, rows, 1
-      do i = 1, row_length, 1
-        kva(i,k) = (vair296 - 4.83e-8 * (296.0 - t0(i,k))) / rho_air(i,k)
-        if (gsf(i,k,nwater) > 0.0) then
-          z0tile(i,k,nwater) = kva(i,k) / (9.1 * ustar(i,k)) + 0.016 * ustar(i,k) * ustar(i,k) / gg
-        end if
-      enddo
-    enddo
-    !$acc loop gang vector independent collapse(2)
-    do k = 1, rows, 1
-      do i = 1, row_length, 1
-        if (hflx(i,k) /= 0.0) then
-          l(i,k) = reus * t0(i,k) * rho_air(i,k) * ustar(i,k) ** 3 / hflx(i,k)
-        else
-          l(i,k) = 10000.0
-        end if
-      enddo
-    enddo
-    !$acc loop seq
-    do k = 1, rows, 1
-      !$acc loop seq
-      do i = 1, row_length, 1
-        if (l(i,k) > 0.0) then
-          !$acc loop gang vector independent
-          do n = 1, ntype, 1
-            psi(i,k,n) = -5.0 * (z(i,k,n) - z0tile(i,k,n)) / l(i,k)
-          enddo
-        else
-          !$acc loop gang vector independent
-          do n = 1, ntype, 1
-            b1 = (1.0 - 16.0 * (z(i,k,n) / l(i,k))) ** 0.5
-            b0 = (1.0 - 16.0 * (z0tile(i,k,n) / l(i,k))) ** 0.5
-            psi(i,k,n) = 2.0 * LOG((1.0 + b1) / (1.0 + b0))
-          enddo
-        end if
-      enddo
-    enddo
-    !$acc loop gang vector independent collapse(3)
-    do n = 1, ntype, 1
-      do k = 1, rows, 1
-        do i = 1, row_length, 1
-          resa(i,k,n) = (LOG(z(i,k,n) / z0tile(i,k,n)) - psi(i,k,n)) / (vkman * ustar(i,k))
-        enddo
-      enddo
-    enddo
-    !$acc loop seq
-    do j = 1, ndepd, 1
-      if (speci(nldepd(j)) == 'ORGNIT    ' .OR. speci(nldepd(j)) == 'ASOA      ' .OR. speci(nldepd(j)) == 'BSOA      ' .OR. speci(nldepd(j)) == 'ISOSOA    ') then
-        !$acc loop gang vector independent collapse(2)
-        do k = 1, rows, 1
-          do i = 1, row_length, 1
-            rb(i,k,j) = 1.0
-          enddo
-        enddo
-      else
-        if (d0(j) > 0.0) then
-          !$acc loop gang vector independent collapse(2)
-          do k = 1, rows, 1
-            do i = 1, row_length, 1
-              sc_pr = kva(i,k) / (pr * d0(j))
-              rb(i,k,j) = sc_pr ** twoth / (vkman * ustar(i,k))
-            enddo
-          enddo
-        else
-          !$acc loop gang vector independent collapse(2)
-          do k = 1, rows, 1
-            do i = 1, row_length, 1
-              rb(i,k,j) = 0.0
-            enddo
-          enddo
-        end if
-      end if
-    enddo
-    !$acc loop gang vector independent collapse(2)
-    do idx_1 = 1, rows, 1
-      do idx_2 = 1, row_length, 1
-        so4_vd(idx_2,idx_1) = 1.0 / r_null
-      enddo
-    enddo
-    !$acc end kernels
-    do j = 1, ndepd, 1
-      if (speci(nldepd(j)) == 'ORGNIT    ' .OR. speci(nldepd(j)) == 'ASOA      ' .OR. speci(nldepd(j)) == 'BSOA      ' .OR. speci(nldepd(j)) == 'ISOSOA    ') then
-        !$acc kernels
-        !$acc loop gang vector independent collapse(2)
-        do k = 1, rows, 1
-          do i = 1, row_length, 1
-            so4_vd(i,k) = 0.0
-            bl_l = zbl(i,k) / l(i,k)
-            if (l(i,k) >= 0.0) then
-              so4_vd(i,k) = 0.002 * ustar(i,k)
-            end if
-            if (bl_l < (-30.0)) then
-              so4_vd(i,k) = 0.0009 * ustar(i,k) * (-bl_l) ** twoth
-            end if
-            if (bl_l >= (-30.0) .AND. l(i,k) < 0.0) then
-              so4_vd(i,k) = 0.002 * ustar(i,k) * (1.0 + (-300.0 / l(i,k)) ** twoth)
-            end if
-          enddo
-        enddo
-        !$acc end kernels
-        ! PSyclone CodeBlock (unsupported code) reason:
-        !  - Unsupported statement: Exit_Stmt
-        EXIT
-      end if
-    enddo
-    if (lhook) then
-      call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
-    end if
-    call nvtxEndRange()
-    return
+CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName = 'UKCA_AEROD_MOD'
 
-  end subroutine ukca_aerod
+CONTAINS
 
-end module ukca_aerod_mod
+SUBROUTINE ukca_aerod(row_length, rows, ntype, npft, nwater,                   &
+  t0, p0, hflx, u_s, canht, gsf,                                               &
+  zbl, z0tile, resa, rb, so4_vd)
+
+USE asad_mod,                ONLY: ndepd, speci, nldepd, jpdd
+
+USE ukca_config_specification_mod, ONLY: ukca_config
+
+USE ukca_constants,          ONLY:                                             &
+    m_alkaooh,                                                                 &
+    m_aromooh,                                                                 &
+    m_asoa,                                                                    &
+    m_asvoc1,                                                                  &
+    m_asvoc2,                                                                  &
+    m_bsoa,                                                                    &
+    m_bsvoc1,                                                                  &
+    m_bsvoc2,                                                                  &
+    m_buooh,                                                                   &
+    m_dmso,                                                                    &
+    m_etcho,                                                                   &
+    m_h2o,                                                                     &
+    m_h2so4,                                                                   &
+    m_hbr,                                                                     &
+    m_hobr,                                                                    &
+    m_hcho,                                                                    &
+    m_hcl,                                                                     &
+    m_hocl,                                                                    &
+    m_hono,                                                                    &
+    m_isooh,                                                                   &
+    m_isosoa,                                                                  &
+    m_isosvoc1,                                                                &
+    m_isosvoc2,                                                                &
+    m_macr,                                                                    &
+    m_macrooh,                                                                 &
+    m_mecho,                                                                   &
+    m_mecoch2ooh,                                                              &
+    m_mekooh,                                                                  &
+    m_meoh,                                                                    &
+    m_gly,                                                                     &
+    m_mgly,                                                                    &
+    m_monoterp,                                                                &
+    m_mpan,                                                                    &
+    m_msa,                                                                     &
+    m_mvkooh,                                                                  &
+    m_nald,                                                                    &
+    m_onitu,                                                                   &
+    m_pan,                                                                     &
+    m_ppan,                                                                    &
+    m_sec_org,                                                                 &
+    m_sec_org_i,                                                               &
+    m_etoh,                                                                    &
+    m_proh,                                                                    &
+    m_hoc2h4ooh,                                                               &
+    m_hoch2cho,                                                                &
+    m_etco3h,                                                                  &
+    m_hoch2co3h,                                                               &
+    m_noa,                                                                     &
+    m_hoc2h4no3,                                                               &
+    m_phan,                                                                    &
+    m_rtx24no3,                                                                &
+    m_rn9no3,                                                                  &
+    m_rn12no3,                                                                 &
+    m_rn15no3,                                                                 &
+    m_rn18no3,                                                                 &
+    m_rtn28no3,                                                                &
+    m_rtn25no3,                                                                &
+    m_rtn23no3,                                                                &
+    m_rtx28no3,                                                                &
+    m_rtx22no3,                                                                &
+    m_rn16ooh,                                                                 &
+    m_rn19ooh,                                                                 &
+    m_rn14ooh,                                                                 &
+    m_rn17ooh,                                                                 &
+    m_nru14ooh,                                                                &
+    m_nru12ooh,                                                                &
+    m_rn9ooh,                                                                  &
+    m_rn12ooh,                                                                 &
+    m_rn15ooh,                                                                 &
+    m_rn18ooh,                                                                 &
+    m_nrn6ooh,                                                                 &
+    m_nrn9ooh,                                                                 &
+    m_nrn12ooh,                                                                &
+    m_ra13ooh,                                                                 &
+    m_ra16ooh,                                                                 &
+    m_ra19ooh,                                                                 &
+    m_rtn28ooh,                                                                &
+    m_nrtn28ooh,                                                               &
+    m_rtn26ooh,                                                                &
+    m_rtn25ooh,                                                                &
+    m_rtn24ooh,                                                                &
+    m_rtn23ooh,                                                                &
+    m_rtn14ooh,                                                                &
+    m_rtn10ooh,                                                                &
+    m_rtx28ooh,                                                                &
+    m_rtx24ooh,                                                                &
+    m_rtx22ooh,                                                                &
+    m_nrtx28ooh,                                                               &
+    m_carb14,                                                                  &
+    m_carb17,                                                                  &
+    m_carb11a,                                                                 &
+    m_carb10,                                                                  &
+    m_carb13,                                                                  &
+    m_carb16,                                                                  &
+    m_carb9,                                                                   &
+    m_carb12,                                                                  &
+    m_carb15,                                                                  &
+    m_ucarb12,                                                                 &
+    m_carb15,                                                                  &
+    m_ucarb12,                                                                 &
+    m_nucarb12,                                                                &
+    m_udcarb8,                                                                 &
+    m_udcarb11,                                                                &
+    m_udcarb14,                                                                &
+    m_tncarb26,                                                                &
+    m_tncarb10,                                                                &
+    m_tncarb12,                                                                &
+    m_tncarb11,                                                                &
+    m_ccarb12,                                                                 &
+    m_tncarb15,                                                                &
+    m_rcooh25,                                                                 &
+    m_txcarb24,                                                                &
+    m_txcarb22,                                                                &
+    m_ru12pan,                                                                 &
+    m_rtn26pan,                                                                &
+    m_rtn26pan,                                                                &
+    m_aroh14,                                                                  &
+    m_aroh17,                                                                  &
+    m_arnoh14,                                                                 &
+    m_arnoh17,                                                                 &
+    m_anhy,                                                                    &
+    m_cri,                                                                     &
+    m_air,                                                                     &
+    m_iepox,                                                                   &
+    m_hmml,                                                                    &
+    m_hucarb9,                                                                 &
+    m_hpucarb12,                                                               &
+    m_dhpcarb9,                                                                &
+    m_dhpr12ooh,                                                               &
+    m_dhcarb9,                                                                 &
+    m_ru12no3,                                                                 &
+    m_ru10no3,                                                                 &
+    m_ra13no3,                                                                 &
+    m_ra16no3,                                                                 &
+    m_ra19no3
+
+USE ukca_um_legacy_mod,      ONLY: vkman, gg => g
+USE ukca_config_constants_mod, ONLY: rmol
+USE parkind1,                ONLY: jprb, jpim
+USE yomhook,                 ONLY: lhook, dr_hook
+USE ereport_mod,             ONLY: ereport
+USE errormessagelength_mod,  ONLY: errormessagelength
+USE nvtx
+
+IMPLICIT NONE
+
+INTEGER, INTENT(IN) :: row_length
+INTEGER, INTENT(IN) :: rows
+INTEGER, INTENT(IN) :: ntype
+INTEGER, INTENT(IN) :: npft
+INTEGER, INTENT(IN) :: nwater
+REAL, INTENT(IN) :: t0(row_length,rows)
+                             ! Surface temperature (K)
+REAL, INTENT(IN) :: p0(row_length,rows)
+                             ! Surface pressure (Pa)
+REAL, INTENT(IN) :: hflx(row_length,rows)
+                             ! Surface heat flux (W m-2)
+REAL, INTENT(IN) :: u_s(row_length,rows)
+                             ! Surface friction velocity (m s-1)
+REAL, INTENT(IN) :: canht(row_length,rows,npft)
+                             ! Canopy height of vegetation (m)
+REAL, INTENT(IN) :: gsf(row_length,rows,ntype)
+                             ! Surface tile fractions
+REAL, INTENT(IN) :: zbl(row_length,rows)
+                             ! Boundary layer depth
+REAL, INTENT(IN OUT) :: z0tile(row_length,rows,ntype)
+                             ! Roughness length on tiles (m)
+REAL, INTENT(OUT) :: resa(row_length,rows,ntype)
+                             ! Aerodynamic resistance (s m-1)
+REAL, INTENT(OUT) :: rb(row_length,rows,jpdd)
+                             ! Quasi-laminar resistance (s m-1)
+REAL, INTENT(OUT) :: so4_vd(row_length,rows)
+                             ! Sulphate aerosol dep velocity (m s-1)
+
+LOGICAL, SAVE :: first = .TRUE.
+
+INTEGER :: i, j, k, n     ! Loop counts
+
+REAL :: cp = 1004.67         ! Heat capacity of air under const p (J K-1 kg-1)
+REAL :: pr = 0.72            ! Prandtl number of air
+REAL :: vair296 = 1830.0e-8  ! Dynamic viscosity of air at 296 K (kg m-1 s-1).
+REAL :: twoth = 2.0 / 3.0    ! 2/3
+REAL :: zref = 50.0          ! Reference height for dry deposition (m).
+REAL :: d_h2o = 2.08e-5      ! Diffusion coefficent of water in air (m2 s-1)
+
+REAL :: b0                   ! Temporary store
+REAL :: b1                   ! Temporary store
+REAL :: sc_pr                ! Ratio of Schmidt and Prandtl numbers
+
+REAL, SAVE :: reus                ! Holds -cp/(vkman*g)
+REAL, ALLOCATABLE, SAVE :: d0(:)  ! Diffusion coefficients
+
+REAL :: l(row_length,rows)         ! Monin-Obukhov length (m)
+REAL :: rho_air(row_length,rows)   ! Density of air at surface (kg m-3)
+REAL :: kva(row_length,rows)       ! Kinematic velocity of air (m2 s-1)
+REAL :: ustar(row_length,rows)     ! Friction velocity [checked] (m s-1)
+
+REAL :: d(row_length,rows,npft)    ! Zero-plane displacement (m)
+
+REAL :: z(row_length,rows,ntype)   ! Reference height (m)
+REAL :: psi(row_length,rows,ntype) ! Businger function (dimensionless)
+
+REAL, PARAMETER :: r_null = 1.0e50           ! Null resist to depos (1/r_null~0)
+
+REAL :: bl_l                                  ! Boundary layer height divided by
+                                              ! Monin-Obukhov length
+
+INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
+INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+REAL(KIND=jprb)               :: zhook_handle
+
+CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_AEROD'
+
+! Ereport variables
+CHARACTER(LEN=errormessagelength) :: cmessage
+INTEGER :: icode
+
+!     Assign diffusion coefficients, units m2 s-1. Set to -1
+!     unless species dry deposits. If no value found in literature,
+!     D0 calculated using: D(X) = D(H2O) * SQRT[RMM(H2O)/RMM(X)], where
+!     X is the species in question and D(H2O) = 2.08 x 10^-5 m2 s-1
+!     (Marrero & Mason, J Phys Chem Ref Dat, 1972).
+
+!     The values of d0 will be used to flag those species
+!     that dry deposit
+
+IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+call nvtxStartRange(ModuleName//':'//RoutineName)
+IF (first) THEN
+  ALLOCATE(d0(jpdd))
+  d0(:) = -1.0
+  DO j = 1, ndepd
+    SELECT CASE (speci(nldepd(j)))
+    CASE ('O3        ','NO2       ','O3S       ','NO3       ')
+      d0(j) = 1.4e-5
+    CASE ('NO        ')
+      IF (ukca_config%l_fix_improve_drydep) THEN
+        ! Tang et al 2014 https://doi.org/10.5194/acp-14-9233-2014
+        d0(j) = 2.3e-5
+      ELSE
+        ! NO = 6*NO2 (following Gian. 1998)
+        d0(j) = 8.4e-5
+      END IF
+      ! RU14NO3 ~ ISON
+    CASE ('HNO3      ','HONO2     ','ISON      ','B2ndry    ',                 &
+          'A2ndry    ','N2O5      ','HO2NO2    ','HNO4      ',                 &
+          'RU14NO3   ')
+      d0(j) = 1.2e-5
+    CASE ('H2O2      ','HOOH      ')
+      d0(j) = 1.46e-5
+    CASE ('CH3OOH    ','MeOOH     ','HCOOH     ')
+      d0(j) = 1.27e-5
+      ! CARB7 ~ HACET
+    CASE ('C2H5OOH   ','EtOOH     ','MeCO3H    ','MeCO2H    ',                 &
+          'HACET     ','CARB7     ')
+      d0(j) = 1.12e-5
+      ! RN10OOH ~ n-PrOOH
+    CASE ('n_C3H7OOH ','i_C3H7OOH ','n-PrOOH   ','i-PrOOH   ',                 &
+          'PropeOOH  ','RN10OOH   ')
+      d0(j) = 1.01e-5
+    CASE ('MeCOCH2OOH')
+      d0(j) = d_h2o * SQRT(m_h2o / m_mecoch2ooh)
+    CASE ('ISOOH     ','RU14OOH   ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_isooh)
+    CASE ('HONO      ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_hono)
+    CASE ('MACROOH   ','RU10OOH   ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_macrooh)
+    CASE ('MEKOOH    ','RN11OOH   ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_mekooh)
+    CASE ('ALKAOOH   ','RN8OOH    ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_alkaooh)
+    CASE ('AROMOOH   ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_aromooh)
+    CASE ('BSVOC1    ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_bsvoc1)
+    CASE ('BSVOC2    ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_bsvoc2)
+    CASE ('ASVOC1    ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_asvoc1)
+    CASE ('ASVOC2    ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_asvoc2)
+    CASE ('ISOSVOC1  ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_isosvoc1)
+    CASE ('ISOSVOC2  ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_isosvoc2)
+    CASE ('PAN       ')
+      IF (ukca_config%l_fix_improve_drydep) THEN
+        d0(j) = d_h2o * SQRT(m_h2o / m_pan)
+      ELSE
+        d0(j) = 0.31e-5
+      END IF
+    CASE ('PPAN      ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_ppan)
+    CASE ('MPAN      ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_mpan)
+    CASE ('ONITU     ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_onitu)
+    CASE ('CO        ')
+      d0(j) = 1.86e-5
+    CASE ('CH4       ')
+      IF (ukca_config%l_fix_improve_drydep) THEN
+        ! Tang et al 2015 https://doi.org/10.5194/acp-15-5585-2015
+        d0(j) = 2.2e-5
+      ELSE
+        d0(j) = 5.74e-5
+      END IF
+    CASE ('NH3       ')
+      d0(j) = 2.08e-5
+    CASE ('H2        ')
+      d0(j) = 6.7e-5
+    CASE ('SO2       ')
+      d0(j) = 1.2e-5
+    CASE ('DMSO      ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_dmso)
+    CASE ('Sec_Org   ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_sec_org)
+    CASE ('SEC_ORG_I ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_sec_org_i)
+    CASE ('H2SO4     ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_h2so4)
+    CASE ('MSA       ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_msa)
+    CASE ('MVKOOH    ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_mvkooh)
+    CASE ('s-BuOOH   ','RN13OOH   ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_buooh)
+    CASE ('ORGNIT    ')
+      d0(j) = 1.0e-5
+    CASE ('BSOA      ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_bsoa)
+    CASE ('ASOA      ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_asoa)
+    CASE ('ISOSOA    ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_isosoa)
+      ! Species added for sonsitency with 2D scheme
+      ! Use simple approximation a la ExTC
+    CASE ('HCHO      ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_hcho)
+    CASE ('MeCHO     ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_mecho)
+    CASE ('EtCHO     ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_etcho)
+    CASE ('MACR      ','UCARB10   ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_macr)
+    CASE ('NALD      ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_nald)
+    CASE ('GLY       ','CARB3     ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_gly)
+    CASE ('MGLY      ','CARB6     ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_mgly)
+    CASE ('MeOH      ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_meoh)
+    CASE ('Monoterp  ', 'APINENE   ', 'BPINENE   ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_monoterp)
+    CASE ('HBr       ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_hbr)
+    CASE ('HOBr      ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_hobr)
+    CASE ('HCl       ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_hcl)
+    CASE ('HOCl      ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_hocl)
+      ! CRImech-only species:
+    CASE ('EtOH      ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_etoh)
+    CASE ('i-PrOH    ', 'n-PrOH    ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_proh)
+    CASE ('HOC2H4OOH ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_hoc2h4ooh)
+    CASE ('HOCH2CHO  ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_hoch2cho)
+    CASE ('EtCO3H    ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_etco3h)
+    CASE ('HOCH2CO3H ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_hoch2co3h)
+    CASE ('PHAN      ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_phan)
+    CASE ('NOA       ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_noa)
+    CASE ('HOC2H4NO3 ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_hoc2h4no3)
+    CASE ('RTX24NO3  ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_rtx24no3)
+    CASE ('RN9NO3    ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_rn9no3)
+    CASE ('RN12NO3   ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_rn12no3)
+    CASE ('RN15NO3   ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_rn15no3)
+    CASE ('RN18NO3   ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_rn18no3)
+    CASE ('RTN28NO3  ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_rtn28no3)
+    CASE ('RTN25NO3  ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_rtn25no3)
+    CASE ('RTN23NO3  ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_rtn23no3)
+    CASE ('RTX28NO3  ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_rtx28no3)
+    CASE ('RTX22NO3  ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_rtx22no3)
+    CASE ('RN16OOH   ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_rn16ooh)
+    CASE ('RN19OOH   ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_rn19ooh)
+    CASE ('RN14OOH   ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_rn14ooh)
+    CASE ('RN17OOH   ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_rn17ooh)
+    CASE ('NRU14OOH  ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_nru14ooh)
+    CASE ('NRU12OOH  ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_nru12ooh)
+    CASE ('RN9OOH    ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_rn9ooh)
+    CASE ('RN12OOH   ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_rn12ooh)
+    CASE ('RN15OOH   ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_rn15ooh)
+    CASE ('RN18OOH   ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_rn18ooh)
+    CASE ('NRN6OOH   ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_nrn6ooh)
+    CASE ('NRN9OOH   ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_nrn9ooh)
+    CASE ('NRN12OOH  ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_nrn12ooh)
+    CASE ('RA13OOH   ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_ra13ooh)
+    CASE ('RA16OOH   ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_ra16ooh)
+    CASE ('RA19OOH   ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_ra19ooh)
+    CASE ('RTN28OOH  ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_rtn28ooh)
+    CASE ('NRTN28OOH ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_nrtn28ooh)
+    CASE ('RTN26OOH  ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_rtn26ooh)
+    CASE ('RTN25OOH  ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_rtn25ooh)
+    CASE ('RTN24OOH  ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_rtn24ooh)
+    CASE ('RTN23OOH  ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_rtn23ooh)
+    CASE ('RTN14OOH  ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_rtn14ooh)
+    CASE ('RTN10OOH  ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_rtn10ooh)
+    CASE ('RTX28OOH  ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_rtx28ooh)
+    CASE ('RTX24OOH  ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_rtx24ooh)
+    CASE ('RTX22OOH  ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_rtx22ooh)
+    CASE ('NRTX28OOH ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_nrtx28ooh)
+    CASE ('CARB14    ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_carb14)
+    CASE ('CARB17    ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_carb17)
+    CASE ('CARB11A   ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_carb11a)
+    CASE ('CARB10    ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_carb10)
+    CASE ('CARB13    ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_carb13)
+    CASE ('CARB16    ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_carb16)
+    CASE ('CARB9     ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_carb9)
+    CASE ('CARB12    ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_carb12)
+    CASE ('CARB15    ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_carb15)
+    CASE ('UCARB12   ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_ucarb12)
+    CASE ('NUCARB12  ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_nucarb12)
+    CASE ('UDCARB8   ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_udcarb8)
+    CASE ('UDCARB11  ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_udcarb11)
+    CASE ('UDCARB14  ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_udcarb14)
+    CASE ('TNCARB26  ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_tncarb26)
+    CASE ('TNCARB10  ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_tncarb10)
+    CASE ('TNCARB12  ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_tncarb12)
+    CASE ('TNCARB11  ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_tncarb11)
+    CASE ('CCARB12   ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_ccarb12)
+    CASE ('TNCARB15  ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_tncarb15)
+    CASE ('RCOOH25   ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_rcooh25)
+    CASE ('TXCARB24  ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_txcarb24)
+    CASE ('TXCARB22  ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_txcarb22)
+    CASE ('RU12PAN   ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_ru12pan)
+    CASE ('RTN26PAN  ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_rtn26pan)
+    CASE ('AROH14    ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_aroh14)
+    CASE ('AROH17    ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_aroh17)
+    CASE ('ARNOH14   ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_arnoh14)
+    CASE ('ARNOH17   ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_arnoh17)
+    CASE ('ANHY      ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_anhy)
+    CASE ('IEPOX     ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_iepox)
+    CASE ('HMML      ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_hmml)
+    CASE ('HUCARB9   ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_hucarb9)
+    CASE ('HPUCARB12 ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_hpucarb12)
+    CASE ('DHPCARB9  ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_dhpcarb9)
+    CASE ('DHPR12OOH ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_dhpr12ooh)
+    CASE ('DHCARB9   ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_dhcarb9)
+    CASE ('RU12NO3   ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_ru12no3)
+    CASE ('RU10NO3  ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_ru10no3)
+      ! RU12OOH happens to have same mass as default (150g/mol)
+    CASE ('RU12OOH   ')
+      ! m_cri = 150 (same as sec_org) => d0(j) = 0.72e-5
+      d0(j) = d_h2o * SQRT(m_h2o / m_cri)
+    CASE ('RA13NO3   ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_ra13no3)
+    CASE ('RA16NO3   ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_ra16no3)
+    CASE ('RA19NO3   ')
+      d0(j) = d_h2o * SQRT(m_h2o / m_ra19no3)
+    END SELECT
+  END DO
+  !
+  DO j = 1, ndepd
+    IF (d0(j) < 0.0) THEN
+      cmessage = 'Warning: No dry deposition for ' //                          &
+                  speci(nldepd(j)) // ' will be calculated.'
+      icode = -1
+      CALL ereport(routinename, icode, cmessage)
+    END IF
+  END DO
+
+  !       Set up other constants
+  reus = -cp / (vkman * gg)
+
+  first = .FALSE.
+
+END IF
+
+!     Calculate air density, rho-air. Set ustar to minimum value if
+!     undefined
+
+DO k = 1, rows
+  DO i = 1, row_length
+    rho_air(i,k) = m_air * p0(i,k) / (rmol * t0(i,k))
+    ustar(i,k) = u_s(i,k)
+    IF (ustar(i,k) <= 0.0) ustar(i,k) = 1.0e-2
+  END DO
+END DO
+
+!     Set zero-plane displacement to 0.7 of canopy height
+!     (Smith et al., 2000).
+
+DO n = 1, npft
+  DO k = 1, rows
+    DO i = 1, row_length
+      IF (canht(i,k,n) > 0.0) THEN
+        d(i,k,n) = canht(i,k,n) * 0.70
+      ELSE
+        d(i,k,n) = 0.0
+      END IF
+    END DO
+  END DO
+END DO
+
+!     Ensure undefined parts of Z0 are set to 0.001 to avoid any
+!     floating-point exceptions. Initialise z to reference height.
+
+DO n = 1, ntype
+  DO k = 1, rows
+    DO i = 1, row_length
+      IF (z0tile(i,k,n) <= 0.0) z0tile(i,k,n) = 0.001
+      z(i,k,n) = zref
+    END DO
+  END DO
+END DO
+
+!     Set Z to height above surface minus zero plane displacement
+!     for vegetated tiles.
+
+DO n = 1, npft
+  DO k = 1, rows
+    DO i = 1, row_length
+      z(i,k,n) = zref - d(i,k,n)
+    END DO
+  END DO
+END DO
+
+!     Calculate kinematic viscosity of air,
+!     KVA; = dynamic viscosity / density
+!     Formula from Kaye and Laby, 1952, p.43.
+
+DO k = 1, rows
+  DO i = 1, row_length
+    kva(i,k) = (vair296 - 4.83e-8 * (296.0-t0(i,k))) /                         &
+                rho_air(i,k)
+
+    !         Calculate roughness length over oceans using Charnock
+    !         formula in form given by Hummelshoj et al., 1992.
+
+    IF (gsf(i,k,nwater) > 0.0) THEN
+      z0tile(i,k,nwater) = (kva(i,k) / (9.1 * ustar(i,k))) +                   &
+        0.016 * ustar(i,k) * ustar(i,k) / gg
+    END IF
+  END DO
+END DO
+
+!     Calculate Monin-Obukhov length L
+
+DO k = 1, rows
+  DO i = 1, row_length
+    IF (hflx(i,k) /= 0.0) THEN
+      !           Stable or unstable b.l.
+      l(i,k) = reus * t0(i,k) * rho_air(i,k) * (ustar(i,k)**3) /               &
+        hflx(i,k)
+    ELSE
+      !           Neutral b.l.
+      l(i,k) = 10000.0
+    END IF
+  END DO
+END DO
+
+!     Calculate Businger functions (PSI(ZETA))
+
+DO k = 1, rows
+  DO i = 1, row_length
+    IF (l(i,k) > 0.0) THEN
+      !           Stable b.l.
+      !CDIR EXPAND=9
+      DO n = 1, ntype
+        psi(i,k,n) = -5.0 * (z(i,k,n) - z0tile(i,k,n)) / l(i,k)
+      END DO
+    ELSE
+      !           Unstable b.l.
+      !CDIR EXPAND=9
+      DO n = 1, ntype
+        b1 = (1.0 - 16.0 * (z(i,k,n) / l(i,k)))**0.5
+        b0 = (1.0 - 16.0 * (z0tile(i,k,n) / l(i,k)))**0.5
+        psi(i,k,n) = 2.0 * LOG((1.0+b1) / (1.0+b0))
+      END DO
+    END IF
+  END DO
+END DO
+
+!   1. Resa.  Calculate aerodynamic resistance (Resa) for all species
+
+DO n = 1, ntype
+  DO k = 1, rows
+    DO i = 1, row_length
+      resa(i,k,n) = (LOG(z(i,k,n) / z0tile(i,k,n)) - psi(i,k,n)) /             &
+        (vkman * ustar(i,k))
+    END DO
+  END DO
+END DO
+
+!   2. Rb
+
+!    Calculate Schmidt number divided by Prandtl number for each
+!    species. Schmidt number = Kinematic viscosity of air divided
+!    by molecular diffusivity. Calculate quasi-laminar boundary
+!    layer resistance (Hicks et al., 1987)
+
+DO j = 1, ndepd
+
+  ! First set rb for aerosols to 1.0 as done in STOCHEM code
+  IF ( (speci(nldepd(j)) == 'ORGNIT    ') .OR.                                 &
+       (speci(nldepd(j)) == 'ASOA      ') .OR.                                 &
+       (speci(nldepd(j)) == 'BSOA      ') .OR.                                 &
+       (speci(nldepd(j)) == 'ISOSOA    ')                                      &
+     ) THEN
+    DO k = 1, rows
+      DO i = 1, row_length
+        rb(i,k,j) =  1.0
+      END DO
+    END DO
+
+  ELSE IF (d0(j) > 0.0) THEN
+    DO k = 1, rows
+      DO i = 1, row_length
+        sc_pr = kva(i,k) / (pr * d0(j))
+        rb(i,k,j) = (sc_pr**twoth) / (vkman * ustar(i,k))
+      END DO
+    END DO
+  ELSE
+    DO k = 1, rows
+      DO i = 1, row_length
+        rb(i,k,j) = 0.0
+      END DO
+    END DO
+  END IF
+END DO
+
+!    3. SO4_VD: Needed for ORGNIT or other species treated as aerosols
+!
+!     Calculate surface deposition velocity term for sulphate particles
+!     using simple parameterisation of Wesely in the form given by
+!     Zhang et al. (2001), Atmos Environ, 35, 549-560.
+!     These values can be used for different aerosol types
+!     and ORGNIT is considered to be an aerosol.
+!
+so4_vd = 1.0 / r_null
+
+DO j = 1, ndepd
+  IF ( (speci(nldepd(j)) == 'ORGNIT    ') .OR.                                 &
+       (speci(nldepd(j)) == 'ASOA      ') .OR.                                 &
+       (speci(nldepd(j)) == 'BSOA      ') .OR.                                 &
+       (speci(nldepd(j)) == 'ISOSOA    ')                                      &
+     ) THEN
+
+    DO k = 1, rows
+      DO i = 1, row_length
+        so4_vd(i,k) = 0.0
+        bl_l = zbl(i,k) / l(i,k)
+        IF (l(i,k) >= 0.0) THEN
+          so4_vd(i,k) = 0.002 * ustar(i,k)
+        END IF
+        IF (bl_l < -30.0) THEN
+          so4_vd(i,k) = 0.0009 * ustar(i,k) * ((-bl_l)**twoth)
+        END IF
+        IF (bl_l >= -30.0 .AND. l(i,k) < 0.0) THEN
+          so4_vd(i,k) = 0.002*ustar(i,k)*(1.0 +                                &
+                           (-300.0/l(i,k))**twoth)
+        END IF
+      END DO
+    END DO
+
+    EXIT
+  END IF
+END DO
+
+IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange
+RETURN
+END SUBROUTINE ukca_aerod
+END MODULE ukca_aerod_mod
