@@ -383,19 +383,6 @@ END DO                    !jmod=1, topmode
 
 !2) Calculate maximum supersaturation at each increment of vertical velocity pdf
 
-!$OMP PARALLEL DEFAULT(NONE)                                                   &
-!$OMP PRIVATE(jk, jl, jmod, jw, psmax2,                                        &
-!$OMP         zalpha, zcdncm, zdif, zerf_ratio, zeta,                          &
-!$OMP         zf, zg, zgamma, zgrowth, zk, zka, zpwdw,                         &
-!$OMP         zrc, zsm, zsmax, zsum, zw, zwpwdw, zxi)                          &
-!$OMP SHARED(cp, cthomi, gg, kbdim, klev, lc,lc_sq, mode, nwbins, topmode,     &
-!$OMP        modesol, papm1, pesw, pn, pqm1, prdry, Printstatus,               &
-!$OMP        psmax, ptm1, pwarr, pwbin, pwpdf, rho_water, rmol,                &
-!$OMP        za, zb, zcdnc, zeps,                                              &
-!$OMP        zndbot, zndbotm, zndtop, zndtopm,                                 &
-!$OMP        zsigmaln, l_fix_ukca_hygroscopicities_local)
-
-!$OMP DO SCHEDULE(DYNAMIC)
 DO jw=1, nwbins
 
   !    --- 2.2) Abbdul-Razzak and Ghan (2000):
@@ -577,42 +564,30 @@ DO jw=1, nwbins
   END IF
 
 END DO !jw
-!$OMP END DO
-!$OMP END PARALLEL
 
 ! For the output arrays from the DO loop above, sum over all nwbins
 ! and store summation in (...,1) of each array. The order of summation
 ! alters results, and so this cannot be done within the OpenMP DO loop
 ! above.
-!$OMP PARALLEL DEFAULT(NONE)                                                   &
-!$OMP PRIVATE(jmod, jk, jl, jw)                                                &
-!$OMP SHARED(kbdim, klev, nwbins, mode, modesol, topmode,                      &
-!$OMP        l_fix_ukca_hygroscopicities_local,                                &
-!$OMP        zndbot, zndbotm, zndtop, zndtopm)
 DO jw=2,nwbins
   DO jmod=1, topmode
     IF ((mode(jmod) .AND. modesol(jmod) == 1) .OR. .NOT.                       &
         l_fix_ukca_hygroscopicities_local) THEN
-!$OMP DO SCHEDULE(STATIC)
       DO jk=1, klev
         DO jl=1, kbdim
           zndtopm(jl,jk,jmod,1) = zndtopm(jl,jk,jmod,1) + zndtopm(jl,jk,jmod,jw)
           zndbotm(jl,jk,jmod,1) = zndbotm(jl,jk,jmod,1) + zndbotm(jl,jk,jmod,jw)
         END DO
       END DO
-!$OMP END DO NOWAIT
     END IF
   END DO
-!$OMP DO SCHEDULE(STATIC)
   DO jk=1, klev
     DO jl=1, kbdim
       zndtop(jl,jk,1)  = zndtop(jl,jk,1)  + zndtop(jl,jk,jw)
       zndbot(jl,jk,1)  = zndbot(jl,jk,1)  + zndbot(jl,jk,jw)
     END DO
   END DO
-!$OMP END DO NOWAIT
 END DO
-!$OMP END PARALLEL
 
 ! Calculate the normalised expected value of CDNC for each mode
 ! weighted by w

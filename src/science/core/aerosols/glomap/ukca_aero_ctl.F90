@@ -1237,116 +1237,6 @@ IF ( ( glomap_config%i_ukca_activation_scheme == i_ukca_activation_arg )       &
   drydiam(:, :, :, :) = 0.0
 END IF
 
-!
-! OpenMP parallel region starts here (loop later around IK segments)
-!
-!$OMP PARALLEL  DEFAULT(NONE)                                                  &
-!$OMP          SHARED(a3d_tmp, act, all_ntp, avogadro, bln_on, boltzmann,      &
-!$OMP all_tracers, cloud_frac, cloud_liq_frac, cloud_liq_wat,                  &
-!$OMP n_chemistry_tracers, component, crain, csnow,                            &
-!$OMP ddepaer_on, delso2_dry_oh, delso2_wet_h2o2, delso2_wet_o3,               &
-!$OMP drain, drydiam, dryox_in_aer, dsnow, dtc, dtm, dtz,                      &
-!$OMP firstcall, glomap_config, glomap_variables,                              &
-!$OMP iactmethod, ibln, iextra_checks, imscav_on, inucscav,                    &
-!$OMP jpctr, l_dust_slinn_impc_scav, l_ukca_cmip6_diags, l_ukca_mode_diags,    &
-!$OMP l_ukca_pm_diags, land_fraction, lbase, lcvrainout,                       &
-!$OMP log_sigmag, lscat_zhang,                                                 &
-!$OMP mass, mdtmin, mdwat_diag, mfrac_0, mh2o2f, mh2so4, mlo,                  &
-!$OMP mm, mm_da, mm_gas, mmid, mmr_index,                                      &
-!$OMP mode, mode_diags, model_levels, modesol, mox,                            &
-!$OMP msec_org, msec_orgi, msotwo,                                             &
-!$OMP n_h2o2, n_h2so4, n_merge_3d, n_o3, n_sec_org, n_sec_org_i, n_so2,        &
-!$OMP n_hono2, n_nh3, mhno3, mnh3,                                             &
-!$OMP nadvg, nbadmdt_3d, nbox, nbox_s, nbudaer, nchemg, ichem, ncol_s, ncp,    &
-!$OMP nmasddepsunucsol, nmasddepsuaitsol, nmasddepsuaccsol, nmasddepsucorsol,  &
-!$OMP nmasddepssaccsol, nmasddepsscorsol, nmasddepbcaitsol, nmasddepbcaccsol,  &
-!$OMP nmasddepbccorsol, nmasddepbcaitins, nmasddepocnucsol, nmasddepocaitsol,  &
-!$OMP nmasddepocaccsol, nmasddepoccorsol, nmasddepocaitins, nmasddepsonucsol,  &
-!$OMP nmasddepsoaitsol, nmasddepsoaccsol, nmasddepsocorsol, nmasddepduaccsol,  &
-!$OMP nmasddepducorsol, nmasddepduaccins, nmasddepducorins,                    &
-!$OMP nmasnuscsunucsol, nmasnuscsuaitsol, nmasnuscsuaccsol, nmasnuscsucorsol,  &
-!$OMP nmasnuscssaccsol, nmasnuscsscorsol, nmasnuscbcaitsol, nmasnuscbcaccsol,  &
-!$OMP nmasnuscbccorsol, nmasnuscbcaitins, nmasnuscocnucsol, nmasnuscocaitsol,  &
-!$OMP nmasnuscocaccsol, nmasnuscoccorsol, nmasnuscocaitins,                    &
-!$OMP nmasnuscsonucsol, nmasnuscsoaitsol, nmasnuscsoaccsol, nmasnuscsocorsol,  &
-!$OMP nmasnuscduaccsol, nmasnuscducorsol, nmasnuscduaccins, nmasnuscducorins,  &
-!$OMP nmasimscsunucsol, nmasimscsuaitsol, nmasimscsuaccsol, nmasimscsucorsol,  &
-!$OMP nmasimscssaccsol, nmasimscsscorsol, nmasimscbcaitsol, nmasimscbcaccsol,  &
-!$OMP nmasimscbccorsol, nmasimscbcaitins, nmasimscocnucsol, nmasimscocaitsol,  &
-!$OMP nmasimscocaccsol, nmasimscoccorsol, nmasimscocaitins, nmasimscsonucsol,  &
-!$OMP nmasimscsoaitsol, nmasimscsoaccsol, nmasimscsocorsol, nmasimscduaccsol,  &
-!$OMP nmasimscducorsol, nmasimscduaccins, nmasimscducorins, nmasclprsuaitsol1, &
-!$OMP nmasclprsuaccsol1,nmasclprsucorsol1,nmasclprsuaitsol2,nmasclprsuaccsol2, &
-!$OMP nmasclprsucorsol2, nmasprocsuintr23, nmasprocbcintr23, nmasprococintr23, &
-!$OMP nmasprocsointr23, nmascondsunucsol, nmascondsuaitsol, nmascondsuaccsol,  &
-!$OMP nmascondsucorsol, nmascondsuaitins, nmascondsuaccins, nmascondsucorins,  &
-!$OMP nmascondocnucsol, nmascondocaitsol, nmascondocaccsol, nmascondoccorsol,  &
-!$OMP nmascondocaitins, nmascondocaccins, nmascondoccorins, nmascondocinucsol, &
-!$OMP nmascondociaitsol,nmascondociaccsol,nmascondocicorsol,nmascondociaitins, &
-!$OMP nmascondociaccins,nmascondocicorins,nmascondsonucsol,                    &
-!$OMP nmascondsoaitsol, nmascondsoaccsol, nmascondsocorsol, nmascondsoaitins,  &
-!$OMP nmascondsoaccins, nmascondsocorins, nmasnuclsunucsol, nmascoagsuintr12,  &
-!$OMP nmascoagsuintr13, nmascoagsuintr14, nmascoagsuintr15, nmascoagsuintr16,  &
-!$OMP nmascoagsuintr17, nmascoagocintr12, nmascoagocintr13, nmascoagocintr14,  &
-!$OMP nmascoagocintr15, nmascoagocintr16, nmascoagocintr17, nmascoagsointr12,  &
-!$OMP nmascoagsointr13, nmascoagsointr14, nmascoagsointr15, nmascoagsointr16,  &
-!$OMP nmascoagsointr17, nmascoagsuintr23, nmascoagsuintr24, nmascoagbcintr23,  &
-!$OMP nmascoagbcintr24, nmascoagocintr23, nmascoagocintr24, nmascoagsointr23,  &
-!$OMP nmascoagsointr24, nmascoagsuintr34, nmascoagbcintr34, nmascoagocintr34,  &
-!$OMP nmascoagssintr34, nmascoagsointr34, nmascoagduintr34, nmascoagbcintr53,  &
-!$OMP nmascoagocintr53, nmascoagbcintr54, nmascoagocintr54, nmascoagduintr64,  &
-!$OMP nmasagedsuintr52, nmasagedbcintr52, nmasagedocintr52, nmasagedsointr52,  &
-!$OMP nmasagedduintr63, nmasagedduintr74, nmasagedduintr84,                    &
-!$OMP nmasmergsuintr12, nmasmergocintr12, nmasmergsointr12, nmasmergsuintr23,  &
-!$OMP nmasmergbcintr23, nmasmergocintr23, nmasmergsointr23, nmasmergsuintr34,  &
-!$OMP nmasmergbcintr34, nmasmergocintr34, nmasmergssintr34, nmasmergduintr34,  &
-!$OMP nmasddepdusupins, nmasnuscdusupins, nmasimscdusupins, nmascondsusupins,  &
-!$OMP nmascondocsupins, nmascondsosupins, nmascoagsuintr18, nmascoagocintr18,  &
-!$OMP nmascoagsointr18, nmasmergsointr34,                                      &
-!$OMP nmasddepntaitsol, nmasddepntaccsol,                                      &
-!$OMP nmasddepntcorsol, nmasddepnhaitsol,nmasddepnhaccsol, nmasddepnhcorsol,   &
-!$OMP nmasnuscntaitsol, nmasnuscntaccsol,nmasnuscntcorsol, nmasnuscnhaitsol,   &
-!$OMP nmasnuscnhaccsol, nmasnuscnhcorsol,nmasimscntaitsol, nmasimscntaccsol,   &
-!$OMP nmasimscntcorsol, nmasimscnhaitsol,nmasimscnhaccsol, nmasimscnhcorsol,   &
-!$OMP nmascoagntintr23, nmascoagnhintr23,nmascoagntintr24, nmascoagnhintr24,   &
-!$OMP nmascoagntintr34, nmascoagnhintr34,nmasmergntintr23, nmasmergnhintr23,   &
-!$OMP nmasmergntintr34, nmasmergnhintr34,nmasprocntintr23, nmasprocnhintr23,   &
-!$OMP nmasddepnnaccsol, nmasddepnncorsol,                                      &
-!$OMP nmasnuscnnaccsol, nmasnuscnncorsol,nmasimscnnaccsol, nmasimscnncorsol,   &
-!$OMP nmascoagnnintr34, nmasmergnnintr34,                                      &
-!$OMP nmasprimntaitsol, nmasprimntaccsol,nmasprimntcorsol, nmasprimnhaitsol,   &
-!$OMP nmasprimnhaccsol, nmasprimnhcorsol,nmascondnnaccsol, nmascondnncorsol,   &
-!$OMP nmax_mode_diags,nmr_index,nucl_on, nseg,nukca_d1items,                   &
-!$OMP wetox_on, cond_on, coag_on,                                              &
-!$OMP fine_no3_prod_on, coarse_no3_prod_on, hno3_uptake_coeff,                 &
-!$OMP num_eps, nzts, p_bdrs, pres, q,                                          &
-!$OMP rainout_on, rgas, rh3d, rh3d_clr, root2, row_length, rows,               &
-!$OMP sea_ice_frac, scale_delso2, sigmag, stride_s, temp, u_s,                 &
-!$OMP ukca_config, ukcaD1codes, verbose, verbose_local,                        &
-!$OMP wetdp_diag, wetox_in_aer, z0m, z_half_alllevs, zbl)                      &
-!$OMP     PRIVATE(cmessage, dp0, errcode,                                      &
-!$OMP             ifirst, i, i_end, i_end_cp, i_start, i_start_cp,             &
-!$OMP             ic, icp, ik, itra, iaer, imode, j, jl, jl2, jv, k,           &
-!$OMP             l, lb, logic, logic1, logic2, n, ncs, nbs, nbs_index,        &
-!$OMP             seg_aird, seg_airdm3, seg_autoconv1d, seg_bud_aer_mas,       &
-!$OMP             seg_ccn_1, seg_ccn_2, seg_ccn_3, seg_ccn_4, seg_ccn_5,       &
-!$OMP             seg_cdn,seg_clf, seg_clwc, seg_cn_3nm, seg_craing,           &
-!$OMP             seg_craing_up,seg_csnowg, seg_delso2, seg_delso2_2,          &
-!$OMP             seg_draing,seg_drydp, seg_dsnowg, seg_dvisc, seg_dvol,       &
-!$OMP             seg_erf_arg,seg_erfterm, seg_fac, seg_fconv_conv,            &
-!$OMP             seg_height,seg_het_rates, seg_htpblg, seg_iarr, seg_ilscat,  &
-!$OMP             seg_jlabove, seg_karr, seg_land_frac, seg_larr, seg_lday,    &
-!$OMP             seg_lowcloud, seg_lwc, seg_md, seg_mdt, seg_mdtfixflag,      &
-!$OMP             seg_mdtfixsink, seg_mdwat, seg_mfpa, seg_n_merge_1d,         &
-!$OMP             seg_nbadmdt, seg_nd, seg_plower, seg_pmid, seg_pupper,       &
-!$OMP             seg_pvol, seg_pvol_wat, seg_rh, seg_rh_clr, seg_rhoa,        &
-!$OMP             seg_rhopar, seg_s, seg_s0, seg_s0_dot_condensable,           &
-!$OMP             seg_sarea, seg_seaice, seg_sm, seg_surtp, seg_t,             &
-!$OMP             seg_tr_rs, seg_tsqrt, seg_ustr, seg_v1d_tmp, seg_vba,        &
-!$OMP             seg_vconc, seg_vfac, seg_wetdp, seg_wvol, seg_zh2o2,         &
-!$OMP             seg_zho2, seg_znotg, seg_zo3,                                &
-!$OMP             y)
-
 ! dealing with non-uniform segments
 IF ( nseg > 1 ) THEN
   IF ( ncol_s(nseg) /= ncol_s(nseg-1) ) THEN
@@ -1357,7 +1247,6 @@ IF ( nseg > 1 ) THEN
   END IF  ! last segment is smaller
 END IF  ! nseg > 1
 
-!$OMP DO SCHEDULE(DYNAMIC)
 DO ik = 1, nseg
   ! use local alias because they are used in  many places within  loop
   lb = lbase(ik)      ! base location on this segment
@@ -4584,7 +4473,6 @@ DO ik = 1, nseg
 
 END DO  ! ik loop over segments
 
-!$OMP END PARALLEL
 !
 ! End of OpenMP
 

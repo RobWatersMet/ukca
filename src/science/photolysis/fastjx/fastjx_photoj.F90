@@ -198,21 +198,6 @@ END DO
 !------------------------------------------------
 ! Calculate amf weighting fractions
 
-!$OMP PARALLEL DO SCHEDULE(STATIC) DEFAULT(NONE)                               &
-!$OMP PRIVATE(dm_ix, dtaux, fff,                                               &
-!$OMP         fjact, fjbot, fjflx, fjtop, flxd, flxd0, fsbot,                  &
-!$OMP         i, ix, j, jxtra, k, kmie, l,                                     &
-!$OMP         o3_ix, odabs, odray, pomegax, qxmie,                             &
-!$OMP         rfl, sleg, ssa, ttt, wave, valjl,                                &
-!$OMP         tz_ix, xqo2, xqo3, zj)                                           &
-!$OMP SHARED(amf2, atau, atau0, dm_block, fl, fl_cyc,                          &
-!$OMP        jfacta, jind, jpcl, jppj, jtaumx,                                 &
-!$OMP        kpcx, lpar, miedx, nsl,                                           &
-!$OMP        o3_block, od_block, od600, odi_block,                             &
-!$OMP        ods_block, odw_block, paa, pz_block,                              &
-!$OMP        qaa, qo2, qo3, qrayl, rz_block,                                   &
-!$OMP        sa_block, saa, solf, szafac,                                      &
-!$OMP        tqq, tz_block, u0, w_, wl, zpj)
 DO ix = 1, kpcx
 
   o3_ix(:) = o3_block(ix,:)
@@ -385,7 +370,6 @@ DO ix = 1, kpcx
   END DO
 
 END DO ! xy
-!$OMP END PARALLEL DO
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
 RETURN

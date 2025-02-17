@@ -130,7 +130,6 @@ ukca_config%timesteps_per_hour = isec_per_hour / timestep
 ! Do not check for solver type and timestep if none of the chemistry
 ! schemes is selected e.g. for an Age-of-air-only configuration.
 ! In that case, set values to default in case they are used elsewhere
-!$OMP PARALLEL
 IF ( ukca_config%i_ukca_chem == i_ukca_chem_off ) THEN
   IF (ukca_config%l_ukca_mode) THEN
     ! No UKCA chemistry - dust only
@@ -201,8 +200,6 @@ IF (ABS(cdt*ncsteps - REAL(timestep*interval)) > 1e-4) THEN
   errcode = ukca_config%chem_timestep
   CALL ereport('UKCA_INIT',errcode,cmessage)
 END IF
-
-!$OMP END PARALLEL
 
 IF (ukca_config%l_ukca_mode) THEN
   ! Call appropriate MODE setup routine

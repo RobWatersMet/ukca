@@ -263,8 +263,6 @@ CALL ukca_calc_drydiam( n_points, glomap_variables_climatology,                &
 
 #if !defined(LFRIC)
 
-!$OMP PARALLEL DO SCHEDULE(STATIC) DEFAULT(NONE) PRIVATE(i,j,k,m)              &
-!$OMP SHARED(tdims, drydiam)
 DO m = 1, nmodes
   DO k = 1, tdims%k_end
     DO j = 1, tdims%j_end
@@ -274,14 +272,10 @@ DO m = 1, nmodes
     END DO
   END DO
 END DO
-!$OMP END PARALLEL DO
 
 DO m = 1, nmodes_list_sussbcoc_5mode
   imode = mode_list_sussbcoc_5mode(m)
 
-
-!$OMP PARALLEL DO SCHEDULE(STATIC) DEFAULT(NONE) PRIVATE(i,j,k,loop,jj,kk)     &
-!$OMP SHARED(tdims, drydiam, drydp, imode)
   DO k = 1, tdims%k_end
     kk = (k-1) * tdims%j_len * tdims%i_len
     DO j = 1, tdims%j_end
@@ -296,7 +290,6 @@ DO m = 1, nmodes_list_sussbcoc_5mode
       END DO
     END DO
   END DO
-!$OMP END PARALLEL DO
 
 END DO
 #endif

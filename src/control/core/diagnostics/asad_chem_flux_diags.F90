@@ -1518,9 +1518,6 @@ ELSE IF (ukca_config%l_ukca_asad_columns) THEN
 END IF
 
 ierr = -1
-! OMP CRITICAL will only allow one thread through this code at a time,
-! while the other threads are held until completion.
-!$OMP CRITICAL (chemical_diagnostics_init)
 IF (first_pass) THEN
   IF (firstcall) THEN
     CALL asad_chemical_diagnostics_init(ierr)
@@ -1528,7 +1525,6 @@ IF (first_pass) THEN
   END IF   ! firstcall
   first_pass=.FALSE.
 END IF     ! first_pass
-!$OMP END CRITICAL (chemical_diagnostics_init)
 
 ! Set factor for converting fluxes specified in molecules.cm^-3.s^-1 to
 ! mol.m^-3.s^-1
@@ -1537,11 +1533,6 @@ convfac = 1.0e6 / avogadro
 IF (ukca_config%l_ukca_asad_full) THEN
   ! Go through and pick up fluxes from ASAD arrays
   ! prk is in units of molecules.cm^-3.s^-1
-!$OMP PARALLEL DEFAULT(NONE) PRIVATE(l)                                        &
-!$OMP SHARED(asad_chemdiags, convfac, dpd_full, dpw_full, L_stratosphere,      &
-!$OMP        model_levels, n_chemdiags, prk_full, row_length, rows, volume,    &
-!$OMP        y_full)
-!$OMP DO SCHEDULE(DYNAMIC)
   DO l=1,n_chemdiags
     ! in this case ASAD is being called over the full domain so we
     ! need to fill %throughput by reshaping the array
@@ -1586,8 +1577,6 @@ IF (ukca_config%l_ukca_asad_full) THEN
       END SELECT
     END SELECT
   END DO ! l=1,n_chemdiags
-!$OMP END DO
-!$OMP END PARALLEL
 ELSE IF (ukca_config%l_ukca_asad_columns) THEN
   ! Go through and pick up fluxes from ASAD arrays
   ! prk is in units of molecules.cm^-3.s^-1
@@ -2181,10 +2170,6 @@ ELSE IF (ukca_config%l_ukca_asad_columns) THEN
 END IF
 
 IF (ukca_config%l_ukca_asad_full) THEN
-!$OMP PARALLEL DEFAULT(NONE) PRIVATE(l)                                        &
-!$OMP SHARED(asad_chemdiags, fpsc1_full, fpsc2_full, L_stratosphere,           &
-!$OMP        model_levels, n_chemdiags, row_length, rows)
-!$OMP DO SCHEDULE(DYNAMIC)
   DO l=1,n_chemdiags
     ! in this case ASAD is being called over the full domain so we
     ! need to fill %throughput by reshaping the array
@@ -2210,8 +2195,6 @@ IF (ukca_config%l_ukca_asad_full) THEN
       END SELECT
     END SELECT
   END DO
-!$OMP END DO
-!$OMP END PARALLEL
 ELSE IF (ukca_config%l_ukca_asad_columns) THEN
   DO l=1,n_chemdiags
     ! in this case ASAD is being called column-by column so we need

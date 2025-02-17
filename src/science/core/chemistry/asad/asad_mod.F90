@@ -956,6 +956,13 @@ module asad_mod
       enddo
       !$acc end kernels
     end if
+
+    if (.not. allocated(sh2o)) print *, "sh2o is not allocated!"
+    if (.not. allocated(shno3)) print *, "shno3 is not allocated!"
+
+    print *, "sh2o bounds:", LBOUND(sh2o,1), UBOUND(sh2o,1)
+    print *, "shno3 bounds:", LBOUND(shno3,1), UBOUND(shno3,1)
+
     !$acc kernels
     prod => pd(:,1:jpspec)
     slos => pd(:,jpspec + 1:2 * jpspec)
