@@ -196,6 +196,10 @@ ratio1(:)=mm(:)/(avogadro*rhocomp(:))
 !
 ! Below is over NMODES
 !
+!$OMP PARALLEL DO SCHEDULE(STATIC) DEFAULT(NONE)                               &
+!$OMP PRIVATE(i, icp, imode, mask, ratio2)                                     &
+!$OMP SHARED(avogadro, component, ddpcub, dvol, md, mmid, mode, nbox, ncp, nd, &
+!$OMP num_eps, ratio1, rho_so4, sixovrpix, x_equation)
 DO imode=1,nmodes
   IF (mode(imode)) THEN
     DO i=1,nbox
@@ -228,11 +232,16 @@ DO imode=1,nmodes
     ddpcub(i,imode)=sixovrpix(imode)*dvol(i,imode)
   END DO
 END DO
+!$OMP END PARALLEL DO
 
 CALL cubrt_v(nmodes*nbox, ddpcub, drydp)
 
 ! .. also check whether mean diameter too low for mode
 ! only do check for solvent modes nuc,ait,acc
+!$OMP PARALLEL DO SCHEDULE(STATIC) DEFAULT(NONE)                               &
+!$OMP PRIVATE(dp, dp_thresh1, icp, imode, jl)                                  &
+!$OMP SHARED(avogadro, component, ddplim0, drydp, dvol, md, mdt, mfrac_0,      &
+!$OMP mlo, mode, nbox, ncp, rho_so4, sixovrpix)
 DO imode=mode_nuc_sol,mode_acc_sol
   IF (mode(imode)) THEN
     DO jl=1,nbox
@@ -251,6 +260,7 @@ DO imode=mode_nuc_sol,mode_acc_sol
     END DO
   END IF
 END DO
+!$OMP END PARALLEL DO
 
 DO imode=1,nmodes
   min_dvol=MINVAL(dvol (:,imode))

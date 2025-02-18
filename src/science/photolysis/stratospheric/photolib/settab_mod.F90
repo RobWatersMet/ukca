@@ -140,6 +140,11 @@ IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
 re = planet_radius/1.0e3
 
 !     Set up path lengths (cm) up to and including 90 degrees.
+!$OMP PARALLEL DEFAULT(NONE)                                                   &
+!$OMP PRIVATE(jc,i,alpha,j,alta,altb,beta,altacm,altbcm,spl2,spl)              &
+!$OMP PRIVATE(jci,alt90,jt,altcur)                                             &
+!$OMP SHARED(tabang,altc,alt,tablen,ijt,tablenoa,tablenob,tspo2,do2c,re)
+!$OMP DO SCHEDULE(STATIC)
 DO jc = 1, jpchin
   DO i = 1, jplev
 
@@ -178,10 +183,12 @@ DO jc = 1, jpchin
     END DO
   END DO
 END DO
+!$OMP END DO
 
 
 !     Find the level index for each zenith angle and each level for
 !     which the zenith angle is 90 degrees.
+!$OMP DO SCHEDULE(STATIC)
 DO jc = jpchin + 1, jpchi
   jci = jc - jpchin
   DO j = 1, jplev
@@ -191,7 +198,11 @@ DO jc = jpchin + 1, jpchi
     ijt(jci,j) = jt
   END DO
 END DO
+!$OMP END DO
 
+
+!     When the zenith angle TABANG(JC) > 90.0 degrees.
+!$OMP DO SCHEDULE(STATIC)
 DO jc = jpchin + 1, jpchi
 
   !        A zenith angle index.
@@ -312,7 +323,13 @@ DO jc = jpchin + 1, jpchi
     END IF
   END DO
 END DO
+!$OMP END DO
 
+
+!     Set up slant path O2 column. Used in AO2SR and ANO parameterisations.
+
+!     Set up path lengths up to and including 90 degrees.
+!$OMP DO SCHEDULE(STATIC)
 DO jc = 1, jpchin
   DO i = 1, jplev
 
@@ -325,7 +342,10 @@ DO jc = 1, jpchin
 
   END DO
 END DO
+!$OMP END DO
 
+!     When the zenith angle TABANG(JC) > 90.0 degrees.
+!$OMP DO SCHEDULE(STATIC)
 DO jc = jpchin + 1, jpchi
 
   !        A zenith angle index.
@@ -363,7 +383,8 @@ DO jc = jpchin + 1, jpchi
     END IF
   END DO
 END DO
-
+!$OMP END DO
+!$OMP END PARALLEL
 
 !     Set up optical depths
 
@@ -547,19 +568,25 @@ DO jw = jplo, jphi
   IF (lscat) THEN
 
     !           Set up identity matrix
-
+!$OMP PARALLEL DEFAULT(NONE) PRIVATE(jn,jk) SHARED(delta)
+!$OMP DO SCHEDULE(STATIC)
     DO jn = 1, jplev
       DO jk = 1, jplev
         delta(jn,jk)=0.0
       END DO
     END DO
-
+!$OMP END DO
+!$OMP DO SCHEDULE(STATIC)
     DO jk = 1, jplev
       delta(jk,jk)=1.0
     END DO
-
+!$OMP END DO
+!$OMP END PARALLEL
 
         !           Two nested level loops.
+!$OMP PARALLEL DO SCHEDULE(STATIC)  DEFAULT(NONE)                              &
+!$OMP PRIVATE(jn,tean,taun,teanp,taunp,jk,teak,tauk)                           &
+!$OMP SHARED(tea,tau,teac,tauc,a,jac,albedo,b,delta,tauv,teav)
     DO jn = 1, jplev
 
       tean = tea(jn)
@@ -594,6 +621,7 @@ DO jw = jplo, jphi
         !             End of nested level loops.
       END DO
     END DO
+!$OMP END PARALLEL DO
 
 
         !           Invert the matrix B.
@@ -602,7 +630,9 @@ DO jw = jplo, jphi
 
     !           For greater than 90 degrees make sure where there is no direct
     !           sun that the initial scattering rate is zero.
-
+!$OMP PARALLEL  DEFAULT(NONE)                                                  &
+!$OMP PRIVATE(jc,jn,jk,jci,j,jt) SHARED(tabs,tabs0,binv,jw,ijt)
+!$OMP DO SCHEDULE(STATIC)
     DO jc = jpchin + 1, jpchi
 
       !              A zenith angle index.
@@ -615,7 +645,11 @@ DO jw = jplo, jphi
         IF (jt  <=  0) tabs0(j,jc,jw) = 0.0
       END DO
     END DO
+!$OMP END DO
 
+
+        !           Zenith angle loop.
+!$OMP DO SCHEDULE(STATIC)
     DO jc = 1, jpchi
 
       DO jn = 1, jplev
@@ -632,7 +666,12 @@ DO jw = jplo, jphi
 
       !           End of zenith angle loop.
     END DO
+!$OMP END DO
 
+
+        !        For greater than 90 degrees make sure where there is no direct
+        !        sun that the scattering rate is zero.
+!$OMP DO SCHEDULE(STATIC)
     DO jc = jpchin + 1, jpchi
 
       !              A zenith angle index.
@@ -645,13 +684,18 @@ DO jw = jplo, jphi
         IF (jt  <=  0) tabs(j,jc,jw) = 0.0
       END DO
     END DO
+!$OMP END DO
 
 
+        !           Check values are not negative.
+!$OMP DO SCHEDULE(STATIC)
     DO jc = 1, jpchi
       DO j = 1, jplev
         tabs(j,jc,jw) = MAX(0.0,tabs(j,jc,jw))
       END DO
     END DO
+!$OMP END DO
+!$OMP END PARALLEL
 
 
         !        Else if no scattering.
@@ -659,6 +703,8 @@ DO jw = jplo, jphi
 
 
     !           Zenith angle loop.
+!$OMP PARALLEL DO SCHEDULE(STATIC) DEFAULT(NONE)                               &
+!$OMP PRIVATE(jc,jn) SHARED(tabs,jw,tabs0)
     DO jc = 1, jpchi
 
       DO jn = 1, jplev
@@ -669,6 +715,7 @@ DO jw = jplo, jphi
       END DO
 
     END DO
+!$OMP END PARALLEL DO
 
   END IF
 
