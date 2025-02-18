@@ -954,11 +954,11 @@ module asad_mod
 
     WRITE(umMessage, *) 'RW - LBOUND shno3: ', LBOUND(shno3, dim=1)
     call umprint(ummessage, src='asad_mod')
-    WRITE(umMessage, *) 'RW - UBOUND shno3: ', umaskBOUND(shno3, dim=1)
+    WRITE(umMessage, *) 'RW - UBOUND shno3: ', ubound(shno3, dim=1)
     call umprint(ummessage, src='asad_mod')
     WRITE(umMessage, *) 'RW - LBOUND sh2o: ', LBOUND(sh2o, dim=1)
     call umprint(ummessage, src='asad_mod')
-    WRITE(umMessage, *) 'RW - UBOUND sh2o: ', umaskBOUND(sh2o, dim=1)
+    WRITE(umMessage, *) 'RW - UBOUND sh2o: ', ubound(sh2o, dim=1)
     call umprint(ummessage, src='asad_mod')
 
     if (method == int_method_nr) then
