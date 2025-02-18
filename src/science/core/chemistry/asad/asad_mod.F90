@@ -908,9 +908,13 @@ module asad_mod
       ALLOCATE(rk(1:n_points,1:jpnr))
     end if
     if (.NOT.ALLOCATED(sh2o)) then
+      WRITE(umMessage, *) 'RW - allocating sh2o'
+      call umprint(ummessage, src='asad_mod')
       ALLOCATE(sh2o(1:n_points))
     end if
     if (.NOT.ALLOCATED(shno3)) then
+      WRITE(umMessage, *) 'RW - allocating shno3'
+      call umprint(ummessage, src='asad_mod')
       ALLOCATE(shno3(1:n_points))
     end if
     if (.NOT.ALLOCATED(sph2o)) then
@@ -943,6 +947,16 @@ module asad_mod
     if (.NOT.ALLOCATED(za)) then
       ALLOCATE(za(1:n_points))
     end if
+
+    WRITE(umMessage, *) 'RW - LBOUND shno3: ', LBOUND(shno3, dim=1)
+    call umprint(ummessage, src='asad_mod')
+    WRITE(umMessage, *) 'RW - UBOUND shno3: ', umaskBOUND(shno3, dim=1)
+    call umprint(ummessage, src='asad_mod')
+    WRITE(umMessage, *) 'RW - LBOUND sh2o: ', LBOUND(sh2o, dim=1)
+    call umprint(ummessage, src='asad_mod')
+    WRITE(umMessage, *) 'RW - UBOUND sh2o: ', umaskBOUND(sh2o, dim=1)
+    call umprint(ummessage, src='asad_mod')
+
     if (method == int_method_nr) then
       if (.NOT.ALLOCATED(spfj)) then
         ALLOCATE(spfj(1:n_points,1:spfjsize_max))
@@ -1202,9 +1216,13 @@ module asad_mod
       DEALLOCATE(sph2o)
     end if
     if (ALLOCATED(shno3)) then
+      WRITE(umMessage, *) 'RW - deallocating shno3'
+      call umprint(ummessage, src='asad_mod')
       DEALLOCATE(shno3)
     end if
     if (ALLOCATED(sh2o)) then
+      WRITE(umMessage, *) 'RW - dallocating sh2o'
+      call umprint(ummessage, src='asad_mod')
       DEALLOCATE(sh2o)
     end if
     if (ALLOCATED(rk)) then
