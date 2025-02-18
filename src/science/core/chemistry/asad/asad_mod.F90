@@ -836,16 +836,22 @@ module asad_mod
     call nvtxStartRange(ModuleName // ':' // RoutineName)
     method = ukca_config%ukca_int_method
     if (ASSOCIATED(prod)) then
+      WRITE(umMessage, *) 'RW - nullifying prod'
+      call umprint(ummessage, src='asad_mod')
       ! PSyclone CodeBlock (unsupported code) reason:
       !  - Unsupported statement: Nullify_Stmt
       NULLIFY(prod)
     end if
     if (ASSOCIATED(slos)) then
+      WRITE(umMessage, *) 'RW - nullifying slos'
+      call umprint(ummessage, src='asad_mod')
       ! PSyclone CodeBlock (unsupported code) reason:
       !  - Unsupported statement: Nullify_Stmt
       NULLIFY(slos)
     end if
     if (.NOT.ALLOCATED(pd)) then
+      WRITE(umMessage, *) 'RW - allocating pd'
+      call umprint(ummessage, src='asad_mod')
       ALLOCATE(pd(1:n_points,1:2 * jpspec))
     end if
     if (.NOT.ALLOCATED(co3)) then
@@ -912,13 +918,9 @@ module asad_mod
       ALLOCATE(rk(1:n_points,1:jpnr))
     end if
     if (.NOT.ALLOCATED(sh2o)) then
-      WRITE(umMessage, *) 'RW - allocating sh2o'
-      call umprint(ummessage, src='asad_mod')
       ALLOCATE(sh2o(1:n_points))
     end if
     if (.NOT.ALLOCATED(shno3)) then
-      WRITE(umMessage, *) 'RW - allocating shno3'
-      call umprint(ummessage, src='asad_mod')
       ALLOCATE(shno3(1:n_points))
     end if
     if (.NOT.ALLOCATED(sph2o)) then
@@ -952,13 +954,9 @@ module asad_mod
       ALLOCATE(za(1:n_points))
     end if
 
-    WRITE(umMessage, *) 'RW - LBOUND shno3: ', LBOUND(shno3, dim=1)
+    WRITE(umMessage, *) 'RW - LBOUND pd: ', LBOUND(pd, dim=1)
     call umprint(ummessage, src='asad_mod')
-    WRITE(umMessage, *) 'RW - UBOUND shno3: ', ubound(shno3, dim=1)
-    call umprint(ummessage, src='asad_mod')
-    WRITE(umMessage, *) 'RW - LBOUND sh2o: ', LBOUND(sh2o, dim=1)
-    call umprint(ummessage, src='asad_mod')
-    WRITE(umMessage, *) 'RW - UBOUND sh2o: ', ubound(sh2o, dim=1)
+    WRITE(umMessage, *) 'RW - UBOUND pd: ', ubound(pd, dim=1)
     call umprint(ummessage, src='asad_mod')
 
     if (method == int_method_nr) then
@@ -1082,12 +1080,6 @@ module asad_mod
       pmintnd(idx_34) = 0.0
     enddo
     !$acc loop gang vector independent collapse(2)
-    do idx_35 = LBOUND(prod, dim=2), UBOUND(prod, dim=2), 1
-      do idx_36 = LBOUND(prod, dim=1), UBOUND(prod, dim=1), 1
-        prod(idx_36,idx_35) = 0.0
-      enddo
-    enddo
-    !$acc loop gang vector independent collapse(2)
     do idx_37 = LBOUND(qa, dim=2), UBOUND(qa, dim=2), 1
       do idx_38 = LBOUND(qa, dim=1), UBOUND(qa, dim=1), 1
         qa(idx_38,idx_37) = 0.0
@@ -1106,12 +1098,6 @@ module asad_mod
     !$acc loop gang vector independent
     do idx_42 = LBOUND(shno3, dim=1), UBOUND(shno3, dim=1), 1
       shno3(idx_42) = 0.0
-    enddo
-    !$acc loop gang vector independent collapse(2)
-    do idx_43 = LBOUND(slos, dim=2), UBOUND(slos, dim=2), 1
-      do idx_44 = LBOUND(slos, dim=1), UBOUND(slos, dim=1), 1
-        slos(idx_44,idx_43) = 0.0
-      enddo
     enddo
     !$acc loop gang vector independent
     do idx_45 = LBOUND(sph2o, dim=1), UBOUND(sph2o, dim=1), 1
@@ -1220,13 +1206,9 @@ module asad_mod
       DEALLOCATE(sph2o)
     end if
     if (ALLOCATED(shno3)) then
-      WRITE(umMessage, *) 'RW - deallocating shno3'
-      call umprint(ummessage, src='asad_mod')
       DEALLOCATE(shno3)
     end if
     if (ALLOCATED(sh2o)) then
-      WRITE(umMessage, *) 'RW - dallocating sh2o'
-      call umprint(ummessage, src='asad_mod')
       DEALLOCATE(sh2o)
     end if
     if (ALLOCATED(rk)) then
@@ -1293,6 +1275,8 @@ module asad_mod
       DEALLOCATE(co3)
     end if
     if (ALLOCATED(pd)) then
+      WRITE(umMessage, *) 'RW - deallocating pd'
+      call umprint(ummessage, src='asad_mod')
       DEALLOCATE(pd)
     end if
     if (lhook) then
