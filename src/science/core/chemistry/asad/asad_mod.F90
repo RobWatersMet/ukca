@@ -261,6 +261,10 @@ module asad_mod
   logical, public :: ljacx
   logical, public :: ltrig
   character(len = *), parameter, private :: ModuleName = 'ASAD_MOD'
+
+  INTEGER, PARAMETER :: maxLineLen = 1024
+  CHARACTER (LEN=maxLineLen)    :: umMessage
+
   public
 
   contains
