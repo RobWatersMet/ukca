@@ -744,9 +744,11 @@ module asad_mod
         ALLOCATE(spfj(1:n_points,1:spfjsize_max))
       end if
     end if
-    !$acc kernels
+
     prod => pd(:,1:jpspec)
     slos => pd(:,jpspec + 1:2 * jpspec)
+
+    !$acc kernels
     !$acc loop gang vector independent collapse(3)
     do idx_2 = LBOUND(deriv, dim=3), UBOUND(deriv, dim=3), 1
       do idx_3 = LBOUND(deriv, dim=2), UBOUND(deriv, dim=2), 1
@@ -973,8 +975,6 @@ module asad_mod
       !$acc end kernels
     end if
     !$acc kernels
-    prod => pd(:,1:jpspec)
-    slos => pd(:,jpspec + 1:2 * jpspec)
     !$acc loop gang vector independent collapse(3)
     do idx_2 = LBOUND(deriv, dim=3), UBOUND(deriv, dim=3), 1
       do idx_3 = LBOUND(deriv, dim=2), UBOUND(deriv, dim=2), 1
@@ -1152,6 +1152,10 @@ module asad_mod
       enddo
     enddo
     !$acc end kernels
+
+    prod => pd(:,1:jpspec)
+    slos => pd(:,jpspec + 1:2 * jpspec)
+
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
     end if
