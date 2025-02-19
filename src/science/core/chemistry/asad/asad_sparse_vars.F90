@@ -415,6 +415,7 @@ module asad_sparse_vars
     use parkind1, only : jpim, jprb
     use yomhook, only : dr_hook, lhook
     use nvtx
+    use umPrintMgr, only : printstatus, prstatus_normal, prstatus_oper, ummessage, umprint
     integer(kind=jpim), parameter :: zhook_in = 0
     integer(kind=jpim), parameter :: zhook_out = 1
     integer, intent(in) :: n_points
@@ -449,11 +450,14 @@ module asad_sparse_vars
     integer :: idx_8
     integer :: idx_9
 
+    WRITE(umMessage, *) "Size of lj:", LBOUND(lj,1), UBOUND(lj,1), "jpmsp:", jpmsp
+    call umprint(ummessage, src='asad_sparse_vars')
+
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
     call nvtxStartRange(ModuleName // ':' // RoutineName)
-    !$acc data copy(jpcspf, n_points, f, min_pivot, spfj, nonzero_map, cdt, total, nposterms, prk, posterms, nnegterms, negterms, nfracterms, fracterms, nstst, nmsjac, nsjac1, jpmsp, ij, lj, njcoth, ntro3, deriv)
+    !$acc data copy(jpcspf, n_points, f, min_pivot, spfj, nonzero_map, cdt, total, nposterms, prk, posterms, nnegterms, negterms, nfracterms, fracterms, nstst, nmsjac, nsjac1, jpmsp, ij, lj, njcoth, ntro3, deriv, ffrac)
     !$acc kernels
     !$acc loop gang vector independent collapse(2)
     do jl = 1, jpcspf, 1
