@@ -453,6 +453,7 @@ module asad_sparse_vars
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
     call nvtxStartRange(ModuleName // ':' // RoutineName)
+    !$acc data copy(jpcspf, n_points, f, min_pivot, spfj, nonzero_map, cdt, total, nposterms, prk, posterms, nnegterms, negterms, nfracterms, fracterms, nstst, nmsjac, nsjac1, jpmsp, ij, lj, njcoth, ntro3, deriv)
     !$acc kernels
     !$acc loop gang vector independent collapse(2)
     do jl = 1, jpcspf, 1
@@ -533,6 +534,7 @@ module asad_sparse_vars
       enddo
     enddo
     !$acc end kernels
+    !$acc end data
     if (ndepw /= 0 .OR. ndepd /= 0) then
       do js = 1, jpspec, 1
         ifamd = moffam(js)
