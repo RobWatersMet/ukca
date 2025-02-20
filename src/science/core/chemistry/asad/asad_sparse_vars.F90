@@ -456,11 +456,26 @@ module asad_sparse_vars
     WRITE(umMessage, *) "RW - jpmsp:", jpmsp
     call umprint(ummessage, src='asad_sparse_vars')
 
+    if (ALLOCATED(deriv)) then
+      WRITE(umMessage, *) 'RW - derive allocated'
+      call umprint(ummessage, src='asad_mod')
+    else
+      WRITE(umMessage, *) 'RW - derive not allocated'
+      call umprint(ummessage, src='asad_mod')
+    end if
+
+    WRITE(umMessage, *) "RW - lbounds prk:", LBOUND(prk, dim=1)
+    call umprint(ummessage, src='asad_sparse_vars')
+    WRITE(umMessage, *) "RW - lbounds spfj:", LBOUND(spfj, dim=1)
+    call umprint(ummessage, src='asad_sparse_vars')
+    WRITE(umMessage, *) "RW - lbounds deriv:", LBOUND(deriv, dim=1)
+    call umprint(ummessage, src='asad_sparse_vars')
+
+
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
     call nvtxStartRange(ModuleName // ':' // RoutineName)
-    !$acc data copy(jpcspf, n_points, f, min_pivot, spfj, nonzero_map, cdt, total, nposterms, prk, posterms, nnegterms, negterms, nfracterms, fracterms, nstst, nmsjac, nsjac1, jpmsp, ij, lj, njcoth, ntro3, deriv, ffrac)
     !$acc kernels
     !$acc loop gang vector independent collapse(2)
     do jl = 1, jpcspf, 1
@@ -518,30 +533,31 @@ module asad_sparse_vars
           ij(jn) = njcoth(irj,jn)
           lj(jn) = ij(jn) /= 0
         enddo
-        ! !$acc loop seq
-        ! do jn = 1, 2, 1
-        !   if (lj(jn)) then
-        !     p = nonzero_map(ij(jn),ntro3)
-        !     !$acc loop gang vector independent
-        !     do idx_6 = LBOUND(spfj, dim=1), UBOUND(spfj, dim=1), 1
-        !       spfj(idx_6,p) = spfj(idx_6,p) - prk(idx_6 + (LBOUND(prk, dim=1) - LBOUND(spfj, dim=1)),irj) * deriv(idx_6 + (LBOUND(deriv, dim=1) - LBOUND(spfj, dim=1)),jc,1)
-        !     enddo
-        !   end if
-        ! enddo
+        !$acc loop seq
+        do jn = 1, 2, 1
+          if (lj(jn)) then
+            p = nonzero_map(ij(jn),ntro3)
+            !$acc loop gang vector independent
+            do idx_6 = LBOUND(spfj, dim=1), UBOUND(spfj, dim=1), 1
+              ! spfj(idx_6,p) = spfj(idx_6,p) - prk(idx_6 + (LBOUND(prk, dim=1) - LBOUND(spfj, dim=1)),irj) * deriv(idx_6 + (LBOUND(deriv, dim=1) - LBOUND(spfj, dim=1)),jc,1)
+              spfj(idx_6,p) = spfj(idx_6,p) - prk(idx_6, irj) * deriv(idx_6,jc,1)
+            enddo
+          end if
+        enddo
         !$acc loop seq
         do jn = 3, jpmsp, 1
           if (lj(jn)) then
             p = nonzero_map(ij(jn),ntro3)
             !$acc loop gang vector independent
             do idx_7 = LBOUND(spfj, dim=1), UBOUND(spfj, dim=1), 1
-              spfj(idx_7,p) = spfj(idx_7,p) ! + prk(idx_7 + (LBOUND(prk, dim=1) - LBOUND(spfj, dim=1)),irj) * deriv(idx_7 + (LBOUND(deriv, dim=1) - LBOUND(spfj, dim=1)),jc,1)
+              ! spfj(idx_7,p) = spfj(idx_7,p) + prk(idx_7 + (LBOUND(prk, dim=1) - LBOUND(spfj, dim=1)),irj) * deriv(idx_7 + (LBOUND(deriv, dim=1) - LBOUND(spfj, dim=1)),jc,1)
+              spfj(idx_7,p) = spfj(idx_7,p) + prk(idx_7,irj) * deriv(idx_7,jc,1)
             enddo
           end if
         enddo
       enddo
     enddo
     !$acc end kernels
-    !$acc end data
     if (ndepw /= 0 .OR. ndepd /= 0) then
       do js = 1, jpspec, 1
         ifamd = moffam(js)
