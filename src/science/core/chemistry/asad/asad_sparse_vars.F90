@@ -450,7 +450,10 @@ module asad_sparse_vars
     integer :: idx_8
     integer :: idx_9
 
-    WRITE(umMessage, *) "Size of lj:", LBOUND(lj,1), UBOUND(lj,1)
+    WRITE(umMessage, *) "RW - Size of lj:", LBOUND(lj,1), UBOUND(lj,1)
+    call umprint(ummessage, src='asad_sparse_vars')
+
+    WRITE(umMessage, *) "RW - jpmsp:", jpmsp
     call umprint(ummessage, src='asad_sparse_vars')
 
     if (lhook) then
@@ -527,13 +530,13 @@ module asad_sparse_vars
         ! enddo
         !$acc loop seq
         do jn = 3, jpmsp, 1
-          ! if (lj(jn)) then
+          if (lj(jn)) then
             p = nonzero_map(ij(jn),ntro3)
             !$acc loop gang vector independent
             do idx_7 = LBOUND(spfj, dim=1), UBOUND(spfj, dim=1), 1
-              spfj(idx_7,p) = spfj(idx_7,p) + prk(idx_7 + (LBOUND(prk, dim=1) - LBOUND(spfj, dim=1)),irj) * deriv(idx_7 + (LBOUND(deriv, dim=1) - LBOUND(spfj, dim=1)),jc,1)
+              spfj(idx_7,p) = spfj(idx_7,p) ! + prk(idx_7 + (LBOUND(prk, dim=1) - LBOUND(spfj, dim=1)),irj) * deriv(idx_7 + (LBOUND(deriv, dim=1) - LBOUND(spfj, dim=1)),jc,1)
             enddo
-          ! end if
+          end if
         enddo
       enddo
     enddo
