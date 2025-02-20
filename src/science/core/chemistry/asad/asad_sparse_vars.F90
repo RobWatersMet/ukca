@@ -525,16 +525,16 @@ module asad_sparse_vars
         !     enddo
         !   end if
         ! enddo
-        ! !$acc loop seq
-        ! do jn = 3, jpmsp, 1
-        !   if (lj(jn)) then
-        !     p = nonzero_map(ij(jn),ntro3)
-        !     !$acc loop gang vector independent
-        !     do idx_7 = LBOUND(spfj, dim=1), UBOUND(spfj, dim=1), 1
-        !       spfj(idx_7,p) = spfj(idx_7,p) + prk(idx_7 + (LBOUND(prk, dim=1) - LBOUND(spfj, dim=1)),irj) * deriv(idx_7 + (LBOUND(deriv, dim=1) - LBOUND(spfj, dim=1)),jc,1)
-        !     enddo
-        !   end if
-        ! enddo
+        !$acc loop seq
+        do jn = 3, jpmsp, 1
+          if (lj(jn)) then
+            p = nonzero_map(ij(jn),ntro3)
+            !$acc loop gang vector independent
+            do idx_7 = LBOUND(spfj, dim=1), UBOUND(spfj, dim=1), 1
+              spfj(idx_7,p) = spfj(idx_7,p) + prk(idx_7 + (LBOUND(prk, dim=1) - LBOUND(spfj, dim=1)),irj) * deriv(idx_7 + (LBOUND(deriv, dim=1) - LBOUND(spfj, dim=1)),jc,1)
+            enddo
+          end if
+        enddo
       enddo
     enddo
     !$acc end kernels
