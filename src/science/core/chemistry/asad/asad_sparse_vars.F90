@@ -450,7 +450,7 @@ module asad_sparse_vars
     integer :: idx_8
     integer :: idx_9
 
-    WRITE(umMessage, *) "Size of lj:", LBOUND(lj,1), UBOUND(lj,1), "jpmsp:", jpmsp
+    WRITE(umMessage, *) "Size of lj:", LBOUND(lj,1), UBOUND(lj,1)
     call umprint(ummessage, src='asad_sparse_vars')
 
     if (lhook) then
@@ -505,6 +505,7 @@ module asad_sparse_vars
         enddo
       enddo
     enddo
+    #IF 0
     !$acc loop seq
     do jc = 1, nstst, 1
       !$acc loop seq
@@ -537,6 +538,7 @@ module asad_sparse_vars
         enddo
       enddo
     enddo
+    #ENDIF
     !$acc end kernels
     !$acc end data
     if (ndepw /= 0 .OR. ndepd /= 0) then
