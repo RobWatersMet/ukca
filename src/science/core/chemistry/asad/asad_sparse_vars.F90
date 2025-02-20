@@ -505,40 +505,38 @@ module asad_sparse_vars
         enddo
       enddo
     enddo
-    #IF 0
-    !$acc loop seq
-    do jc = 1, nstst, 1
-      !$acc loop seq
-      do j3 = 1, nmsjac(jc), 1
-        irj = nsjac1(j3,jc)
-        !$acc loop gang vector independent
-        do jn = 1, jpmsp, 1
-          ij(jn) = njcoth(irj,jn)
-          lj(jn) = ij(jn) /= 0
-        enddo
-        !$acc loop seq
-        do jn = 1, 2, 1
-          if (lj(jn)) then
-            p = nonzero_map(ij(jn),ntro3)
-            !$acc loop gang vector independent
-            do idx_6 = LBOUND(spfj, dim=1), UBOUND(spfj, dim=1), 1
-              spfj(idx_6,p) = spfj(idx_6,p) - prk(idx_6 + (LBOUND(prk, dim=1) - LBOUND(spfj, dim=1)),irj) * deriv(idx_6 + (LBOUND(deriv, dim=1) - LBOUND(spfj, dim=1)),jc,1)
-            enddo
-          end if
-        enddo
-        !$acc loop seq
-        do jn = 3, jpmsp, 1
-          if (lj(jn)) then
-            p = nonzero_map(ij(jn),ntro3)
-            !$acc loop gang vector independent
-            do idx_7 = LBOUND(spfj, dim=1), UBOUND(spfj, dim=1), 1
-              spfj(idx_7,p) = spfj(idx_7,p) + prk(idx_7 + (LBOUND(prk, dim=1) - LBOUND(spfj, dim=1)),irj) * deriv(idx_7 + (LBOUND(deriv, dim=1) - LBOUND(spfj, dim=1)),jc,1)
-            enddo
-          end if
-        enddo
-      enddo
-    enddo
-    #ENDIF
+    ! !$acc loop seq
+    ! do jc = 1, nstst, 1
+    !   !$acc loop seq
+    !   do j3 = 1, nmsjac(jc), 1
+    !     irj = nsjac1(j3,jc)
+    !     !$acc loop gang vector independent
+    !     do jn = 1, jpmsp, 1
+    !       ij(jn) = njcoth(irj,jn)
+    !       lj(jn) = ij(jn) /= 0
+    !     enddo
+    !     !$acc loop seq
+    !     do jn = 1, 2, 1
+    !       if (lj(jn)) then
+    !         p = nonzero_map(ij(jn),ntro3)
+    !         !$acc loop gang vector independent
+    !         do idx_6 = LBOUND(spfj, dim=1), UBOUND(spfj, dim=1), 1
+    !           spfj(idx_6,p) = spfj(idx_6,p) - prk(idx_6 + (LBOUND(prk, dim=1) - LBOUND(spfj, dim=1)),irj) * deriv(idx_6 + (LBOUND(deriv, dim=1) - LBOUND(spfj, dim=1)),jc,1)
+    !         enddo
+    !       end if
+    !     enddo
+    !     !$acc loop seq
+    !     do jn = 3, jpmsp, 1
+    !       if (lj(jn)) then
+    !         p = nonzero_map(ij(jn),ntro3)
+    !         !$acc loop gang vector independent
+    !         do idx_7 = LBOUND(spfj, dim=1), UBOUND(spfj, dim=1), 1
+    !           spfj(idx_7,p) = spfj(idx_7,p) + prk(idx_7 + (LBOUND(prk, dim=1) - LBOUND(spfj, dim=1)),irj) * deriv(idx_7 + (LBOUND(deriv, dim=1) - LBOUND(spfj, dim=1)),jc,1)
+    !         enddo
+    !       end if
+    !     enddo
+    !   enddo
+    ! enddo
     !$acc end kernels
     !$acc end data
     if (ndepw /= 0 .OR. ndepd /= 0) then
