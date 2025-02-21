@@ -566,7 +566,6 @@ module asad_sparse_vars
           ij(jn) = njcoth(irj,jn)
           lj(jn) = ij(jn) /= 0
         enddo
-        !$acc data present(spfj, prk, deriv)
         !$acc loop seq
         do jn = 1, 2, 1
           if (lj(jn)) then
