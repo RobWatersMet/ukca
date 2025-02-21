@@ -540,7 +540,7 @@ module asad_sparse_vars
             !$acc loop gang vector independent
             do idx_6 = LBOUND(spfj, dim=1), UBOUND(spfj, dim=1), 1
               ! spfj(idx_6,p) = spfj(idx_6,p) - prk(idx_6 + (LBOUND(prk, dim=1) - LBOUND(spfj, dim=1)),irj) * deriv(idx_6 + (LBOUND(deriv, dim=1) - LBOUND(spfj, dim=1)),jc,1)
-              spfj(idx_6,p) = spfj(idx_6,p) - prk(idx_6, irj) * deriv(idx_6,jc,1)
+              spfj(idx_6,p) = spfj(idx_6,p) - prk(idx_6, irj) ! * deriv(idx_6,jc,1)
             enddo
           end if
         enddo
@@ -551,7 +551,7 @@ module asad_sparse_vars
             !$acc loop gang vector independent
             do idx_7 = LBOUND(spfj, dim=1), UBOUND(spfj, dim=1), 1
               ! spfj(idx_7,p) = spfj(idx_7,p) + prk(idx_7 + (LBOUND(prk, dim=1) - LBOUND(spfj, dim=1)),irj) * deriv(idx_7 + (LBOUND(deriv, dim=1) - LBOUND(spfj, dim=1)),jc,1)
-              spfj(idx_7,p) = spfj(idx_7,p) + prk(idx_7,irj) * deriv(idx_7,jc,1)
+              spfj(idx_7,p) = spfj(idx_7,p) + prk(idx_7,irj) ! * deriv(idx_7,jc,1)
             enddo
           end if
         enddo
