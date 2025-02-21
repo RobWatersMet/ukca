@@ -472,6 +472,38 @@ module asad_sparse_vars
     call umprint(ummessage, src='asad_sparse_vars')
 
 
+    do jc = 1, nstst, 1
+      do j3 = 1, nmsjac(jc), 1
+        irj = nsjac1(j3,jc)
+        do jn = 1, jpmsp, 1
+          ij(jn) = njcoth(irj,jn)
+          lj(jn) = ij(jn) /= 0
+        enddo
+        do jn = 1, 2, 1
+          if (lj(jn)) then
+            p = nonzero_map(ij(jn),ntro3)
+            if (p < LBOUND(spfj,2) .or. p > UBOUND(spfj,2)) then
+              print *, "RW ERROR: Out of bounds p = ", p
+            endif
+            if (irj < LBOUND(prk,2) .or. irj > UBOUND(prk,2)) then
+              print *, "RW ERROR: Out of bounds irj = ", p
+            endif
+          end if
+        enddo
+        do jn = 3, jpmsp, 1
+          if (lj(jn)) then
+            p = nonzero_map(ij(jn),ntro3)
+            if (p < LBOUND(spfj,2) .or. p > UBOUND(spfj,2)) then
+              print *, "RW ERROR: Out of bounds p = ", p
+            endif
+            if (irj < LBOUND(prk,2) .or. irj > UBOUND(prk,2)) then
+              print *, "RW ERROR: Out of bounds irj = ", p
+            endif
+          end if
+        enddo
+      enddo
+    enddo
+
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
@@ -523,6 +555,7 @@ module asad_sparse_vars
         enddo
       enddo
     enddo
+
     !$acc loop seq
     do jc = 1, nstst, 1
       !$acc loop seq
@@ -533,6 +566,7 @@ module asad_sparse_vars
           ij(jn) = njcoth(irj,jn)
           lj(jn) = ij(jn) /= 0
         enddo
+        !$acc data present(spfj, prk, deriv)
         !$acc loop seq
         do jn = 1, 2, 1
           if (lj(jn)) then
@@ -540,7 +574,8 @@ module asad_sparse_vars
             !$acc loop gang vector independent
             do idx_6 = LBOUND(spfj, dim=1), UBOUND(spfj, dim=1), 1
               ! spfj(idx_6,p) = spfj(idx_6,p) - prk(idx_6 + (LBOUND(prk, dim=1) - LBOUND(spfj, dim=1)),irj) * deriv(idx_6 + (LBOUND(deriv, dim=1) - LBOUND(spfj, dim=1)),jc,1)
-              spfj(idx_6,p) = spfj(idx_6,p)! - prk(idx_6, irj)  * deriv(idx_6,jc,1)
+              !$acc atomic
+              spfj(idx_6,p) = spfj(idx_6,p) - prk(idx_6, irj)!  * deriv(idx_6,jc,1)
             enddo
           end if
         enddo
@@ -551,7 +586,8 @@ module asad_sparse_vars
             !$acc loop gang vector independent
             do idx_7 = LBOUND(spfj, dim=1), UBOUND(spfj, dim=1), 1
               ! spfj(idx_7,p) = spfj(idx_7,p) + prk(idx_7 + (LBOUND(prk, dim=1) - LBOUND(spfj, dim=1)),irj) * deriv(idx_7 + (LBOUND(deriv, dim=1) - LBOUND(spfj, dim=1)),jc,1)
-              spfj(idx_7,p) = spfj(idx_7,p)! + prk(idx_7,irj) ! * deriv(idx_7,jc,1)
+              !$acc atomic
+              spfj(idx_7,p) = spfj(idx_7,p) + prk(idx_7,irj) ! * deriv(idx_7,jc,1)
             enddo
           end if
         enddo
