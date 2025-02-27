@@ -557,6 +557,7 @@ module asad_sparse_vars
     enddo
     !$acc end kernels
 
+    ! issue with kernel region cover whole section below - solution is to move kernel regions to inner loop
     do jc = 1, nstst, 1
       do j3 = 1, nmsjac(jc), 1
         irj = nsjac1(j3,jc)
@@ -566,13 +567,16 @@ module asad_sparse_vars
         enddo
         do jn = 1, 2, 1
           if (lj(jn)) then
+            print *, "RW: P = ", nonzero_map(ij(jn),ntro3)
             !$acc kernels
             p = nonzero_map(ij(jn),ntro3)
-            !$acc loop gang vector independent
-            do idx_6 = LBOUND(spfj, dim=1), UBOUND(spfj, dim=1), 1
-              spfj(idx_6,p) = spfj(idx_6,p) - prk(idx_6 + (LBOUND(prk, dim=1) - LBOUND(spfj, dim=1)),irj) * deriv(idx_6 + (LBOUND(deriv, dim=1) - LBOUND(spfj, dim=1)),jc,1)
-              ! spfj(idx_6,p) = spfj(idx_6,p) - prk(idx_6, irj)!  * deriv(idx_6,jc,1)
-            enddo
+            ! !$acc loop gang vector independent
+            ! do idx_6 = LBOUND(spfj, dim=1), UBOUND(spfj, dim=1), 1
+            !   spfj(idx_6,p) = spfj(idx_6,p) - prk(idx_6 + (LBOUND(prk, dim=1) - LBOUND(spfj, dim=1)),irj) * deriv(idx_6 + (LBOUND(deriv, dim=1) - LBOUND(spfj, dim=1)),jc,1)
+            !   ! spfj(idx_6,p) = spfj(idx_6,p) - prk(idx_6, irj)!  * deriv(idx_6,jc,1)
+            ! enddo
+            spfj(:,p) = spfj(:,p) -                                                &
+            prk(:,irj)*deriv(:,jc,1) ! *prkrat(jc)
             !$acc end kernels
           end if
         enddo
