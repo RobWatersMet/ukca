@@ -838,21 +838,21 @@ module asad_mod
     call nvtxStartRange(ModuleName // ':' // RoutineName)
     method = ukca_config%ukca_int_method
     if (ASSOCIATED(prod)) then
-      WRITE(umMessage, *) 'RW - nullifying prod'
+      print *, 'RW - nullifying prod'
       call umprint(ummessage, src='asad_mod')
       ! PSyclone CodeBlock (unsupported code) reason:
       !  - Unsupported statement: Nullify_Stmt
       NULLIFY(prod)
     end if
     if (ASSOCIATED(slos)) then
-      WRITE(umMessage, *) 'RW - nullifying slos'
+      print *, 'RW - nullifying slos'
       call umprint(ummessage, src='asad_mod')
       ! PSyclone CodeBlock (unsupported code) reason:
       !  - Unsupported statement: Nullify_Stmt
       NULLIFY(slos)
     end if
     if (.NOT.ALLOCATED(pd)) then
-      WRITE(umMessage, *) 'RW - allocating pd'
+      print *, 'RW - allocating pd'
       call umprint(ummessage, src='asad_mod')
       ALLOCATE(pd(1:n_points,1:2 * jpspec))
     end if
@@ -956,9 +956,9 @@ module asad_mod
       ALLOCATE(za(1:n_points))
     end if
 
-    WRITE(umMessage, *) 'RW - LBOUND pd: ', LBOUND(pd, dim=1)
+    print *, 'RW - LBOUND pd: ', LBOUND(pd, dim=1)
     call umprint(ummessage, src='asad_mod')
-    WRITE(umMessage, *) 'RW - UBOUND pd: ', ubound(pd, dim=1)
+    print *, 'RW - UBOUND pd: ', ubound(pd, dim=1)
     call umprint(ummessage, src='asad_mod')
 
     if (method == int_method_nr) then
@@ -1279,7 +1279,7 @@ module asad_mod
       DEALLOCATE(co3)
     end if
     if (ALLOCATED(pd)) then
-      WRITE(umMessage, *) 'RW - deallocating pd'
+      print *, 'RW - deallocating pd'
       call umprint(ummessage, src='asad_mod')
       DEALLOCATE(pd)
     end if

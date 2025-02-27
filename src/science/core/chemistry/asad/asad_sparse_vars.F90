@@ -198,7 +198,7 @@ module asad_sparse_vars
       enddo
     enddo
     !$acc end kernels
-    WRITE(umMessage, *) "RW - part 0 - min value of nonzero_map = ", minval(nonzero_map)
+    print *, "RW - part 0 - min value of nonzero_map = ", minval(nonzero_map)
     do i = 1, jpcspf, 1
       if (mype == 0 .AND. printstatus >= prstatus_oper) then
         ! PSyclone CodeBlock (unsupported code) reason:
@@ -451,27 +451,27 @@ module asad_sparse_vars
     integer :: idx_8
     integer :: idx_9
 
-    WRITE(umMessage, *) "RW - part 4 - min value of nonzero_map = ", minval(nonzero_map)
+    print *, "RW - part 4 - min value of nonzero_map = ", minval(nonzero_map)
 
-    WRITE(umMessage, *) "RW - Size of lj:", LBOUND(lj,1), UBOUND(lj,1)
+    print *, "RW - Size of lj:", LBOUND(lj,1), UBOUND(lj,1)
     call umprint(ummessage, src='asad_sparse_vars')
 
-    WRITE(umMessage, *) "RW - jpmsp:", jpmsp
+    print *, "RW - jpmsp:", jpmsp
     call umprint(ummessage, src='asad_sparse_vars')
 
     if (ALLOCATED(deriv)) then
-      WRITE(umMessage, *) 'RW - derive allocated'
+      print *, 'RW - derive allocated'
       call umprint(ummessage, src='asad_mod')
     else
-      WRITE(umMessage, *) 'RW - derive not allocated'
+      print *, 'RW - derive not allocated'
       call umprint(ummessage, src='asad_mod')
     end if
 
-    WRITE(umMessage, *) "RW - lbounds prk:", LBOUND(prk, dim=1)
+    print *, "RW - lbounds prk:", LBOUND(prk, dim=1)
     call umprint(ummessage, src='asad_sparse_vars')
-    WRITE(umMessage, *) "RW - lbounds spfj:", LBOUND(spfj, dim=1)
+    print *, "RW - lbounds spfj:", LBOUND(spfj, dim=1)
     call umprint(ummessage, src='asad_sparse_vars')
-    WRITE(umMessage, *) "RW - lbounds deriv:", LBOUND(deriv, dim=1)
+    print *, "RW - lbounds deriv:", LBOUND(deriv, dim=1)
     call umprint(ummessage, src='asad_sparse_vars')
 
 
