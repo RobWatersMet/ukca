@@ -248,16 +248,16 @@ module asad_spimpmjp_mod
     if (nstst /= 0) then
       call asad_steady(n_points)
     end if
-    WRITE(umMessage, *) "RW - part 1 - min value of nonzero_map = ", min(nonzero_map)
+    WRITE(umMessage, *) "RW - part 1 - min value of nonzero_map = ", minval(nonzero_map)
     if (first_pass) then
       if (first) then
         call setup_spfuljac()
         first = .false.
-        WRITE(umMessage, *) "RW - part 2 - min value of nonzero_map = ", min(nonzero_map)
+        WRITE(umMessage, *) "RW - part 2 - min value of nonzero_map = ", minval(nonzero_map)
       end if
       first_pass = .false.
     end if
-    WRITE(umMessage, *) "RW - part 3 - min value of nonzero_map = ", min(nonzero_map)
+    WRITE(umMessage, *) "RW - part 3 - min value of nonzero_map = ", minval(nonzero_map)
     call spfuljac(n_points, cdt, f_min, nonzero_map, spfj)
     call forward_euler(n_points, f, f_initial, f_min, nonzero_map, spfj)
     do iter = 1, ukca_config%nrsteps, 1

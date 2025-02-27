@@ -451,7 +451,7 @@ module asad_sparse_vars
     integer :: idx_8
     integer :: idx_9
 
-    WRITE(umMessage, *) "RW - part 4 - min value of nonzero_map = ", min(nonzero_map)
+    WRITE(umMessage, *) "RW - part 4 - min value of nonzero_map = ", minval(nonzero_map)
 
     WRITE(umMessage, *) "RW - Size of lj:", LBOUND(lj,1), UBOUND(lj,1)
     call umprint(ummessage, src='asad_sparse_vars')
