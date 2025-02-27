@@ -198,7 +198,7 @@ module asad_sparse_vars
       enddo
     enddo
     !$acc end kernels
-    WRITE(umMessage, *) "RW - part 0 - min value of nonzero_map = ", min(nonzero_map)
+    WRITE(umMessage, *) "RW - part 0 - min value of nonzero_map = ", minval(nonzero_map)
     do i = 1, jpcspf, 1
       if (mype == 0 .AND. printstatus >= prstatus_oper) then
         ! PSyclone CodeBlock (unsupported code) reason:
