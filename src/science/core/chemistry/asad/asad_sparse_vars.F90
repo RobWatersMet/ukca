@@ -198,7 +198,12 @@ module asad_sparse_vars
       enddo
     enddo
     !$acc end kernels
+    print *, "RW - value of jpcspf = ", jpcspf
     print *, "RW - part 0 - min value of nonzero_map = ", minval(nonzero_map)
+    print *, "RW - lbounds nonzero dim 2", lbound(nonzero_map, 2)
+    print *, "RW - ubounds nonzero dim 2", ubound(nonzero_map, 2)
+    print *, "RW - lbounds nonzero dim 1", lbound(nonzero_map, 1)
+    print *, "RW - ubounds nonzero dim 1", ubound(nonzero_map, 1)
     do i = 1, jpcspf, 1
       if (mype == 0 .AND. printstatus >= prstatus_oper) then
         ! PSyclone CodeBlock (unsupported code) reason:
@@ -579,7 +584,7 @@ module asad_sparse_vars
             !   ! spfj(idx_6,p) = spfj(idx_6,p) - prk(idx_6, irj)!  * deriv(idx_6,jc,1)
             ! enddo
             spfj(:,p) = spfj(:,p) -                                                &
-            prk(:,irj)*deriv(:,jc,1) ! *prkrat(jc)
+              prk(:,irj)*deriv(:,jc,1) ! *prkrat(jc)
             !$acc end kernels
           end if
         enddo
