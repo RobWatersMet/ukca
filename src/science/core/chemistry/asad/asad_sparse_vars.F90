@@ -1175,7 +1175,7 @@ module asad_sparse_vars
   function array_xor_checksum(arr) result(checksum)
     implicit none
     integer, intent(in) :: arr(:)
-    integer :: checksum, i
+    integer :: checksum, i, size
 
     checksum = 0
     do i = 1, size
