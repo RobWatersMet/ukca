@@ -1172,15 +1172,50 @@ module asad_sparse_vars
 
   end subroutine spresolv2
 
-  function array_xor_checksum(arr) result(checksum)
+  ! Overloaded interface for both integer and real arrays
+  interface array_xor_checksum
+    module procedure array_xor_checksum_int
+    module procedure array_xor_checksum_real
+    module procedure array_xor_checksum_logical
+  end interface
+
+  function array_xor_checksum_int(arr) result(checksum)
     implicit none
-    integer, intent(in) :: arr(:)
-    integer :: checksum, i, size
+    integer, intent(in)  :: arr(:)
+    integer              :: checksum
+    integer              :: i
 
     checksum = 0
-    do i = 1, size
+    do i = 1, size(arr)
       checksum = ieor(checksum, arr(i))
     end do
-  end function array_xor_checksum
+  end function array_xor_checksum_int
+
+  function array_xor_checksum_real(arr) result(checksum)
+    implicit none
+    real, intent(in)     :: arr(:)
+    integer              :: checksum
+    integer              :: i, int_value
+
+    checksum = 0
+    do i = 1, size(arr)
+        int_value = int(arr(i) * 1e6)  ! Convert to int with scaling
+        checksum = ieor(checksum, int_value)
+    end do
+  end function array_xor_checksum_real
+
+  function array_xor_checksum_logical(arr) result(checksum)
+    implicit none
+    logical, intent(in)     :: arr(:)
+    integer                 :: checksum
+    integer                 :: i, int_value
+
+    checksum = 0
+    do i = 1, size(arr)
+        int_value = merge(1, 0, arr(i))
+        checksum = ieor(checksum, int_value)
+    end do
+  end function array_xor_checksum_logical
+
 
 end module asad_sparse_vars
