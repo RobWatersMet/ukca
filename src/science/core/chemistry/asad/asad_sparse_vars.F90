@@ -3,7 +3,53 @@ module asad_sparse_vars
   character(len = *), parameter, private :: ModuleName = 'ASAD_SPARSE_VARS'
   public
 
+  ! Overloaded interface for both integer and real arrays
+  interface array_xor_checksum
+    module procedure array_xor_checksum_int
+    module procedure array_xor_checksum_real
+    module procedure array_xor_checksum_logical
+  end interface
+
   contains
+
+  function array_xor_checksum_int(arr) result(checksum)
+    implicit none
+    integer, intent(in)  :: arr(..)
+    integer              :: checksum
+    integer              :: i
+
+    checksum = 0
+    do i = 1, size(arr)
+      checksum = ieor(checksum, arr(i))
+    end do
+  end function array_xor_checksum_int
+
+  function array_xor_checksum_real(arr) result(checksum)
+    implicit none
+    real, intent(in)     :: arr(..)
+    integer              :: checksum
+    integer              :: i, int_value
+
+    checksum = 0
+    do i = 1, size(arr)
+        int_value = int(arr(i) * 1e6)  ! Convert to int with scaling
+        checksum = ieor(checksum, int_value)
+    end do
+  end function array_xor_checksum_real
+
+  function array_xor_checksum_logical(arr) result(checksum)
+    implicit none
+    logical, intent(in)     :: arr(..)
+    integer                 :: checksum
+    integer                 :: i, int_value
+
+    checksum = 0
+    do i = 1, size(arr)
+        int_value = merge(1, 0, arr(i))
+        checksum = ieor(checksum, int_value)
+    end do
+  end function array_xor_checksum_logical
+
   subroutine setup_spfuljac()
     use asad_mod, only : base_tracer, ffrac, fracterms, frpx, jpcspf, jpfrpx, jpmsp, jpspec, madvtr, maxfterms, maxterms, modified_map, ndepd, ndepw, negterms, nfracterms, nfrpx, njcoth, nltrf, nmsjac, nmzjac, nnegterms, nonzero_map, nonzero_map_unordered, npdfr, nposterms, nsjac1, nstst, ntabpd, ntrf, ntro3, nzjac1, posterms, reorder, specf, spfjsize_max, total, ztabpd
     use parkind1, only : jpim, jprb
@@ -1171,51 +1217,5 @@ module asad_sparse_vars
     return
 
   end subroutine spresolv2
-
-  ! Overloaded interface for both integer and real arrays
-  interface array_xor_checksum
-    module procedure array_xor_checksum_int
-    module procedure array_xor_checksum_real
-    module procedure array_xor_checksum_logical
-  end interface
-
-  function array_xor_checksum_int(arr) result(checksum)
-    implicit none
-    integer, intent(in)  :: arr(:)
-    integer              :: checksum
-    integer              :: i
-
-    checksum = 0
-    do i = 1, size(arr)
-      checksum = ieor(checksum, arr(i))
-    end do
-  end function array_xor_checksum_int
-
-  function array_xor_checksum_real(arr) result(checksum)
-    implicit none
-    real, intent(in)     :: arr(:)
-    integer              :: checksum
-    integer              :: i, int_value
-
-    checksum = 0
-    do i = 1, size(arr)
-        int_value = int(arr(i) * 1e6)  ! Convert to int with scaling
-        checksum = ieor(checksum, int_value)
-    end do
-  end function array_xor_checksum_real
-
-  function array_xor_checksum_logical(arr) result(checksum)
-    implicit none
-    logical, intent(in)     :: arr(:)
-    integer                 :: checksum
-    integer                 :: i, int_value
-
-    checksum = 0
-    do i = 1, size(arr)
-        int_value = merge(1, 0, arr(i))
-        checksum = ieor(checksum, int_value)
-    end do
-  end function array_xor_checksum_logical
-
 
 end module asad_sparse_vars
