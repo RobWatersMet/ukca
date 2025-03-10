@@ -5,19 +5,24 @@ module asad_sparse_vars
 
   ! Overloaded interface for both integer and real arrays
   interface array_xor_checksum
-    module procedure array_xor_checksum_int
-    module procedure array_xor_checksum_real
-    module procedure array_xor_checksum_logical
+    module procedure array_xor_checksum_int_2d
+    module procedure array_xor_checksum_int_1d
+    module procedure array_xor_checksum_real_2d
+    module procedure array_xor_checksum_real_1d
+    module procedure array_xor_checksum_logical_2d
+    module procedure array_xor_checksum_logical_1d
   end interface
 
   contains
 
-  function array_xor_checksum_int(arr) result(checksum)
+  function array_xor_checksum_int_2d(arr) result(checksum)
     implicit none
-    integer, intent(in)  :: arr(..)
-    integer              :: arrflat(:)
+    integer, intent(in)  :: arr(:,:)
+    integer, allocatable :: arrflat(:)
     integer              :: checksum
     integer              :: i
+
+    allocate(arrflat(size(arr)))
 
     ! need to flatten if using arr(i)
     arrflat = reshape(arr, [size(arr)])
@@ -26,14 +31,28 @@ module asad_sparse_vars
     do i = 1, size(arr)
       checksum = ieor(checksum, arrflat(i))
     end do
-  end function array_xor_checksum_int
+  end function array_xor_checksum_int_2d
 
-  function array_xor_checksum_real(arr) result(checksum)
+  function array_xor_checksum_int_1d(arr) result(checksum)
     implicit none
-    real, intent(in)     :: arr(..)
-    real                 :: arrflat(:)
+    integer, intent(in)  :: arr(:)
+    integer              :: checksum
+    integer              :: i
+
+    checksum = 0
+    do i = 1, size(arr)
+      checksum = ieor(checksum, arr(i))
+    end do
+  end function array_xor_checksum_int_1d
+
+  function array_xor_checksum_real_2d(arr) result(checksum)
+    implicit none
+    real, intent(in)     :: arr(:, :)
+    real, allocatable    :: arrflat(:)
     integer              :: checksum
     integer              :: i, int_value
+
+    allocate(arrflat(size(arr)))
 
     ! need to flatten if using arr(i)
     arrflat = reshape(arr, [size(arr)])
@@ -43,14 +62,29 @@ module asad_sparse_vars
         int_value = int(arrflat(i) * 1e6)  ! Convert to int with scaling
         checksum = ieor(checksum, int_value)
     end do
-  end function array_xor_checksum_real
+  end function array_xor_checksum_real_2d
 
-  function array_xor_checksum_logical(arr) result(checksum)
+  function array_xor_checksum_real_1d(arr) result(checksum)
     implicit none
-    logical, intent(in)     :: arr(..)
-    logical                 :: arrflat(:)
+    real, intent(in)     :: arr(:)
+    integer              :: checksum
+    integer              :: i, int_value
+
+    checksum = 0
+    do i = 1, size(arr)
+        int_value = int(arr(i) * 1e6)  ! Convert to int with scaling
+        checksum = ieor(checksum, int_value)
+    end do
+  end function array_xor_checksum_real_1d
+
+  function array_xor_checksum_logical_2d(arr) result(checksum)
+    implicit none
+    logical, intent(in)     :: arr(:,:)
+    logical, allocatable    :: arrflat(:)
     integer                 :: checksum
     integer                 :: i, int_value
+
+    allocate(arrflat(size(arr)))
 
     ! need to flatten if using arr(i)
     arrflat = reshape(arr, [size(arr)])
@@ -60,7 +94,20 @@ module asad_sparse_vars
         int_value = merge(1, 0, arrflat(i))
         checksum = ieor(checksum, int_value)
     end do
-  end function array_xor_checksum_logical
+  end function array_xor_checksum_logical_2d
+
+  function array_xor_checksum_logical_1d(arr) result(checksum)
+    implicit none
+    logical, intent(in)     :: arr(:)
+    integer                 :: checksum
+    integer                 :: i, int_value
+
+    checksum = 0
+    do i = 1, size(arr)
+        int_value = merge(1, 0, arr(i))
+        checksum = ieor(checksum, int_value)
+    end do
+  end function array_xor_checksum_logical_1d
 
   subroutine setup_spfuljac()
     use asad_mod, only : base_tracer, ffrac, fracterms, frpx, jpcspf, jpfrpx, jpmsp, jpspec, madvtr, maxfterms, maxterms, modified_map, ndepd, ndepw, negterms, nfracterms, nfrpx, njcoth, nltrf, nmsjac, nmzjac, nnegterms, nonzero_map, nonzero_map_unordered, npdfr, nposterms, nsjac1, nstst, ntabpd, ntrf, ntro3, nzjac1, posterms, reorder, specf, spfjsize_max, total, ztabpd
