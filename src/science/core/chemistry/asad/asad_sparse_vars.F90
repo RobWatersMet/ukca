@@ -223,6 +223,27 @@ module asad_sparse_vars
       print*, 'Checksum - fracterms in ', RoutineName, ' = ', checksum_result
       checksum_result = array_xor_checksum(ffrac)
       print*, 'Checksum - ffrac in ', RoutineName, ' = ', checksum_result
+
+      checksum_result = array_xor_checksum(nmzjac)
+      print*, 'Checksum - nmzjac in ', RoutineName, ' = ', checksum_result
+      checksum_result = array_xor_checksum(nltrf)
+      print*, 'Checksum - nltrf in ', RoutineName, ' = ', checksum_result
+      checksum_result = array_xor_checksum(nmzjac)
+      print*, 'Checksum - nmzjac in ', RoutineName, ' = ', checksum_result
+      checksum_result = array_xor_checksum(nzjac1)
+      print*, 'Checksum - nzjac1 in ', RoutineName, ' = ', checksum_result
+      checksum_result = array_xor_checksum(njcoth)
+      print*, 'Checksum - njcoth in ', RoutineName, ' = ', checksum_result
+
+      checksum_result = array_xor_checksum(npdfr)
+      print*, 'Checksum - npdfr in ', RoutineName, ' = ', checksum_result
+      checksum_result = array_xor_checksum(ntabpd)
+      print*, 'Checksum - ntabpd in ', RoutineName, ' = ', checksum_result
+      checksum_result = array_xor_checksum(nmsjac)
+      print*, 'Checksum - nmsjac in ', RoutineName, ' = ', checksum_result
+      checksum_result = array_xor_checksum(nsjac1)
+      print*, 'Checksum - nsjac1 in ', RoutineName, ' = ', checksum_result
+
     #endif
 
     !$acc kernels
@@ -291,6 +312,26 @@ module asad_sparse_vars
       print*, 'Checksum - ij in ', RoutineName, ' = ', checksum_result
       checksum_result = array_xor_checksum(lj)
       print*, 'Checksum - lj in ', RoutineName, ' = ', checksum_result
+
+      checksum_result = array_xor_checksum(nmzjac)
+      print*, 'Checksum - nmzjac in ', RoutineName, ' = ', checksum_result
+      checksum_result = array_xor_checksum(nltrf)
+      print*, 'Checksum - nltrf in ', RoutineName, ' = ', checksum_result
+      checksum_result = array_xor_checksum(nmzjac)
+      print*, 'Checksum - nmzjac in ', RoutineName, ' = ', checksum_result
+      checksum_result = array_xor_checksum(nzjac1)
+      print*, 'Checksum - nzjac1 in ', RoutineName, ' = ', checksum_result
+      checksum_result = array_xor_checksum(njcoth)
+      print*, 'Checksum - njcoth in ', RoutineName, ' = ', checksum_result
+
+      checksum_result = array_xor_checksum(npdfr)
+      print*, 'Checksum - npdfr in ', RoutineName, ' = ', checksum_result
+      checksum_result = array_xor_checksum(ntabpd)
+      print*, 'Checksum - ntabpd in ', RoutineName, ' = ', checksum_result
+      checksum_result = array_xor_checksum(nmsjac)
+      print*, 'Checksum - nmsjac in ', RoutineName, ' = ', checksum_result
+      checksum_result = array_xor_checksum(nsjac1)
+      print*, 'Checksum - nsjac1 in ', RoutineName, ' = ', checksum_result
     #endif
 
     if (ndepw /= 0 .OR. ndepd /= 0) then
