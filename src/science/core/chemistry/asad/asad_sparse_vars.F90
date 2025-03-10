@@ -22,6 +22,8 @@ module asad_sparse_vars
     integer              :: checksum
     integer              :: i
 
+    print*, 'Im in array_xor_checksum_int_2d'
+
     allocate(arrflat(size(arr)))
 
     ! need to flatten if using arr(i)
@@ -39,6 +41,8 @@ module asad_sparse_vars
     integer              :: checksum
     integer              :: i
 
+    print*, 'Im in array_xor_checksum_int_1d'
+
     checksum = 0
     do i = 1, size(arr)
       checksum = ieor(checksum, arr(i))
@@ -47,10 +51,12 @@ module asad_sparse_vars
 
   function array_xor_checksum_real_2d(arr) result(checksum)
     implicit none
-    real, intent(in)     :: arr(:, :)
+    real, intent(in)     :: arr(:,:)
     real, allocatable    :: arrflat(:)
     integer              :: checksum
     integer              :: i, int_value
+
+    print*, 'Im in array_xor_checksum_real_2d'
 
     allocate(arrflat(size(arr)))
 
@@ -70,6 +76,8 @@ module asad_sparse_vars
     integer              :: checksum
     integer              :: i, int_value
 
+    print*, 'Im in array_xor_checksum_real_1d'
+
     checksum = 0
     do i = 1, size(arr)
         int_value = int(arr(i) * 1e6)  ! Convert to int with scaling
@@ -83,6 +91,8 @@ module asad_sparse_vars
     logical, allocatable    :: arrflat(:)
     integer                 :: checksum
     integer                 :: i, int_value
+
+    print*, 'Im in array_xor_checksum_logical_2d'
 
     allocate(arrflat(size(arr)))
 
@@ -101,6 +111,8 @@ module asad_sparse_vars
     logical, intent(in)     :: arr(:)
     integer                 :: checksum
     integer                 :: i, int_value
+
+    print*, 'Im in array_xor_checksum_logical_1d'
 
     checksum = 0
     do i = 1, size(arr)
