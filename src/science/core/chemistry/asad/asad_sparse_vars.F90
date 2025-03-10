@@ -207,8 +207,6 @@ module asad_sparse_vars
       print*, 'Checksum - activity in ', RoutineName, ' = ', checksum_result
       checksum_result = array_xor_checksum(reorder)
       print*, 'Checksum - reorder in ', RoutineName, ' = ', checksum_result
-      checksum_result = array_xor_checksum(permute)
-      print*, 'Checksum - permute in ', RoutineName, ' = ', checksum_result
       checksum_result = array_xor_checksum(modified_map)
       print*, 'Checksum - modified_map in ', RoutineName, ' = ', checksum_result
       checksum_result = array_xor_checksum(nposterms)
