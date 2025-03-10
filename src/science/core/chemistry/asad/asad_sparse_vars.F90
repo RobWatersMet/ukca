@@ -246,29 +246,29 @@ module asad_sparse_vars
 
     #endif
 
-    !$acc kernels
-    !$acc loop gang vector independent collapse(2)
+    ! !$acc kernels
+    ! !$acc loop gang vector independent collapse(2)
     do idx = LBOUND(map, dim=2), UBOUND(map, dim=2), 1
       do idx_1 = LBOUND(map, dim=1), UBOUND(map, dim=1), 1
         map(idx_1,idx) = 0
       enddo
     enddo
-    !$acc loop gang vector independent
+    ! !$acc loop gang vector independent
     do i = 1, jpcspf, 1
       map(i,i) = 1
     enddo
-    !$acc loop seq
+    ! !$acc loop seq
     do jc = 1, ntrf, 1
       itrcr = nltrf(jc)
-      !$acc loop seq
+      ! !$acc loop seq
       do j3 = 1, nmzjac(itrcr), 1
         irj = nzjac1(j3,itrcr)
-        !$acc loop gang vector independent
+        ! !$acc loop gang vector independent
         do jn = 1, jpmsp, 1
           ij(jn) = njcoth(irj,jn)
           lj(jn) = ij(jn) /= 0
         enddo
-        !$acc loop seq
+        ! !$acc loop seq
         do jn = 1, jpmsp, 1
           if (lj(jn)) then
             map(ij(jn),itrcr) = 1
@@ -277,7 +277,7 @@ module asad_sparse_vars
         if (npdfr(irj,1) /= 0) then
           i1 = npdfr(irj,1)
           i2 = npdfr(irj,2)
-          !$acc loop seq
+          ! !$acc loop seq
           do jn = i1, i2, 1
             isx = ntabpd(jn,1)
             map(isx,itrcr) = 1
@@ -285,17 +285,17 @@ module asad_sparse_vars
         end if
       enddo
     enddo
-    !$acc loop seq
+    ! !$acc loop seq
     do jc = 1, nstst, 1
-      !$acc loop seq
+      ! !$acc loop seq
       do j3 = 1, nmsjac(jc), 1
         irj = nsjac1(j3,jc)
-        !$acc loop gang vector independent
+        ! !$acc loop gang vector independent
         do jn = 1, jpmsp, 1
           ij(jn) = njcoth(irj,jn)
           lj(jn) = ij(jn) /= 0
         enddo
-        !$acc loop seq
+        ! !$acc loop seq
         do jn = 1, jpmsp, 1
           if (lj(jn)) then
             map(ij(jn),ntro3) = 1
@@ -303,7 +303,7 @@ module asad_sparse_vars
         enddo
       enddo
     enddo
-    !$acc end kernels
+    ! !$acc end kernels
 
     #ifdef ARRAYCHECKSUM
       checksum_result = array_xor_checksum(map)
