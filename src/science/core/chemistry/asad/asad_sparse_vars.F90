@@ -15,24 +15,32 @@ module asad_sparse_vars
   function array_xor_checksum_int(arr) result(checksum)
     implicit none
     integer, intent(in)  :: arr(..)
+    integer, pointer     :: arrflat(:)
     integer              :: checksum
     integer              :: i
 
+    ! need to flatten if using arr(i)
+    arrflat => reshape(arr, [size(arr)])
+
     checksum = 0
     do i = 1, size(arr)
-      checksum = ieor(checksum, arr(i))
+      checksum = ieor(checksum, arrflat(i))
     end do
   end function array_xor_checksum_int
 
   function array_xor_checksum_real(arr) result(checksum)
     implicit none
     real, intent(in)     :: arr(..)
+    real, pointer        :: arrflat(:)
     integer              :: checksum
     integer              :: i, int_value
 
+    ! need to flatten if using arr(i)
+    arrflat => reshape(arr, [size(arr)])
+
     checksum = 0
     do i = 1, size(arr)
-        int_value = int(arr(i) * 1e6)  ! Convert to int with scaling
+        int_value = int(arrflat(i) * 1e6)  ! Convert to int with scaling
         checksum = ieor(checksum, int_value)
     end do
   end function array_xor_checksum_real
@@ -40,12 +48,16 @@ module asad_sparse_vars
   function array_xor_checksum_logical(arr) result(checksum)
     implicit none
     logical, intent(in)     :: arr(..)
+    logical, pointer        :: arrflat(:)
     integer                 :: checksum
     integer                 :: i, int_value
 
+    ! need to flatten if using arr(i)
+    arrflat => reshape(arr, [size(arr)])
+
     checksum = 0
     do i = 1, size(arr)
-        int_value = merge(1, 0, arr(i))
+        int_value = merge(1, 0, arrflat(i))
         checksum = ieor(checksum, int_value)
     end do
   end function array_xor_checksum_logical
