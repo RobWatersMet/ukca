@@ -20,7 +20,7 @@ module asad_sparse_vars
     integer              :: i
 
     ! need to flatten if using arr(i)
-    arrflat => reshape(arr, [size(arr)])
+    arrflat = reshape(arr, [size(arr)])
 
     checksum = 0
     do i = 1, size(arr)
@@ -36,7 +36,7 @@ module asad_sparse_vars
     integer              :: i, int_value
 
     ! need to flatten if using arr(i)
-    arrflat => reshape(arr, [size(arr)])
+    arrflat = reshape(arr, [size(arr)])
 
     checksum = 0
     do i = 1, size(arr)
@@ -53,7 +53,7 @@ module asad_sparse_vars
     integer                 :: i, int_value
 
     ! need to flatten if using arr(i)
-    arrflat => reshape(arr, [size(arr)])
+    arrflat = reshape(arr, [size(arr)])
 
     checksum = 0
     do i = 1, size(arr)
