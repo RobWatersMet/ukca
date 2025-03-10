@@ -15,7 +15,7 @@ module asad_sparse_vars
   function array_xor_checksum_int(arr) result(checksum)
     implicit none
     integer, intent(in)  :: arr(..)
-    integer, pointer     :: arrflat(:)
+    integer              :: arrflat(:)
     integer              :: checksum
     integer              :: i
 
@@ -31,7 +31,7 @@ module asad_sparse_vars
   function array_xor_checksum_real(arr) result(checksum)
     implicit none
     real, intent(in)     :: arr(..)
-    real, pointer        :: arrflat(:)
+    real                 :: arrflat(:)
     integer              :: checksum
     integer              :: i, int_value
 
@@ -48,7 +48,7 @@ module asad_sparse_vars
   function array_xor_checksum_logical(arr) result(checksum)
     implicit none
     logical, intent(in)     :: arr(..)
-    logical, pointer        :: arrflat(:)
+    logical                 :: arrflat(:)
     integer                 :: checksum
     integer                 :: i, int_value
 
