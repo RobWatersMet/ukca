@@ -794,8 +794,8 @@ module asad_sparse_vars
       print*, 'Checksum - spfj in ', RoutineName, ' = ', checksum_result
     #endif
 
-    !NO!$acc kernels
-    !NO!$acc loop gang vector independent collapse(2)
+    !$acc kernels
+    !$acc loop gang vector independent collapse(2)
     do jl = 1, jpcspf, 1
       do i = 1, n_points, 1
         if (f(i,jl) < min_pivot) then
@@ -804,44 +804,44 @@ module asad_sparse_vars
       enddo
     enddo
     deltt = 1.0 / cdt
-    !NO!$acc loop gang vector independent collapse(2)
+    !$acc loop gang vector independent collapse(2)
     do idx = LBOUND(spfj, dim=2), UBOUND(spfj, dim=2), 1
       do idx_1 = LBOUND(spfj, dim=1), UBOUND(spfj, dim=1), 1
         spfj(idx_1,idx) = 0.0
       enddo
     enddo
-    !NO!$acc loop seq
+    !$acc loop seq
     do i = 1, jpcspf, 1
-      !NO!$acc loop gang vector independent
+      !$acc loop gang vector independent
       do idx_2 = LBOUND(spfj, dim=1), UBOUND(spfj, dim=1), 1
         spfj(idx_2,nonzero_map(i,i)) = -deltt * f(idx_2 + (LBOUND(f, dim=1) - LBOUND(spfj, dim=1)),i)
       enddo
     enddo
-    !NO!$acc loop seq
+    !$acc loop seq
     do p = 1, total, 1
-      !NO!$acc loop seq
+      !$acc loop seq
       do i = nposterms(p), 1, -1
-        !NO!$acc loop gang vector independent
+        !$acc loop gang vector independent
         do idx_3 = LBOUND(spfj, dim=1), UBOUND(spfj, dim=1), 1
           spfj(idx_3,p) = spfj(idx_3,p) + prk(idx_3 + (LBOUND(prk, dim=1) - LBOUND(spfj, dim=1)),posterms(p,i))
         enddo
       enddo
-      !NO!$acc loop seq
+      !$acc loop seq
       do i = nnegterms(p), 1, -1
-        !NO!$acc loop gang vector independent
+        !$acc loop gang vector independent
         do idx_4 = LBOUND(spfj, dim=1), UBOUND(spfj, dim=1), 1
           spfj(idx_4,p) = spfj(idx_4,p) - prk(idx_4 + (LBOUND(prk, dim=1) - LBOUND(spfj, dim=1)),negterms(p,i))
         enddo
       enddo
-      !NO!$acc loop seq
+      !$acc loop seq
       do i = nfracterms(p), 1, -1
-        !NO!$acc loop gang vector independent
+        !$acc loop gang vector independent
         do idx_5 = LBOUND(spfj, dim=1), UBOUND(spfj, dim=1), 1
           spfj(idx_5,p) = spfj(idx_5,p) + ffrac(p,i) * prk(idx_5 + (LBOUND(prk, dim=1) - LBOUND(spfj, dim=1)),fracterms(p,i))
         enddo
       enddo
     enddo
-    !NO!$acc end kernels
+    !$acc end kernels
 
     #ifdef ARRAYCHECKSUM
       checksum_result = array_xor_checksum(f)
@@ -864,16 +864,16 @@ module asad_sparse_vars
             print *, "RW: ij(jn) = ", ij(jn)
             print *, "RW: ntro3 = ", ntro3
 
-            !NO!$acc kernels
+            !$acc kernels
             p = nonzero_map(ij(jn),ntro3)
-            ! !NO!$acc loop gang vector independent
+            ! !$acc loop gang vector independent
             ! do idx_6 = LBOUND(spfj, dim=1), UBOUND(spfj, dim=1), 1
             !   spfj(idx_6,p) = spfj(idx_6,p) - prk(idx_6 + (LBOUND(prk, dim=1) - LBOUND(spfj, dim=1)),irj) * deriv(idx_6 + (LBOUND(deriv, dim=1) - LBOUND(spfj, dim=1)),jc,1)
             !   ! spfj(idx_6,p) = spfj(idx_6,p) - prk(idx_6, irj)!  * deriv(idx_6,jc,1)
             ! enddo
             spfj(:,p) = spfj(:,p) -                                                &
               prk(:,irj)*deriv(:,jc,1) ! *prkrat(jc)
-            !NO!$acc end kernels
+            !$acc end kernels
 
             #ifdef ARRAYCHECKSUM
               checksum_result = array_xor_checksum(spfj)
@@ -885,14 +885,14 @@ module asad_sparse_vars
 
         do jn = 3, jpmsp, 1
           if (lj(jn)) then
-            !NO!$acc kernels
+            !$acc kernels
             p = nonzero_map(ij(jn),ntro3)
-            !NO!$acc loop gang vector independent
+            !$acc loop gang vector independent
             do idx_7 = LBOUND(spfj, dim=1), UBOUND(spfj, dim=1), 1
               spfj(idx_7,p) = spfj(idx_7,p) + prk(idx_7 + (LBOUND(prk, dim=1) - LBOUND(spfj, dim=1)),irj) * deriv(idx_7 + (LBOUND(deriv, dim=1) - LBOUND(spfj, dim=1)),jc,1)
               ! spfj(idx_7,p) = spfj(idx_7,p) + prk(idx_7,irj) ! * deriv(idx_7,jc,1)
             enddo
-            !NO!$acc end kernels
+            !$acc end kernels
 
             #ifdef ARRAYCHECKSUM
               checksum_result = array_xor_checksum(spfj)
@@ -910,15 +910,15 @@ module asad_sparse_vars
         itrd = madvtr(js)
         ityped(:) = ctype(js)
         if (ifamd /= 0) then
-          !NO!$acc kernels
-          !NO!$acc loop gang vector independent
+          !$acc kernels
+          !$acc loop gang vector independent
           do jl = 1, n_points, 1
             if (ityped(:) == jpfm(:) .OR. ityped(:) == jpif(:) .AND. linfam(jl,itrd)) then
               p = nonzero_map(ifamd,ifamd)
               spfj(jl,p) = spfj(jl,p) - nodd(js) * (dpd(jl,js) + dpw(jl,js)) * y(jl,js)
             end if
           enddo
-          !NO!$acc end kernels
+          !$acc end kernels
 
           #ifdef ARRAYCHECKSUM
             checksum_result = array_xor_checksum(spfj)
@@ -927,13 +927,13 @@ module asad_sparse_vars
 
         end if
         if (itrd /= 0) then
-          !NO!$acc kernels
+          !$acc kernels
           p = nonzero_map(itrd,itrd)
-          !NO!$acc loop gang vector independent
+          !$acc loop gang vector independent
           do idx_8 = LBOUND(spfj, dim=1), UBOUND(spfj, dim=1), 1
             spfj(idx_8,p) = spfj(idx_8,p) - (dpd(idx_8 + (LBOUND(dpd, dim=1) - LBOUND(spfj, dim=1)),js) + dpw(idx_8 + (LBOUND(dpw, dim=1) - LBOUND(spfj, dim=1)),js)) * y(idx_8 + (LBOUND(y, dim=1) - LBOUND(spfj, dim=1)),js)
           enddo
-          !NO!$acc end kernels
+          !$acc end kernels
 
           #ifdef ARRAYCHECKSUM
             checksum_result = array_xor_checksum(spfj)
@@ -943,14 +943,14 @@ module asad_sparse_vars
         end if
       enddo
     end if
-    !NO!$acc kernels
-    !NO!$acc loop gang vector independent collapse(2)
+    !$acc kernels
+    !$acc loop gang vector independent collapse(2)
     do p = 1, total, 1
       do idx_9 = LBOUND(spfj, dim=1), UBOUND(spfj, dim=1), 1
         spfj(idx_9,p) = spfj(idx_9,p) / f(idx_9 + (LBOUND(f, dim=1) - LBOUND(spfj, dim=1)),base_tracer(p))
       enddo
     enddo
-    !NO!$acc end kernels
+    !$acc end kernels
 
     #ifdef ARRAYCHECKSUM
       checksum_result = array_xor_checksum(spfj)
