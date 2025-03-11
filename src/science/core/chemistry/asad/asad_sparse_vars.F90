@@ -246,6 +246,10 @@ module asad_sparse_vars
 
     #endif
 
+    print*, 'RW - ntrf = ', ntrf
+    print*, 'RW - jpmsp = ', jpmsp
+    print*, 'RW - nstst = ', nstst
+
     ! !$acc kernels
     ! !$acc loop gang vector independent collapse(2)
     do idx = LBOUND(map, dim=2), UBOUND(map, dim=2), 1
