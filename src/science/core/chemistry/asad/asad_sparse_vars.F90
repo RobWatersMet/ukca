@@ -1249,71 +1249,71 @@ module asad_sparse_vars
       print*, 'Checksum - xx in ', RoutineName, ' = ', checksum_result
     #endif
 
-    !NO!$acc kernels
-    !NO!$acc loop gang vector independent collapse(2)
+    !$acc kernels
+    !$acc loop gang vector independent collapse(2)
     do i = 1, jpcspf, 1
       do idx = LBOUND(bb1, dim=1), UBOUND(bb1, dim=1), 1
         bb1(idx,i) = bb(idx,reorder(i))
       enddo
     enddo
-    !NO!$acc loop seq
+    !$acc loop seq
     do kr = 1, jpcspf - 1, 1
-      !NO!$acc loop seq
+      !$acc loop seq
       do i = kr + 1, jpcspf, 1
         ikr = modified_map(i,kr)
         if (ikr > 0) then
-          !NO!$acc loop gang vector independent
+          !$acc loop gang vector independent
           do idx_1 = LBOUND(bb1, dim=1), UBOUND(bb1, dim=1), 1
             bb1(idx_1,i) = bb1(idx_1,i) - spfj(idx_1,ikr) * bb1(idx_1,kr)
           enddo
         end if
       enddo
     enddo
-    !NO!$acc loop seq
+    !$acc loop seq
     do kr = jpcspf, 1, -1
-      !NO!$acc loop gang vector independent
+      !$acc loop gang vector independent
       do idx_2 = LBOUND(xx1, dim=1), UBOUND(xx1, dim=1), 1
         xx1(idx_2,kr) = bb1(idx_2,kr)
       enddo
-      !NO!$acc loop seq
+      !$acc loop seq
       do j = kr + 1, jpcspf, 1
         krj = modified_map(kr,j)
         if (krj > 0) then
-          !NO!$acc loop gang vector independent
+          !$acc loop gang vector independent
           do idx_3 = LBOUND(xx1, dim=1), UBOUND(xx1, dim=1), 1
             xx1(idx_3,kr) = xx1(idx_3,kr) - spfj(idx_3,krj) * xx1(idx_3,j)
           enddo
         end if
       enddo
-      !NO!$acc loop gang vector independent
+      !$acc loop gang vector independent
       do idx_4 = 1, n_points, 1
         pivot(idx_4) = spfj(idx_4,modified_map(kr,kr))
       enddo
-      !NO!$acc loop gang vector independent
+      !$acc loop gang vector independent
       do widx1 = 1, n_points, 1
         if (ABS(pivot(widx1)) < min_pivot) then
           pivot(widx1) = min_pivot
         end if
       enddo
-      !NO!$acc loop gang vector independent
+      !$acc loop gang vector independent
       do idx_5 = LBOUND(xx1, dim=1), UBOUND(xx1, dim=1), 1
         xx1(idx_5,kr) = xx1(idx_5,kr) / pivot(idx_5)
       enddo
     enddo
-    !NO!$acc loop gang vector independent collapse(2)
+    !$acc loop gang vector independent collapse(2)
     do idx_6 = 1, jpcspf, 1
       do idx_7 = 1, n_points, 1
         xx(idx_7,idx_6) = 0.0
       enddo
     enddo
-    !NO!$acc loop seq
+    !$acc loop seq
     do i = 1, jpcspf, 1
-      !NO!$acc loop gang vector independent
+      !$acc loop gang vector independent
       do idx_8 = LBOUND(xx, dim=1), UBOUND(xx, dim=1), 1
         xx(idx_8,reorder(i)) = xx1(idx_8,i)
       enddo
     enddo
-    !NO!$acc end kernels
+    !$acc end kernels
 
     #ifdef ARRAYCHECKSUM
       checksum_result = array_xor_checksum(bb1)
