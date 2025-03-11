@@ -252,29 +252,29 @@ module asad_sparse_vars
     print*, 'RW - jpmsp = ', jpmsp
     print*, 'RW - nstst = ', nstst
 
-    ! !NO!$acc kernels
-    ! !NO!$acc loop gang vector independent collapse(2)
+    !$acc kernels
+    !$acc loop gang vector independent collapse(2)
     do idx = LBOUND(map, dim=2), UBOUND(map, dim=2), 1
       do idx_1 = LBOUND(map, dim=1), UBOUND(map, dim=1), 1
         map(idx_1,idx) = 0
       enddo
     enddo
-    ! !NO!$acc loop gang vector independent
+    !$acc loop gang vector independent
     do i = 1, jpcspf, 1
       map(i,i) = 1
     enddo
-    ! !NO!$acc loop seq
+    !$acc loop seq
     do jc = 1, ntrf, 1
       itrcr = nltrf(jc)
-      ! !NO!$acc loop seq
+      !$acc loop seq
       do j3 = 1, nmzjac(itrcr), 1
         irj = nzjac1(j3,itrcr)
-        ! !NO!$acc loop gang vector independent
+        !$acc loop gang vector independent
         do jn = 1, jpmsp, 1
           ij(jn) = njcoth(irj,jn)
           lj(jn) = ij(jn) /= 0
         enddo
-        ! !NO!$acc loop seq
+        !$acc loop seq
         do jn = 1, jpmsp, 1
           if (lj(jn)) then
             map(ij(jn),itrcr) = 1
@@ -283,7 +283,7 @@ module asad_sparse_vars
         if (npdfr(irj,1) /= 0) then
           i1 = npdfr(irj,1)
           i2 = npdfr(irj,2)
-          ! !NO!$acc loop seq
+          !$acc loop seq
           do jn = i1, i2, 1
             isx = ntabpd(jn,1)
             map(isx,itrcr) = 1
@@ -291,17 +291,17 @@ module asad_sparse_vars
         end if
       enddo
     enddo
-    ! !NO!$acc loop seq
+    !$acc loop seq
     do jc = 1, nstst, 1
-      ! !NO!$acc loop seq
+      !$acc loop seq
       do j3 = 1, nmsjac(jc), 1
         irj = nsjac1(j3,jc)
-        ! !NO!$acc loop gang vector independent
+        !$acc loop gang vector independent
         do jn = 1, jpmsp, 1
           ij(jn) = njcoth(irj,jn)
           lj(jn) = ij(jn) /= 0
         enddo
-        ! !NO!$acc loop seq
+        !$acc loop seq
         do jn = 1, jpmsp, 1
           if (lj(jn)) then
             map(ij(jn),ntro3) = 1
@@ -309,7 +309,7 @@ module asad_sparse_vars
         enddo
       enddo
     enddo
-    ! !NO!$acc end kernels
+    !$acc end kernels
 
     #ifdef ARRAYCHECKSUM
       checksum_result = array_xor_checksum(map)
@@ -341,15 +341,15 @@ module asad_sparse_vars
     #endif
 
     if (ndepw /= 0 .OR. ndepd /= 0) then
-      !NO!$acc kernels
-      !NO!$acc loop seq
+      !$acc kernels
+      !$acc loop seq
       do js = 1, jpspec, 1
         itrd = madvtr(js)
         if (itrd /= 0) then
           map(itrd,itrd) = 1
         end if
       enddo
-      !NO!$acc end kernels
+      !$acc end kernels
       #ifdef ARRAYCHECKSUM
         checksum_result = array_xor_checksum(map)
         print*, 'Checksum - map in ', RoutineName, ' = ', checksum_result
@@ -362,17 +362,17 @@ module asad_sparse_vars
       WRITE(umMessage, '(A,I6)') 'TOTAL NUMBER OF NONZERO ENTRIES IN JACOBIAN: ', total
       call umprint(ummessage, src='asad_sparse_vars')
     end if
-    !NO!$acc kernels
+    !$acc kernels
     isx = 0
-    !NO!$acc loop gang vector independent collapse(2)
+    !$acc loop gang vector independent collapse(2)
     do idx_2 = LBOUND(nonzero_map, dim=2), UBOUND(nonzero_map, dim=2), 1
       do idx_3 = LBOUND(nonzero_map, dim=1), UBOUND(nonzero_map, dim=1), 1
         nonzero_map(idx_3,idx_2) = 0
       enddo
     enddo
-    !NO!$acc loop seq
+    !$acc loop seq
     do i = 1, jpcspf, 1
-      !NO!$acc loop seq
+      !$acc loop seq
       do j = 1, jpcspf, 1
         if (map(i,j) == 1) then
           isx = isx + 1
@@ -380,13 +380,13 @@ module asad_sparse_vars
         end if
       enddo
     enddo
-    !NO!$acc loop gang vector independent
+    !$acc loop gang vector independent
     do idx_4 = LBOUND(base_tracer, dim=1), UBOUND(base_tracer, dim=1), 1
       base_tracer(idx_4) = 0
     enddo
-    !NO!$acc loop seq
+    !$acc loop seq
     do i = 1, jpcspf, 1
-      !NO!$acc loop seq
+      !$acc loop seq
       do j = 1, jpcspf, 1
         i1 = nonzero_map(j,i)
         if (i1 > 0) then
@@ -394,14 +394,14 @@ module asad_sparse_vars
         end if
       enddo
     enddo
-    !NO!$acc loop gang vector independent
+    !$acc loop gang vector independent
     do i = 1, jpcspf, 1
       activity(i) = SUM(map(:,i)) + SUM(map(i,:))
       reorder(i) = i
     enddo
-    !NO!$acc loop seq
+    !$acc loop seq
     do i = 1, jpcspf - 1, 1
-      !NO!$acc loop seq
+      !$acc loop seq
       do j = i + 1, jpcspf, 1
         if (activity(i) > activity(j)) then
           itemp1 = reorder(i)
@@ -413,7 +413,7 @@ module asad_sparse_vars
         end if
       enddo
     enddo
-    !NO!$acc end kernels
+    !$acc end kernels
 
     #ifdef ARRAYCHECKSUM
       checksum_result = array_xor_checksum(nonzero_map)
@@ -443,26 +443,26 @@ module asad_sparse_vars
     if (.NOT.ALLOCATED(permute)) then
       ALLOCATE(permute(1:jpcspf,1:jpcspf))
     end if
-    !NO!$acc kernels
-    !NO!$acc loop gang vector independent collapse(2)
+    !$acc kernels
+    !$acc loop gang vector independent collapse(2)
     do idx_5 = LBOUND(permute, dim=2), UBOUND(permute, dim=2), 1
       do idx_6 = LBOUND(permute, dim=1), UBOUND(permute, dim=1), 1
         permute(idx_6,idx_5) = 0
       enddo
     enddo
-    !NO!$acc end kernels
+    !$acc end kernels
 
     #ifdef ARRAYCHECKSUM
       checksum_result = array_xor_checksum(permute)
       print*, 'Checksum - permute in ', RoutineName, ' = ', checksum_result
     #endif
 
-    !NO!$acc kernels
-    !NO!$acc loop gang vector independent
+    !$acc kernels
+    !$acc loop gang vector independent
     do i = 1, jpcspf, 1
       permute(i,reorder(i)) = 1
     enddo
-    !NO!$acc end kernels
+    !$acc end kernels
     nonzero_map_unordered(:,:) = MATMUL(MATMUL(permute, nonzero_map), TRANSPOSE(permute))
     if (ALLOCATED(permute)) then
       DEALLOCATE(permute)
@@ -470,15 +470,15 @@ module asad_sparse_vars
     if (ALLOCATED(map)) then
       DEALLOCATE(map)
     end if
-    !NO!$acc kernels
+    !$acc kernels
     total1 = total
-    !NO!$acc loop gang vector independent collapse(2)
+    !$acc loop gang vector independent collapse(2)
     do idx_7 = LBOUND(modified_map, dim=2), UBOUND(modified_map, dim=2), 1
       do idx_8 = LBOUND(modified_map, dim=1), UBOUND(modified_map, dim=1), 1
         modified_map(idx_8,idx_7) = nonzero_map_unordered(idx_8 + (LBOUND(nonzero_map_unordered, dim=1) - LBOUND(modified_map, dim=1)),idx_7 + (LBOUND(nonzero_map_unordered, dim=2) - LBOUND(modified_map, dim=2)))
       enddo
     enddo
-    !NO!$acc end kernels
+    !$acc end kernels
 
     #ifdef ARRAYCHECKSUM
       checksum_result = array_xor_checksum(modified_map)
@@ -525,44 +525,44 @@ module asad_sparse_vars
       WRITE(umMessage, '(A)') 'Reduce spfjsize_max if much greater than total1 '
       call umprint(ummessage, src='asad_sparse_vars')
     end if
-    !NO!$acc kernels
-    !NO!$acc loop gang vector independent
+    !$acc kernels
+    !$acc loop gang vector independent
     do idx_9 = LBOUND(nposterms, dim=1), UBOUND(nposterms, dim=1), 1
       nposterms(idx_9) = 0
     enddo
-    !NO!$acc loop gang vector independent
+    !$acc loop gang vector independent
     do idx_10 = LBOUND(nnegterms, dim=1), UBOUND(nnegterms, dim=1), 1
       nnegterms(idx_10) = 0
     enddo
-    !NO!$acc loop gang vector independent
+    !$acc loop gang vector independent
     do idx_11 = LBOUND(nfracterms, dim=1), UBOUND(nfracterms, dim=1), 1
       nfracterms(idx_11) = 0
     enddo
-    !NO!$acc loop gang vector independent collapse(2)
+    !$acc loop gang vector independent collapse(2)
     do idx_12 = LBOUND(posterms, dim=2), UBOUND(posterms, dim=2), 1
       do idx_13 = LBOUND(posterms, dim=1), UBOUND(posterms, dim=1), 1
         posterms(idx_13,idx_12) = 0
       enddo
     enddo
-    !NO!$acc loop gang vector independent collapse(2)
+    !$acc loop gang vector independent collapse(2)
     do idx_14 = LBOUND(negterms, dim=2), UBOUND(negterms, dim=2), 1
       do idx_15 = LBOUND(negterms, dim=1), UBOUND(negterms, dim=1), 1
         negterms(idx_15,idx_14) = 0
       enddo
     enddo
-    !NO!$acc loop gang vector independent collapse(2)
+    !$acc loop gang vector independent collapse(2)
     do idx_16 = LBOUND(fracterms, dim=2), UBOUND(fracterms, dim=2), 1
       do idx_17 = LBOUND(fracterms, dim=1), UBOUND(fracterms, dim=1), 1
         fracterms(idx_17,idx_16) = 0
       enddo
     enddo
-    !NO!$acc loop gang vector independent collapse(2)
+    !$acc loop gang vector independent collapse(2)
     do idx_18 = LBOUND(ffrac, dim=2), UBOUND(ffrac, dim=2), 1
       do idx_19 = LBOUND(ffrac, dim=1), UBOUND(ffrac, dim=1), 1
         ffrac(idx_19,idx_18) = 0.0
       enddo
     enddo
-    !NO!$acc end kernels
+    !$acc end kernels
 
     #ifdef ARRAYCHECKSUM
       checksum_result = array_xor_checksum(nposterms)
@@ -584,14 +584,14 @@ module asad_sparse_vars
     do jc = 1, ntrf, 1
       itrcr = nltrf(jc)
       do j3 = 1, nmzjac(itrcr), 1
-        !NO!$acc kernels
+        !$acc kernels
         irj = nzjac1(j3,itrcr)
-        !NO!$acc loop gang vector independent
+        !$acc loop gang vector independent
         do jn = 1, jpmsp, 1
           ij(jn) = njcoth(irj,jn)
           lj(jn) = ij(jn) /= 0
         enddo
-        !NO!$acc end kernels
+        !$acc end kernels
 
         #ifdef ARRAYCHECKSUM
           checksum_result = array_xor_checksum(ij)
