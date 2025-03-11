@@ -56,15 +56,15 @@ module asad_inix_mod
         nlf(nf) = js
       end if
     enddo
-    !$acc kernels
-    !$acc loop seq
+    !NO!$acc kernels
+    !NO!$acc loop seq
     do js = 1, jpspec, 1
       iprd = 0
       igrp3 = 0
-      !$acc loop seq
+      !NO!$acc loop seq
       do jr = 1, jpnr, 1
         if (nfrpx(jr) == 0) then
-          !$acc loop seq
+          !NO!$acc loop seq
           do jp = 3, jpmsp, 1
             if (nspi(jr,jp) == js) then
               iprd = iprd + 1
@@ -72,7 +72,7 @@ module asad_inix_mod
               if (iprd == 3) then
                 iprd = 0
                 igrp3 = igrp3 + 1
-                !$acc loop gang vector independent
+                !NO!$acc loop gang vector independent
                 do j = 1, 3, 1
                   nprdx3(j,igrp3,js) = igrp(j)
                 enddo
@@ -94,9 +94,9 @@ module asad_inix_mod
       end if
       iloss = 0
       igrp3 = 0
-      !$acc loop seq
+      !NO!$acc loop seq
       do jr = 1, jpnr, 1
-        !$acc loop seq
+        !NO!$acc loop seq
         do jp = 1, 2, 1
           if (nspi(jr,jp) == js) then
             iloss = iloss + 1
@@ -104,7 +104,7 @@ module asad_inix_mod
             if (iloss == 3) then
               iloss = 0
               igrp3 = igrp3 + 1
-              !$acc loop gang vector independent
+              !NO!$acc loop gang vector independent
               do j = 1, 3, 1
                 nprdx3(j,igrp3,jpspec + js) = igrp(j)
               enddo
@@ -124,14 +124,14 @@ module asad_inix_mod
         end if
       end if
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     ngmax = ngrp(1,3)
-    !$acc kernels
-    !$acc loop seq
+    !NO!$acc kernels
+    !NO!$acc loop seq
     do js = 2, jpspec, 1
       ngmax = MAX(ngmax, ngrp(js,3))
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     if (ngmax > jpnpx3) then
       ! PSyclone CodeBlock (unsupported code) reason:
       !  - Unsupported statement: Write_Stmt
@@ -162,10 +162,10 @@ module asad_inix_mod
         enddo
       end if
     enddo
-    !$acc kernels
+    !NO!$acc kernels
     ndepd = 0
     ndepw = 0
-    !$acc loop seq
+    !NO!$acc loop seq
     do js = 1, jpspec, 1
       if (ldepd(js)) then
         ndepd = ndepd + 1
@@ -176,7 +176,7 @@ module asad_inix_mod
         nldepw(ndepw) = js
       end if
     enddo
-    !$acc loop gang vector independent
+    !NO!$acc loop gang vector independent
     do js = 1, jpspec, 1
       idepd(js) = nldepd(js)
       idepw(js) = nldepw(js)
@@ -186,7 +186,7 @@ module asad_inix_mod
     do ispec = 1, jpspec, 1
       gdry = .false.
       gwet = .false.
-      !$acc loop seq
+      !NO!$acc loop seq
       do j = 1, jpspec, 1
         if (idepd(j) == ispec) then
           gdry = .true.
@@ -220,7 +220,7 @@ module asad_inix_mod
         nldepx(nldepx(6)) = idepw(j)
       end if
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
     end if

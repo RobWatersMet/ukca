@@ -53,8 +53,8 @@ module ukca_ddcalc_mod
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
     call nvtxStartRange(ModuleName // ':' // RoutineName)
-    !$acc kernels
-    !$acc loop gang vector independent collapse(3)
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent collapse(3)
     do loop = 1, jpdd, 1
       do j = 1, rows, 1
         do i = 1, row_length, 1
@@ -62,7 +62,7 @@ module ukca_ddcalc_mod
         enddo
       enddo
     enddo
-    !$acc loop gang vector independent collapse(4)
+    !NO!$acc loop gang vector independent collapse(4)
     do loop = 1, jpdd, 1
       do n = 1, ntype, 1
         do j = 1, rows, 1
@@ -72,34 +72,34 @@ module ukca_ddcalc_mod
         enddo
       enddo
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     if (ukca_config%l_ukca_ddep_lev1) then
-      !$acc kernels
-      !$acc loop gang vector independent collapse(2)
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent collapse(2)
       do idx = LBOUND(nlev_with_ddep, dim=2), UBOUND(nlev_with_ddep, dim=2), 1
         do idx_1 = LBOUND(nlev_with_ddep, dim=1), UBOUND(nlev_with_ddep, dim=1), 1
           nlev_with_ddep(idx_1,idx) = 1
         enddo
       enddo
-      !$acc loop gang vector independent collapse(2)
+      !NO!$acc loop gang vector independent collapse(2)
       do idx_2 = LBOUND(layer_depth, dim=2), UBOUND(layer_depth, dim=2), 1
         do idx_3 = LBOUND(layer_depth, dim=1), UBOUND(layer_depth, dim=1), 1
           layer_depth(idx_3,idx_2) = dzl(idx_3,idx_2,1)
         enddo
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     else
-      !$acc kernels
-      !$acc loop gang vector independent collapse(2)
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent collapse(2)
       do j = 1, rows, 1
         do i = 1, row_length, 1
           layer_depth(i,j) = dzl(i,j,1)
           nlev_with_ddep(i,j) = 1
         enddo
       enddo
-      !$acc loop seq
+      !NO!$acc loop seq
       do loop = 2, bl_levels, 1
-        !$acc loop gang vector independent collapse(2)
+        !NO!$acc loop gang vector independent collapse(2)
         do j = 1, rows, 1
           do i = 1, row_length, 1
             dd = layer_depth(i,j) + dzl(i,j,loop)
@@ -110,10 +110,10 @@ module ukca_ddcalc_mod
           enddo
         enddo
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     end if
-    !$acc kernels
-    !$acc loop gang vector independent collapse(4)
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent collapse(4)
     do loop = 1, ndepd, 1
       do n = 1, npft, 1
         do j = 1, rows, 1
@@ -125,7 +125,7 @@ module ukca_ddcalc_mod
         enddo
       enddo
     enddo
-    !$acc loop gang vector independent collapse(4)
+    !NO!$acc loop gang vector independent collapse(4)
     do loop = 1, ndepd, 1
       do n = npft + 1, ntype, 1
         do j = 1, rows, 1
@@ -137,16 +137,16 @@ module ukca_ddcalc_mod
         enddo
       enddo
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     if (ukca_config%l_ukca_scale_ppe) then
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do j = 1, ndepd, 1
         if (speci(nldepd(j)) == 'SO2       ') then
           vd(:,:,:,j) = vd(:,:,:,j) * ukca_config%dry_depvel_so2_scaling
         end if
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     end if
     if (ukca_config%l_enable_diag_um) then
       do loop = 1, ndepd, 1
@@ -196,8 +196,8 @@ module ukca_ddcalc_mod
         end if
       enddo
     end if
-    !$acc kernels
-    !$acc loop gang vector independent collapse(4)
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent collapse(4)
     do loop = 1, ndepd, 1
       do n = 1, ntype, 1
         do j = 1, rows, 1
@@ -209,7 +209,7 @@ module ukca_ddcalc_mod
         enddo
       enddo
     enddo
-    !$acc loop gang vector independent collapse(3)
+    !NO!$acc loop gang vector independent collapse(3)
     do loop = 1, ndepd, 1
       do j = 1, rows, 1
         do i = 1, row_length, 1
@@ -217,7 +217,7 @@ module ukca_ddcalc_mod
         enddo
       enddo
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     if (ukca_config%l_enable_diag_um) then
       do loop = 1, ndepd, 1
         if (speci(nldepd(loop)) == 'CH4       ') then

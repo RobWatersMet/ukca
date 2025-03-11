@@ -57,12 +57,12 @@ module asad_findreaction_mod
       jr = idx_in(j)
       if (reactions(j,1) == react1(:) .AND. reactions(j,2) == react2(:) .OR. reactions(j,1) == react2(:) .AND. reactions(j,2) == react1(:)) then
         prods(:) = empty_ten(:)
-        !$acc kernels
-        !$acc loop gang vector independent
+        !NO!$acc kernels
+        !NO!$acc loop gang vector independent
         do idx = 1, ns - 2, 1
           found(idx) = .false.
         enddo
-        !$acc end kernels
+        !NO!$acc end kernels
         iprods = 0
         do jp = 1, nprods, 1
           if (reactions(j,2 + jp) /= empty_ten(:)) then
@@ -90,12 +90,12 @@ module asad_findreaction_mod
           enddo
         enddo
         thelast = .true.
-        !$acc kernels
-        !$acc loop seq
+        !NO!$acc kernels
+        !NO!$acc loop seq
         do jp = 1, iprods, 1
           thelast = thelast .AND. found(jp)
         enddo
-        !$acc end kernels
+        !NO!$acc end kernels
         if (thelast) then
           asad_findreaction = jr
           ! PSyclone CodeBlock (unsupported code) reason:

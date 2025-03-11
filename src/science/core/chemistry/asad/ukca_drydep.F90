@@ -26,27 +26,27 @@ module ukca_drydep_mod
     end if
     call nvtxStartRange(ModuleName // ':' // RoutineName)
     if (nlev == 1 .OR. ukca_config%l_ukca_intdd) then
-      !$acc kernels
-      !$acc loop seq
+      !NO!$acc kernels
+      !NO!$acc loop seq
       do js = 1, ndepd, 1
         nspec = nldepd(js)
-        !$acc loop gang vector independent
+        !NO!$acc loop gang vector independent
         do i = 1, n_points, 1
           dpd(i,nspec) = dryrt(i,js)
         enddo
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     else
-      !$acc kernels
-      !$acc loop seq
+      !NO!$acc kernels
+      !NO!$acc loop seq
       do js = 1, ndepd, 1
         nspec = nldepd(js)
-        !$acc loop gang vector independent
+        !NO!$acc loop gang vector independent
         do i = 1, n_points, 1
           dpd(i,nspec) = 0.0
         enddo
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     end if
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)

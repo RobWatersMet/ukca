@@ -55,15 +55,15 @@ module asad_spmjpdriv_mod
     ctrd = cdt
     ltrig = .false.
     call asad_diffun(n_points)
-    !$acc kernels
+    !NO!$acc kernels
     iredo = 1
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc loop gang vector independent collapse(2)
     do idx = LBOUND(f_initial, dim=2), UBOUND(f_initial, dim=2), 1
       do idx_1 = 1, n_points, 1
         f_initial(idx_1,idx) = f(idx_1,idx + (LBOUND(f, dim=2) - LBOUND(f_initial, dim=2)))
       enddo
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     if (ukca_config%l_ukca_asad_columns) then
       location = ix + (jy - 1) * ukca_config%row_length
     else
@@ -86,15 +86,15 @@ module asad_spmjpdriv_mod
           enddo
           call ereport('ASAD_SPMJPDRIV', errcode, cmessage)
         end if
-        !$acc kernels
+        !NO!$acc kernels
         ltrig = .true.
-        !$acc loop gang vector independent collapse(2)
+        !NO!$acc loop gang vector independent collapse(2)
         do idx_2 = LBOUND(f, dim=2), UBOUND(f, dim=2), 1
           do idx_3 = 1, n_points, 1
             f(idx_3,idx_2) = f_initial(idx_3,idx_2 + (LBOUND(f_initial, dim=2) - LBOUND(f, dim=2)))
           enddo
         enddo
-        !$acc end kernels
+        !NO!$acc end kernels
         jit = 0
         call asad_ftoy(not_first_call, nitfg, jit, n_points, ix, jy, nlev)
         call asad_diffun(n_points)
@@ -119,14 +119,14 @@ module asad_spmjpdriv_mod
             cmessage(:) = ' Time step now too short'
             call ereport('ASAD_SPMJPDRIV', errcode, cmessage)
           end if
-          !$acc kernels
-          !$acc loop gang vector independent collapse(2)
+          !NO!$acc kernels
+          !NO!$acc loop gang vector independent collapse(2)
           do idx_4 = LBOUND(f, dim=2), UBOUND(f, dim=2), 1
             do idx_5 = 1, n_points, 1
               f(idx_5,idx_4) = f_initial(idx_5,idx_4 + (LBOUND(f_initial, dim=2) - LBOUND(f, dim=2)))
             enddo
           enddo
-          !$acc end kernels
+          !NO!$acc end kernels
           if (iredo >= max_redo) then
             if (printstatus >= prstatus_oper) then
               ! PSyclone CodeBlock (unsupported code) reason:

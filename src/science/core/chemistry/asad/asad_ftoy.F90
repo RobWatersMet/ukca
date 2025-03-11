@@ -69,27 +69,27 @@ module asad_ftoy_mod
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
     call nvtxStartRange(ModuleName // ':' // RoutineName)
-    !$acc kernels
+    !NO!$acc kernels
     errcode = 0
-    !$acc loop gang vector independent
+    !NO!$acc loop gang vector independent
     do idx = LBOUND(errcodes, dim=1), UBOUND(errcodes, dim=1), 1
       errcodes(idx) = 0
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     if (first_pass) then
       if (gonce) then
         gonce = .false.
         istmin = 0
         ift = 0
-        !$acc kernels
-        !$acc loop gang vector independent
+        !NO!$acc kernels
+        !NO!$acc loop gang vector independent
         do j = 1, jpspec, 1
           ilstmin(j) = 0
           ilft(j) = 0
         enddo
-        !$acc end kernels
-        !$acc kernels
-        !$acc loop seq
+        !NO!$acc end kernels
+        !NO!$acc kernels
+        !NO!$acc loop seq
         do j = 1, nstst, 1
           js = nlstst(j)
           if (ctype(js) == jpfm(:)) then
@@ -115,7 +115,7 @@ module asad_ftoy_mod
             end if
           end if
         enddo
-        !$acc end kernels
+        !NO!$acc end kernels
         errcode = MAXVAL(errcodes)
       end if
       first_pass = .false.
@@ -129,24 +129,24 @@ module asad_ftoy_mod
     end if
     call asad_fyinit(ofirst, n_points, ix, jy, nlev)
     if (ukca_config%l_ukca_ro2_perm) then
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do idx_1 = 1, n_points, 1
         fro2_old(idx_1) = y(idx_1,jsro2)
       enddo
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do idx_2 = 1, n_points, 1
         fro2(idx_2) = 0.0
       enddo
-      !$acc loop seq
+      !NO!$acc loop seq
       do j = 1, jpro2, 1
         iro2 = nlfro2(j)
-        !$acc loop gang vector independent
+        !NO!$acc loop gang vector independent
         do idx_3 = 1, n_points, 1
           fro2(idx_3) = fro2(idx_3) + f(idx_3,iro2)
         enddo
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
       if (num_iter <= 0) then
         damp_ro2 = 1.0
       else
@@ -160,12 +160,12 @@ module asad_ftoy_mod
           end if
         end if
       end if
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do idx_4 = 1, n_points, 1
         y(idx_4,jsro2) = fro2_old(idx_4) + damp_ro2 * (fro2(idx_4) - fro2_old(idx_4))
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     end if
     if (nstst == 0) then
       if (lhook) then
@@ -174,17 +174,17 @@ module asad_ftoy_mod
       call nvtxEndRange()
       return
     end if
-    !$acc kernels
+    !NO!$acc kernels
     nl = n_points
-    !$acc loop seq
+    !NO!$acc loop seq
     do j = 1, nstst, 1
       js = nlstst(j)
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do jl = 1, n_points, 1
         zy(jl,js) = 0.0
       enddo
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     if (ofirst .AND. iter < 5) then
       iter = 5
       icode = -1
@@ -205,33 +205,33 @@ module asad_ftoy_mod
     end if
     do jit = 1, iter, 1
       if (jit > 1) then
-        !$acc kernels
-        !$acc loop seq
+        !NO!$acc kernels
+        !NO!$acc loop seq
         do j = 1, nstst, 1
           js = nlstst(j)
-          !$acc loop gang vector independent
+          !NO!$acc loop gang vector independent
           do jl = 1, n_points, 1
             if (ABS(y(jl,js)) < peps .AND. prod(jl,js) > peps) then
               y(jl,js) = peps
             end if
           enddo
         enddo
-        !$acc end kernels
+        !NO!$acc end kernels
       end if
       call asad_prls(nl, istmin, ilstmin, gdepem)
-      !$acc kernels
-      !$acc loop seq
+      !NO!$acc kernels
+      !NO!$acc loop seq
       do j = 1, nstst, 1
         js = nlstst(j)
-        !$acc loop gang vector independent
+        !NO!$acc loop gang vector independent
         do jl = 1, n_points, 1
           ratio(jl,js) = 0.0
         enddo
       enddo
-      !$acc loop seq
+      !NO!$acc loop seq
       do j = 1, istmin, 1
         js = ilstmin(j)
-        !$acc loop gang vector independent
+        !NO!$acc loop gang vector independent
         do jl = 1, n_points, 1
           if (y(jl,js) < peps) then
             sl = 0.0
@@ -261,7 +261,7 @@ module asad_ftoy_mod
       enddo
       istart = nlmajmin(3)
       iend = nlmajmin(4)
-      !$acc loop seq
+      !NO!$acc loop seq
       do j = nlmajmin(3), nlmajmin(4), 1
         js = nlmajmin(j)
         iodd = nodd(js)
@@ -270,7 +270,7 @@ module asad_ftoy_mod
         if (ifam /= 0) then
           imaj = majors(ifam)
         end if
-        !$acc loop gang vector independent
+        !NO!$acc loop gang vector independent
         do jl = 1, n_points, 1
           if (y(jl,imaj) > peps) then
             ratio(jl,js) = y(jl,js) / y(jl,imaj)
@@ -280,7 +280,7 @@ module asad_ftoy_mod
           end if
         enddo
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
       do j = 1, ift, 1
         js = ilft(j)
         iodd = nodd(js)
@@ -288,8 +288,8 @@ module asad_ftoy_mod
         itr = madvtr(js)
         imaj = majors(ifam)
         if (ofirst .AND. jit == 1) then
-          !$acc kernels
-          !$acc loop gang vector independent
+          !NO!$acc kernels
+          !NO!$acc loop gang vector independent
           do jl = 1, n_points, 1
             if (y(jl,js) > peps) then
               sl = slos(jl,js) / y(jl,js)
@@ -301,10 +301,10 @@ module asad_ftoy_mod
               f(jl,ifam) = f(jl,ifam) + iodd * f(jl,itr)
             end if
           enddo
-          !$acc end kernels
+          !NO!$acc end kernels
         end if
-        !$acc kernels
-        !$acc loop gang vector independent
+        !NO!$acc kernels
+        !NO!$acc loop gang vector independent
         do jl = 1, n_points, 1
           if (linfam(jl,itr)) then
             if (y(jl,imaj) > peps) then
@@ -317,17 +317,17 @@ module asad_ftoy_mod
             y(jl,js) = f(jl,itr)
           end if
         enddo
-        !$acc end kernels
+        !NO!$acc end kernels
       enddo
-      !$acc kernels
+      !NO!$acc kernels
       istart = nlmajmin(1)
       iend = nlmajmin(2)
-      !$acc loop seq
+      !NO!$acc loop seq
       do j = istart, iend, 1
         js = nlmajmin(j)
         iodd = nodd(js)
         ifam = moffam(js)
-        !$acc loop gang vector independent
+        !NO!$acc loop gang vector independent
         do jl = 1, n_points, 1
           ratio(jl,js) = 1.0 / (iodd + ratio(jl,js))
           y(jl,js) = f(jl,ifam) * ratio(jl,js)
@@ -335,19 +335,19 @@ module asad_ftoy_mod
       enddo
       istart = nlmajmin(3)
       iend = nlmajmin(4)
-      !$acc loop seq
+      !NO!$acc loop seq
       do j = istart, iend, 1
         js = nlmajmin(j)
         ifam = moffam(js)
         imaj = majors(ifam)
         if (ctype(js) /= jpif(:)) then
-          !$acc loop gang vector independent
+          !NO!$acc loop gang vector independent
           do jl = 1, n_points, 1
             y(jl,js) = y(jl,imaj) * ratio(jl,js)
           enddo
         else
           itr = madvtr(js)
-          !$acc loop gang vector independent
+          !NO!$acc loop gang vector independent
           do jl = 1, n_points, 1
             if (linfam(jl,itr)) then
               y(jl,js) = y(jl,imaj) * ratio(jl,js)
@@ -356,17 +356,17 @@ module asad_ftoy_mod
         end if
       enddo
       gconv = .true.
-      !$acc end kernels
+      !NO!$acc end kernels
       do j = 1, nstst, 1
-        !$acc kernels
+        !NO!$acc kernels
         js = nlstst(j)
-        !$acc loop seq
+        !NO!$acc loop seq
         do jl = 1, n_points, 1
           if (ABS(y(jl,js) - zy(jl,js)) > ftol * y(jl,js) .AND. y(jl,js) > pmintnd(jl)) then
             gconv = .false.
           end if
         enddo
-        !$acc end kernels
+        !NO!$acc end kernels
         if (.NOT.gconv) then
           ! PSyclone CodeBlock (unsupported code) reason:
           !  - Unsupported statement: Exit_Stmt
@@ -380,16 +380,16 @@ module asad_ftoy_mod
         call nvtxEndRange()
         return
       end if
-      !$acc kernels
-      !$acc loop seq
+      !NO!$acc kernels
+      !NO!$acc loop seq
       do j = 1, nstst, 1
         js = nlstst(j)
-        !$acc loop gang vector independent
+        !NO!$acc loop gang vector independent
         do jl = 1, n_points, 1
           zy(jl,js) = y(jl,js)
         enddo
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     enddo
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)

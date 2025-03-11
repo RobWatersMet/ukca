@@ -47,41 +47,41 @@ module asad_inicnt_mod
     row_length = ukca_config%row_length
     rows = ukca_config%rows
     if (species(1:4) == 'CO2 ' .AND. ukca_config%l_chem_environ_co2_fld) then
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do idx = LBOUND(y_out, dim=1), UBOUND(y_out, dim=1), 1
         y_out(idx) = co2(idx + (LBOUND(co2, dim=1) - LBOUND(y_out, dim=1)))
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     else
       if (species(1:4) == 'H2O ') then
-        !$acc kernels
-        !$acc loop gang vector independent
+        !NO!$acc kernels
+        !NO!$acc loop gang vector independent
         do idx_1 = LBOUND(y_out, dim=1), UBOUND(y_out, dim=1), 1
           y_out(idx_1) = wp(idx_1 + (LBOUND(wp, dim=1) - LBOUND(y_out, dim=1)))
         enddo
-        !$acc end kernels
+        !NO!$acc end kernels
       else
         if (species(1:4) == 'RO2 ') then
           if (ukca_config%l_ukca_ro2_perm) then
-            !$acc kernels
-            !$acc loop gang vector independent
+            !NO!$acc kernels
+            !NO!$acc loop gang vector independent
             do idx_2 = LBOUND(fro2, dim=1), UBOUND(fro2, dim=1), 1
               fro2(idx_2) = 0.0
             enddo
-            !$acc loop seq
+            !NO!$acc loop seq
             do j = 1, jpro2, 1
               iro2 = nlfro2(j)
-              !$acc loop gang vector independent
+              !NO!$acc loop gang vector independent
               do idx_3 = LBOUND(fro2, dim=1), UBOUND(fro2, dim=1), 1
                 fro2(idx_3) = fro2(idx_3) + f(idx_3 + (LBOUND(f, dim=1) - LBOUND(fro2, dim=1)),iro2)
               enddo
             enddo
-            !$acc loop gang vector independent
+            !NO!$acc loop gang vector independent
             do idx_4 = LBOUND(y_out, dim=1), UBOUND(y_out, dim=1), 1
               y_out(idx_4) = fro2(idx_4) / tnd(idx_4 + (LBOUND(tnd, dim=1) - LBOUND(y_out, dim=1)))
             enddo
-            !$acc end kernels
+            !NO!$acc end kernels
           else
             errcode = 126
             cmessage(:) = 'RO2 should only be a species if l_ukca_ro2_perm == T'
@@ -91,39 +91,39 @@ module asad_inicnt_mod
           if (ukca_config%l_ukca_offline .OR. ukca_config%l_ukca_offline_be) then
             if (species(1:4) == 'OH  ') then
               y_out(:) = RESHAPE(oh_offline(1:row_length,1:rows,nlev), [klen])
-              !$acc kernels
-              !$acc loop gang vector independent
+              !NO!$acc kernels
+              !NO!$acc loop gang vector independent
               do idx_5 = LBOUND(y_out, dim=1), UBOUND(y_out, dim=1), 1
                 y_out(idx_5) = y_out(idx_5) / c_oh
               enddo
-              !$acc end kernels
+              !NO!$acc end kernels
             else
               if (species(1:4) == 'O3  ') then
                 y_out(:) = RESHAPE(o3_offline(1:row_length,1:rows,nlev), [klen])
-                !$acc kernels
-                !$acc loop gang vector independent
+                !NO!$acc kernels
+                !NO!$acc loop gang vector independent
                 do idx_6 = LBOUND(y_out, dim=1), UBOUND(y_out, dim=1), 1
                   y_out(idx_6) = y_out(idx_6) / c_o3
                 enddo
-                !$acc end kernels
+                !NO!$acc end kernels
               else
                 if (species(1:4) == 'NO3 ') then
                   y_out(:) = RESHAPE(no3_offline(1:row_length,1:rows,nlev), [klen])
-                  !$acc kernels
-                  !$acc loop gang vector independent
+                  !NO!$acc kernels
+                  !NO!$acc loop gang vector independent
                   do idx_7 = LBOUND(y_out, dim=1), UBOUND(y_out, dim=1), 1
                     y_out(idx_7) = y_out(idx_7) / c_no3
                   enddo
-                  !$acc end kernels
+                  !NO!$acc end kernels
                 else
                   if (species(1:4) == 'HO2 ') then
                     y_out(:) = RESHAPE(ho2_offline(1:row_length,1:rows,nlev), [klen])
-                    !$acc kernels
-                    !$acc loop gang vector independent
+                    !NO!$acc kernels
+                    !NO!$acc loop gang vector independent
                     do idx_8 = LBOUND(y_out, dim=1), UBOUND(y_out, dim=1), 1
                       y_out(idx_8) = y_out(idx_8) / c_ho2
                     enddo
-                    !$acc end kernels
+                    !NO!$acc end kernels
                   else
                     errcode = 125
                     cmessage(:) = ' Species ' // species // ' is not treated by this routine'
@@ -140,12 +140,12 @@ module asad_inicnt_mod
         end if
       end if
     end if
-    !$acc kernels
-    !$acc loop gang vector independent
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent
     do idx_9 = LBOUND(y_out, dim=1), UBOUND(y_out, dim=1), 1
       y_out(idx_9) = y_out(idx_9) * tnd(idx_9 + (LBOUND(tnd, dim=1) - LBOUND(y_out, dim=1)))
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
     end if

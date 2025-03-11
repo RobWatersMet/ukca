@@ -142,8 +142,8 @@ module ukca_hetero_mod
     mm_arr(:) = [m_clono2, m_clono2, m_hocl, m_n2o5, m_n2o5, m_hobr, m_brono2, m_brono2, m_hobr, m_hocl, m_clono2, m_brono2, m_n2o5]
     if (first_pass) then
       if (first) then
-        !$acc kernels
-        !$acc loop seq
+        !NO!$acc kernels
+        !NO!$acc loop seq
         do js = 1, jpcspf, 1
           if (specf(js) == 'H2O       ' .OR. specf(js) == 'H2OS      ') then
             ih2o = js
@@ -181,7 +181,7 @@ module ukca_hetero_mod
             end if
           end if
         enddo
-        !$acc loop gang vector independent
+        !NO!$acc loop gang vector independent
         do jh = 1, jphk, 1
           if (sph(jh,1) == 'H2O       ' .OR. sph(jh,1) == 'H2OS      ') then
             if (sph(jh,2) == 'ClONO2    ') then
@@ -301,174 +301,174 @@ module ukca_hetero_mod
         gphocl = .true.
         gppsc = .true.
         gpsimp = .false.
-        !$acc end kernels
+        !NO!$acc end kernels
       end if
       first_pass = .false.
     end if
-    !$acc kernels
-    !$acc loop gang vector independent
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent
     do idx = 1, n_points, 1
       zp(idx) = p(idx) / 100.0
     enddo
-    !$acc loop gang vector independent
+    !NO!$acc loop gang vector independent
     do idx_1 = 1, n_points, 1
       zt(idx_1) = t(idx_1)
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     if (ihno3 > 0) then
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do idx_2 = 1, n_points, 1
         zhno3(idx_2) = f(idx_2 + (LBOUND(f, dim=1) - 1),ihno3)
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     else
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do idx_3 = 1, n_points, 1
         zhno3(idx_3) = 0.0
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     end if
     if (ih2o > 0) then
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do idx_4 = 1, n_points, 1
         zh2o(idx_4) = f(idx_4 + (LBOUND(f, dim=1) - 1),ih2o)
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     else
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do idx_5 = 1, n_points, 1
         zh2o(idx_5) = wp(idx_5 + (LBOUND(wp, dim=1) - 1))
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     end if
     if (ihcl > 0) then
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do idx_6 = 1, n_points, 1
         zhcl(idx_6) = f(idx_6 + (LBOUND(f, dim=1) - 1),ihcl)
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     else
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do idx_7 = 1, n_points, 1
         zhcl(idx_7) = 0.0
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     end if
     if (iclono2 > 0) then
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do idx_8 = 1, n_points, 1
         zclono2(idx_8) = f(idx_8 + (LBOUND(f, dim=1) - 1),iclono2)
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     else
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do idx_9 = 1, n_points, 1
         zclono2(idx_9) = 0.0
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     end if
     if (in2o5 > 0) then
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do idx_10 = 1, n_points, 1
         zn2o5(idx_10) = f(idx_10 + (LBOUND(f, dim=1) - 1),in2o5)
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     else
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do idx_11 = 1, n_points, 1
         zn2o5(idx_11) = 0.0
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     end if
     if (ihocl > 0) then
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do idx_12 = 1, n_points, 1
         zhocl(idx_12) = f(idx_12 + (LBOUND(f, dim=1) - 1),ihocl)
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     else
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do idx_13 = 1, n_points, 1
         zhocl(idx_13) = 0.0
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     end if
     if (ihobr > 0) then
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do idx_14 = 1, n_points, 1
         zhobr(idx_14) = f(idx_14 + (LBOUND(f, dim=1) - 1),ihobr)
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     else
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do idx_15 = 1, n_points, 1
         zhobr(idx_15) = 0.0
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     end if
     if (ihbr > 0) then
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do idx_16 = 1, n_points, 1
         zhbr(idx_16) = f(idx_16 + (LBOUND(f, dim=1) - 1),ihbr)
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     else
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do idx_17 = 1, n_points, 1
         zhbr(idx_17) = 0.0
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     end if
     if (ibrono2 > 0) then
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do idx_18 = 1, n_points, 1
         zbrono2(idx_18) = f(idx_18 + (LBOUND(f, dim=1) - 1),ibrono2)
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     else
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do idx_19 = 1, n_points, 1
         zbrono2(idx_19) = 0.0
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     end if
     ! PSyclone CodeBlock (unsupported code) reason:
     !  - PSyclone doesn't yet support reference to imported symbols inside WHERE clauses.
     WHERE (.NOT. (stratflag)) sph2o = 0.0
     call ukca_pscpres(zt(:), zp(:), tnd(1:n_points), zh2o(:), zhno3(:), 1, n_points, n_points, have_nat(:), sph2o(1:n_points))
     if (ihno3 > 0) then
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do idx_20 = LBOUND(f, dim=1), UBOUND(f, dim=1), 1
         f(idx_20,ihno3) = zhno3(idx_20 + (1 - LBOUND(f, dim=1)))
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     end if
     if (ih2o > 0) then
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do idx_21 = LBOUND(f, dim=1), UBOUND(f, dim=1), 1
         f(idx_21,ih2o) = zh2o(idx_21 + (1 - LBOUND(f, dim=1)))
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     end if
     if (ukca_config%i_ukca_hetconfig == 0) then
       call ukca_calckpsc(za(1:n_points), zt(:), zh2o(:), zhcl(:), zclono2(:), zn2o5(:), zhocl(:), psc1(:), psc2(:), psc3(:), psc4(:), psc5(:), gpsa, gphocl, gppsc, gpsimp, n_points, 1, n_points, cdt)
@@ -492,44 +492,44 @@ module ukca_hetero_mod
         hk(:, 4) = 0.0
       END WHERE
       if (n_clono2_h2o > 0) then
-        !$acc kernels
-        !$acc loop gang vector independent
+        !NO!$acc kernels
+        !NO!$acc loop gang vector independent
         do idx_22 = LBOUND(rk, dim=1), UBOUND(rk, dim=1), 1
           rk(idx_22,n_clono2_h2o) = hk(idx_22 + (LBOUND(hk, dim=1) - LBOUND(rk, dim=1)),1)
         enddo
-        !$acc end kernels
+        !NO!$acc end kernels
       end if
       if (n_clono2_hcl > 0) then
-        !$acc kernels
-        !$acc loop gang vector independent
+        !NO!$acc kernels
+        !NO!$acc loop gang vector independent
         do idx_23 = LBOUND(rk, dim=1), UBOUND(rk, dim=1), 1
           rk(idx_23,n_clono2_hcl) = hk(idx_23 + (LBOUND(hk, dim=1) - LBOUND(rk, dim=1)),2)
         enddo
-        !$acc end kernels
+        !NO!$acc end kernels
       end if
       if (n_hocl_hcl > 0) then
-        !$acc kernels
-        !$acc loop gang vector independent
+        !NO!$acc kernels
+        !NO!$acc loop gang vector independent
         do idx_24 = LBOUND(rk, dim=1), UBOUND(rk, dim=1), 1
           rk(idx_24,n_hocl_hcl) = hk(idx_24 + (LBOUND(hk, dim=1) - LBOUND(rk, dim=1)),3)
         enddo
-        !$acc end kernels
+        !NO!$acc end kernels
       end if
       if (n_n2o5_h2o > 0) then
-        !$acc kernels
-        !$acc loop gang vector independent
+        !NO!$acc kernels
+        !NO!$acc loop gang vector independent
         do idx_25 = LBOUND(rk, dim=1), UBOUND(rk, dim=1), 1
           rk(idx_25,n_n2o5_h2o) = hk(idx_25 + (LBOUND(hk, dim=1) - LBOUND(rk, dim=1)),4)
         enddo
-        !$acc end kernels
+        !NO!$acc end kernels
       end if
       if (n_n2o5_hcl > 0) then
-        !$acc kernels
-        !$acc loop gang vector independent
+        !NO!$acc kernels
+        !NO!$acc loop gang vector independent
         do idx_26 = LBOUND(rk, dim=1), UBOUND(rk, dim=1), 1
           rk(idx_26,n_n2o5_hcl) = hk(idx_26 + (LBOUND(hk, dim=1) - LBOUND(rk, dim=1)),5)
         enddo
-        !$acc end kernels
+        !NO!$acc end kernels
       end if
     else
       if (ukca_config%i_ukca_hetconfig == 2) then
@@ -545,52 +545,52 @@ module ukca_hetero_mod
         else
           n_hk = 5
         end if
-        !$acc kernels
-        !$acc loop gang vector independent collapse(2)
+        !NO!$acc kernels
+        !NO!$acc loop gang vector independent collapse(2)
         do idx_27 = LBOUND(kpsc, dim=2), UBOUND(kpsc, dim=2), 1
           do idx_28 = 1, n_points, 1
             kpsc(idx_28,idx_27) = 0.0
           enddo
         enddo
-        !$acc loop seq
+        !NO!$acc loop seq
         do jh = 1, n_hk, 1
-          !$acc loop gang vector independent
+          !NO!$acc loop gang vector independent
           do idx_29 = 1, n_points, 1
             c_cf(idx_29) = 0.25 * SQRT((8.0 * boltzmann) / (pi * mm_arr(jh) * amu) * zt(idx_29))
           enddo
           if (gppsc) then
             if (gpsimp) then
-              !$acc loop gang vector independent
+              !NO!$acc loop gang vector independent
               do idx_30 = 1, n_points, 1
                 kpsc(idx_30,jh) = 4.6e-5 * fpsc1(idx_30)
               enddo
             else
-              !$acc loop gang vector independent
+              !NO!$acc loop gang vector independent
               do idx_31 = 1, n_points, 1
                 psc1sa(idx_31) = (m_hno3 + 3.0 * m_h2o) * amu * 3.0e5 * shno3(idx_31) / (rho1 * rad1)
               enddo
-              !$acc loop gang vector independent
+              !NO!$acc loop gang vector independent
               do idx_32 = 1, n_points, 1
                 psc2sa(idx_32) = m_h2o * amu * 3.0e5 * sh2o(idx_32) / (rho2 * rad2)
               enddo
               if (gam1(jh) >= 1.0) then
-                !$acc loop gang vector independent
+                !NO!$acc loop gang vector independent
                 do idx_33 = 1, n_points, 1
                   kpsc(idx_33,jh) = c_cf(idx_33) * psc1sa(idx_33) * gam_calc(idx_33,INT(gam1(jh)))
                 enddo
               else
-                !$acc loop gang vector independent
+                !NO!$acc loop gang vector independent
                 do idx_34 = 1, n_points, 1
                   kpsc(idx_34,jh) = c_cf(idx_34) * psc1sa(idx_34) * gam1(jh)
                 enddo
               end if
               if (gam2(jh) >= 1.0) then
-                !$acc loop gang vector independent
+                !NO!$acc loop gang vector independent
                 do idx_35 = 1, n_points, 1
                   kpsc(idx_35,jh) = kpsc(idx_35,jh) + c_cf(idx_35) * psc2sa(idx_35) * gam_calc(idx_35,INT(gam2(jh)))
                 enddo
               else
-                !$acc loop gang vector independent
+                !NO!$acc loop gang vector independent
                 do idx_36 = 1, n_points, 1
                   kpsc(idx_36,jh) = kpsc(idx_36,jh) + c_cf(idx_36) * psc2sa(idx_36) * gam2(jh)
                 enddo
@@ -599,19 +599,19 @@ module ukca_hetero_mod
           end if
           if (ukca_config%i_ukca_hetconfig > 0) then
             if (jh <= 3 .OR. jh == 8) then
-              !$acc loop gang vector independent
+              !NO!$acc loop gang vector independent
               do idx_37 = 1, n_points, 1
                 kpsc(idx_37,jh) = kpsc(idx_37,jh) + c_cf(idx_37) * 100.0 * za(idx_37) * gam3calc(idx_37,jh)
               enddo
             else
-              !$acc loop gang vector independent
+              !NO!$acc loop gang vector independent
               do idx_38 = 1, n_points, 1
                 kpsc(idx_38,jh) = kpsc(idx_38,jh) + c_cf(idx_38) * 100.0 * za(idx_38) * gam3(jh)
               enddo
             end if
           end if
         enddo
-        !$acc loop gang vector independent
+        !NO!$acc loop gang vector independent
         do jl = 1, n_points, 1
           zrate = MAX(1.0, cdt * (kpsc(jl,1) * zclono2(jl) + kpsc(jl,5) * zn2o5(jl) + kpsc(jl,3) * zhocl(jl) + kpsc(jl,6) * zhobr(jl) + kpsc(jl,7) * zbrono2(jl)))
           zdhcl = MIN(zrate, zhcl(jl))
@@ -622,10 +622,10 @@ module ukca_hetero_mod
           kpsc(jl,6) = zfact * kpsc(jl,6)
           kpsc(jl,7) = zfact * kpsc(jl,7)
         enddo
-        !$acc end kernels
+        !NO!$acc end kernels
         if (ukca_config%i_ukca_hetconfig == 2) then
-          !$acc kernels
-          !$acc loop gang vector independent
+          !NO!$acc kernels
+          !NO!$acc loop gang vector independent
           do jl = 1, n_points, 1
             zrate = MAX(1.0, cdt * (kpsc(jl,9) * zhobr(jl) + kpsc(jl,10) * zhocl(jl) + kpsc(jl,11) * zclono2(jl) + kpsc(jl,12) * zbrono2(jl) + kpsc(jl,13) * zn2o5(jl)))
             zdhbr = MIN(zrate, zhbr(jl))
@@ -636,7 +636,7 @@ module ukca_hetero_mod
             kpsc(jl,12) = zfact * kpsc(jl,12)
             kpsc(jl,13) = zfact * kpsc(jl,13)
           enddo
-          !$acc end kernels
+          !NO!$acc end kernels
         end if
       end if
       ! PSyclone CodeBlock (unsupported code) reason:
@@ -679,12 +679,12 @@ module ukca_hetero_mod
         rk(:, n_n2o5_hbr) = 0.0
       END WHERE
     end if
-    !$acc kernels
-    !$acc loop gang vector independent
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent
     do idx_39 = LBOUND(sphno3, dim=1), UBOUND(sphno3, dim=1), 1
       sphno3(idx_39) = shno3(idx_39 + (LBOUND(shno3, dim=1) - LBOUND(sphno3, dim=1)))
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
     end if
@@ -711,8 +711,8 @@ module ukca_hetero_mod
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
     call nvtxStartRange(ModuleName // ':' // RoutineName)
-    !$acc kernels
-    !$acc loop gang vector independent
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent
     do jl = kstart, kend, 1
       tt = MAX(t(jl), 180.0)
       theta_hbr = 4.14e-10 * thbr(jl) ** 0.88
@@ -724,7 +724,7 @@ module ukca_hetero_mod
       gam_br(jl,6) = 0.56 * theta_hbr
       gam_br(jl,7) = 0.02 * theta_hbr
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
     end if
@@ -817,15 +817,15 @@ module ukca_hetero_mod
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
     call nvtxStartRange(ModuleName // ':' // RoutineName)
-    !$acc kernels
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent collapse(2)
     do idx = LBOUND(gam3arr, dim=2), UBOUND(gam3arr, dim=2), 1
       do idx_1 = LBOUND(gam3arr, dim=1), UBOUND(gam3arr, dim=1), 1
         gam3arr(idx_1,idx) = 0.0
       enddo
     enddo
     small_value = SQRT(peps)
-    !$acc loop gang vector independent
+    !NO!$acc loop gang vector independent
     do jl = kstart, kend, 1
       tt = MAX(t(jl), 185.0)
       p0h2o = EXP(18.452406985 - 3505.1578807 / tt - 330918.55082 / tt ** 2 + 12725068.262 / tt ** 3)
@@ -952,7 +952,7 @@ module ukca_hetero_mod
       end if
       gam3arr(jl,8) = 1.0 / (1.0 / 0.8 + 1.0 / (EXP(29.2 - 0.4 * wt_h2so4) + 0.11))
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
     end if
@@ -983,14 +983,14 @@ module ukca_hetero_mod
     call nvtxStartRange(ModuleName // ':' // RoutineName)
     if (first_pass) then
       if (firstcall) then
-        !$acc kernels
-        !$acc loop seq
+        !NO!$acc kernels
+        !NO!$acc loop seq
         do js = 1, jpcspf, 1
           if (specf(js) == 'HONO2     ') then
             ihno3 = js
           end if
         enddo
-        !$acc end kernels
+        !NO!$acc end kernels
         if (ihno3 == 0) then
           errcode = 1
           cmessage(:) = 'Select HONO2 as advected tracer.'
@@ -1000,12 +1000,12 @@ module ukca_hetero_mod
       end if
       first_pass = .false.
     end if
-    !$acc kernels
-    !$acc loop gang vector independent
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent
     do idx = 1, n_points, 1
       f(idx,ihno3) = f(idx,ihno3) + sphno3(idx)
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
     end if
@@ -1096,120 +1096,120 @@ module ukca_hetero_mod
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
     call nvtxStartRange(ModuleName // ':' // RoutineName)
-    !$acc kernels
-    !$acc loop gang vector independent
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent
     do idx = kstart, kend, 1
       akpsc1(idx) = 0.0
     enddo
-    !$acc loop gang vector independent
+    !NO!$acc loop gang vector independent
     do idx_1 = kstart, kend, 1
       akpsc2(idx_1) = 0.0
     enddo
-    !$acc loop gang vector independent
+    !NO!$acc loop gang vector independent
     do idx_2 = kstart, kend, 1
       akpsc3(idx_2) = 0.0
     enddo
-    !$acc loop gang vector independent
+    !NO!$acc loop gang vector independent
     do idx_3 = kstart, kend, 1
       akpsc4(idx_3) = 0.0
     enddo
-    !$acc loop gang vector independent
+    !NO!$acc loop gang vector independent
     do idx_4 = kstart, kend, 1
       akpsc5(idx_4) = 0.0
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     if (lppsc .OR. lpsa) then
-      !$acc kernels
+      !NO!$acc kernels
       zfcnit = (8.0 * boltzmann) / (pi * 97.5 * u)
       zfn2o5 = (8.0 * boltzmann) / (pi * 108.0 * u)
       zfhocl = (8.0 * boltzmann) / (pi * 52.5 * u)
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do idx_5 = kstart, kend, 1
         ccnit(idx_5) = 0.25 * SQRT(zfcnit * t(idx_5))
       enddo
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do idx_6 = kstart, kend, 1
         cn2o5(idx_6) = 0.25 * SQRT(zfn2o5 * t(idx_6))
       enddo
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do idx_7 = kstart, kend, 1
         chocl(idx_7) = 0.25 * SQRT(zfhocl * t(idx_7))
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
       if (lppsc) then
         if (lpsimp) then
-          !$acc kernels
-          !$acc loop gang vector independent
+          !NO!$acc kernels
+          !NO!$acc loop gang vector independent
           do idx_8 = kstart, kend, 1
             akpsc1(idx_8) = 4.6e-5 * fpsc1(idx_8)
           enddo
-          !$acc loop gang vector independent
+          !NO!$acc loop gang vector independent
           do idx_9 = kstart, kend, 1
             akpsc2(idx_9) = 4.6e-5 * fpsc1(idx_9)
           enddo
-          !$acc loop gang vector independent
+          !NO!$acc loop gang vector independent
           do idx_10 = kstart, kend, 1
             akpsc3(idx_10) = 4.6e-5 * fpsc1(idx_10)
           enddo
-          !$acc end kernels
+          !NO!$acc end kernels
         else
-          !$acc kernels
-          !$acc loop gang vector independent
+          !NO!$acc kernels
+          !NO!$acc loop gang vector independent
           do idx_11 = kstart, kend, 1
             psc1sa(idx_11) = 1.85 * 63.0 * u * 3.0e5 * shno3(idx_11) / (rho1 * rad1)
           enddo
-          !$acc loop gang vector independent
+          !NO!$acc loop gang vector independent
           do idx_12 = kstart, kend, 1
             psc2sa(idx_12) = 18.0 * u * 3.0e5 * sh2o(idx_12) / (rho2 * rad2)
           enddo
-          !$acc loop gang vector independent
+          !NO!$acc loop gang vector independent
           do idx_13 = kstart, kend, 1
             akpsc1(idx_13) = ccnit(idx_13) * (psc1sa(idx_13) * gam1a + psc2sa(idx_13) * gam2a)
           enddo
-          !$acc loop gang vector independent
+          !NO!$acc loop gang vector independent
           do idx_14 = kstart, kend, 1
             akpsc2(idx_14) = ccnit(idx_14) * (psc1sa(idx_14) * gam1b + psc2sa(idx_14) * gam2b)
           enddo
-          !$acc loop gang vector independent
+          !NO!$acc loop gang vector independent
           do idx_15 = kstart, kend, 1
             akpsc3(idx_15) = cn2o5(idx_15) * (psc1sa(idx_15) * gam1c + psc2sa(idx_15) * gam2c)
           enddo
-          !$acc loop gang vector independent
+          !NO!$acc loop gang vector independent
           do idx_16 = kstart, kend, 1
             akpsc4(idx_16) = cn2o5(idx_16) * (psc1sa(idx_16) * gam1d + psc2sa(idx_16) * gam2d)
           enddo
-          !$acc loop gang vector independent
+          !NO!$acc loop gang vector independent
           do idx_17 = kstart, kend, 1
             akpsc5(idx_17) = chocl(idx_17) * (psc1sa(idx_17) * gam1e + psc2sa(idx_17) * gam2e)
           enddo
-          !$acc end kernels
+          !NO!$acc end kernels
         end if
       end if
       if (lpsa) then
         call ukca_eqcomp(t, th2o, kstart, kend, kchmlev, lphocl, gam3b, hshcl, hhocl)
-        !$acc kernels
-        !$acc loop gang vector independent
+        !NO!$acc kernels
+        !NO!$acc loop gang vector independent
         do idx_18 = kstart, kend, 1
           akpsc2(idx_18) = akpsc2(idx_18) + ccnit(idx_18) * 100.0 * sasa(idx_18) * gam3b(idx_18)
         enddo
-        !$acc loop gang vector independent
+        !NO!$acc loop gang vector independent
         do idx_19 = kstart, kend, 1
           akpsc3(idx_19) = akpsc3(idx_19) + cn2o5(idx_19) * 100.0 * sasa(idx_19) * gam3c
         enddo
-        !$acc end kernels
+        !NO!$acc end kernels
         if (lphocl) then
-          !$acc kernels
-          !$acc loop gang vector independent
+          !NO!$acc kernels
+          !NO!$acc loop gang vector independent
           do jl = kstart, kend, 1
             vol = sasa(jl) * radsa / 3.0
             order2 = 1.0e6 * cpk1 * vol * avogadro * hshcl(jl) * hhocl(jl) * (boltzmann * t(jl)) ** 2
             akpsc5(jl) = akpsc5(jl) + order2 * thcl(jl)
           enddo
-          !$acc end kernels
+          !NO!$acc end kernels
         end if
       end if
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do jl = kstart, kend, 1
         zrate = MAX(1.0, dt * (akpsc1(jl) * tcnit(jl) + akpsc4(jl) * tn2o5(jl) + akpsc5(jl) * thocl(jl)))
         zdhcl = MIN(zrate, thcl(jl))
@@ -1218,7 +1218,7 @@ module ukca_hetero_mod
         akpsc4(jl) = zfact * akpsc4(jl)
         akpsc5(jl) = zfact * akpsc5(jl)
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     end if
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
@@ -1318,20 +1318,20 @@ module ukca_hetero_mod
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
     call nvtxStartRange(ModuleName // ':' // RoutineName)
-    !$acc kernels
-    !$acc loop gang vector independent
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent
     do idx = LBOUND(hshcl, dim=1), UBOUND(hshcl, dim=1), 1
       hshcl(idx) = 0.0
     enddo
-    !$acc loop gang vector independent
+    !NO!$acc loop gang vector independent
     do idx_1 = LBOUND(rpcncl, dim=1), UBOUND(rpcncl, dim=1), 1
       rpcncl(idx_1) = 0.0
     enddo
-    !$acc loop gang vector independent
+    !NO!$acc loop gang vector independent
     do idx_2 = LBOUND(hhocl, dim=1), UBOUND(hhocl, dim=1), 1
       hhocl(idx_2) = 0.0
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     do jl = kstart, kend, 1
       ph2o = 1.0e4 * th2o(jl) * boltzmann * t(jl)
       call ukca_position(pindx, noph2o, ph2o, jx, ierx, 0)
@@ -1498,24 +1498,24 @@ module ukca_hetero_mod
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
     call nvtxStartRange(ModuleName // ':' // RoutineName)
-    !$acc kernels
-    !$acc loop gang vector independent
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent
     do idx = kstart, kend, 1
       shno3(idx) = 0.0
     enddo
-    !$acc loop gang vector independent
+    !NO!$acc loop gang vector independent
     do idx_1 = kstart, kend, 1
       sh2o(idx_1) = 0.0
     enddo
-    !$acc loop gang vector independent
+    !NO!$acc loop gang vector independent
     do idx_2 = kstart, kend, 1
       fpsc1(idx_2) = 0.0
     enddo
-    !$acc loop gang vector independent
+    !NO!$acc loop gang vector independent
     do idx_3 = kstart, kend, 1
       fpsc2(idx_3) = 0.0
     enddo
-    !$acc loop gang vector independent
+    !NO!$acc loop gang vector independent
     do jl = kstart, kend, 1
       zh2ot = 0.75 * p(jl) * th2o(jl) / tnd(jl)
       zh2ot = MAX(zh2ot, 1.0e-12)
@@ -1551,7 +1551,7 @@ module ukca_hetero_mod
         end if
       end if
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
     end if

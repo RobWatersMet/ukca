@@ -60,13 +60,13 @@ module asad_fyinit_mod
     call nvtxStartRange(ModuleName // ':' // RoutineName)
     if (first_pass) then
       if (gonce) then
-        !$acc kernels
+        !NO!$acc kernels
         gonce = .false.
         iss = 0
         ict = 0
         icf = 0
         iftr = 0
-        !$acc loop seq
+        !NO!$acc loop seq
         do js = 1, jpspec, 1
           if (ctype(js) == jpna(:)) then
             iss = iss + 1
@@ -88,38 +88,38 @@ module asad_fyinit_mod
             ilftr(iftr) = js
           end if
         enddo
-        !$acc end kernels
+        !NO!$acc end kernels
       end if
       first_pass = .false.
     end if
     if (ofirst) then
-      !$acc kernels
+      !NO!$acc kernels
       peps10 = 10.0 * peps
       istart = nlmajmin(1)
       iend = nlmajmin(2)
-      !$acc loop seq
+      !NO!$acc loop seq
       do j = istart, iend, 1
         js = nlmajmin(j)
         ifam = moffam(js)
-        !$acc loop gang vector independent
+        !NO!$acc loop gang vector independent
         do jl = 1, n_points, 1
           y(jl,js) = f(jl,ifam)
         enddo
       enddo
       istart = nlmajmin(3)
       iend = nlmajmin(4)
-      !$acc loop seq
+      !NO!$acc loop seq
       do j = istart, iend, 1
         js = nlmajmin(j)
-        !$acc loop gang vector independent
+        !NO!$acc loop gang vector independent
         do jl = 1, n_points, 1
           y(jl,js) = peps10
         enddo
       enddo
-      !$acc loop seq
+      !NO!$acc loop seq
       do j = 1, iss, 1
         js = ilss(j)
-        !$acc loop gang vector independent
+        !NO!$acc loop gang vector independent
         do jl = 1, n_points, 1
           y(jl,js) = peps10
         enddo
@@ -129,7 +129,7 @@ module asad_fyinit_mod
       fh2 = fh2_default
       fo2 = fo2_default
       fn2 = fn2_default
-      !$acc end kernels
+      !NO!$acc end kernels
       if (ukca_config%l_chem_environ_co2_scalar) then
         fco2 = atmospheric_co2 / c_co2
         if (ukca_config%l_chem_environ_co2_fld) then
@@ -174,25 +174,25 @@ module asad_fyinit_mod
             end if
           end if
         end if
-        !$acc kernels
-        !$acc loop gang vector independent
+        !NO!$acc kernels
+        !NO!$acc loop gang vector independent
         do jl = 1, n_points, 1
           y(jl,js) = zcnst * tnd(jl)
         enddo
-        !$acc end kernels
+        !NO!$acc end kernels
       enddo
     end if
-    !$acc kernels
-    !$acc loop seq
+    !NO!$acc kernels
+    !NO!$acc loop seq
     do j = 1, iftr, 1
       js = ilftr(j)
       itr = madvtr(js)
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do jl = 1, n_points, 1
         y(jl,js) = f(jl,itr)
       enddo
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     if (ofirst) then
       do j = 1, icf, 1
         js = ilcf(j)

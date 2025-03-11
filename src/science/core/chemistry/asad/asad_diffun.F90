@@ -29,24 +29,24 @@ module asad_diffun_mod
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
     call nvtxStartRange(ModuleName // ':' // RoutineName)
-    !$acc kernels
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent collapse(2)
     do jtr = 1, jpcspf, 1
       do jl = 1, kl, 1
         fdot(jl,jtr) = 0.0
       enddo
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     call asad_prls(kl, nf, nlf, gdepem)
-    !$acc kernels
-    !$acc loop seq
+    !NO!$acc kernels
+    !NO!$acc loop seq
     do j = 1, nf, 1
       js = nlf(j)
       ifam = moffam(js)
       itr = madvtr(js)
       gfam = ifam /= 0
       gtr = itr /= 0
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do jl = 1, kl, 1
         ydot(jl,js) = prod(jl,js) - slos(jl,js)
         if (gfam .AND. (.NOT.gtr .OR. gtr .AND. linfam(jl,itr))) then
@@ -57,7 +57,7 @@ module asad_diffun_mod
         end if
       enddo
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
     end if

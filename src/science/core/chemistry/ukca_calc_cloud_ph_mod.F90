@@ -48,11 +48,11 @@ module ukca_calc_cloud_ph_mod
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
     call nvtxStartRange(ModuleName // ':' // RoutineName)
-    !$acc kernels
+    !NO!$acc kernels
     fit_1 = ukca_config%ph_fit_coeff_a
     fit_2 = ukca_config%ph_fit_coeff_b
     fit_3 = ukca_config%ph_fit_intercept
-    !$acc loop gang vector independent collapse(3)
+    !NO!$acc loop gang vector independent collapse(3)
     do idx = LBOUND(aird, dim=3), UBOUND(aird, dim=3), 1
       do idx_1 = LBOUND(aird, dim=2), UBOUND(aird, dim=2), 1
         do idx_2 = LBOUND(aird, dim=1), UBOUND(aird, dim=1), 1
@@ -60,11 +60,11 @@ module ukca_calc_cloud_ph_mod
         enddo
       enddo
     enddo
-    !$acc loop seq
+    !NO!$acc loop seq
     do k = 1, model_levels, 1
-      !$acc loop seq
+      !NO!$acc loop seq
       do j = 1, rows, 1
-        !$acc loop seq
+        !NO!$acc loop seq
         do i = 1, row_length, 1
           so2_conc = tracer(i,j,k,n_so2) / c_species(n_so2)
           so2_conc_micro = so2_conc * aird(i,j,k) * m_so2 * 1.0e-3 * kgpcm3_to_ugpm3 / avogadro
@@ -82,7 +82,7 @@ module ukca_calc_cloud_ph_mod
         enddo
       enddo
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
     end if

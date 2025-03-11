@@ -22,14 +22,14 @@ module ukca_photol_mod
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
     call nvtxStartRange(ModuleName // ':' // RoutineName)
-    !$acc kernels
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent collapse(2)
     do jl = 1, n_points, 1
       do jr = 1, jppj, 1
         rk(jl,nprkx(jr)) = prt(jl,jr)
       enddo
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
     end if

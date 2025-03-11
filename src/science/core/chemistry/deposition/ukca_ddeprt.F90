@@ -56,14 +56,14 @@ module ukca_ddeprt_mod
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
     call nvtxStartRange(ModuleName // ':' // RoutineName)
-    !$acc kernels
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent collapse(2)
     do idx = LBOUND(dryrt, dim=2), UBOUND(dryrt, dim=2), 1
       do idx_1 = LBOUND(dryrt, dim=1), UBOUND(dryrt, dim=1), 1
         dryrt(idx_1,idx) = 0.0
       enddo
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     do i = 1, p_fieldda, 1
       tgmt = REAL(i_hour) + r_minute / 60.0 + secs_per_step * 0.5 / 3600.0
       tloc(i) = tgmt + 24.0 * lon(i) / 360.0
@@ -78,8 +78,8 @@ module ukca_ddeprt_mod
       end if
       daylen(i) = fxc * ACOS(cs_hour_ang)
     enddo
-    !$acc kernels
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent collapse(2)
     do ns = 1, jpdd, 1
       do i = 1, p_fieldda, 1
         dawn = midday - daylen(i) / 2.0
@@ -150,7 +150,7 @@ module ukca_ddeprt_mod
         dryrt(i,ns) = vdeph / dzl(i,1)
       enddo
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
     end if

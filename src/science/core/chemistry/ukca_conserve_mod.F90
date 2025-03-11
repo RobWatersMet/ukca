@@ -148,55 +148,55 @@ module ukca_conserve_mod
         call umprint(ummessage, src='ukca_conserve_mod')
         call ereport('UKCA_CONSERVE_MOD:UKCA_CONSERVE', errcode, cmessage)
       end if
-      !$acc kernels
+      !NO!$acc kernels
       ncl_tracers = 0
       nbr_tracers = 0
       nh_tracers = 0
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do idx = 1, max_comp, 1
         contains_bromine(idx) = .false.
       enddo
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do idx_1 = 1, max_comp, 1
         do_not_change(idx_1) = .false.
       enddo
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do idx_2 = 1, max_comp, 1
         cl_tracers(idx_2) = 0
       enddo
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do idx_3 = 1, max_comp, 1
         br_tracers(idx_3) = 0
       enddo
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do idx_4 = 1, max_comp, 1
         h_tracers(idx_4) = 0
       enddo
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do idx_5 = 1, max_comp, 1
         cl_validity(idx_5) = 1.0
       enddo
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do idx_6 = 1, max_comp, 1
         br_validity(idx_6) = 1.0
       enddo
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do idx_7 = 1, max_comp, 1
         h_validity(idx_7) = 1.0
       enddo
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do idx_8 = 1, max_comp, 1
         c_br_tracers(idx_8) = 0.0
       enddo
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do idx_9 = 1, max_comp, 1
         c_cl_tracers(idx_9) = 0.0
       enddo
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do idx_10 = 1, max_comp, 1
         c_h_tracers(idx_10) = 0.0
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
       do m = 1, jpctr, 1
         if (advt(m) == 'CF2Cl2    ') then
           ncl_tracers = ncl_tracers + 1
@@ -610,8 +610,8 @@ module ukca_conserve_mod
       if (.NOT.ALLOCATED(total_cl)) then
         ALLOCATE(total_cl(1:row_length,1:rows,1:model_levels))
       end if
-      !$acc kernels
-      !$acc loop gang vector independent collapse(3)
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent collapse(3)
       do idx_11 = LBOUND(total_br, dim=3), UBOUND(total_br, dim=3), 1
         do idx_12 = LBOUND(total_br, dim=2), UBOUND(total_br, dim=2), 1
           do idx_13 = LBOUND(total_br, dim=1), UBOUND(total_br, dim=1), 1
@@ -619,7 +619,7 @@ module ukca_conserve_mod
           enddo
         enddo
       enddo
-      !$acc loop gang vector independent collapse(3)
+      !NO!$acc loop gang vector independent collapse(3)
       do idx_14 = LBOUND(total_cl, dim=3), UBOUND(total_cl, dim=3), 1
         do idx_15 = LBOUND(total_cl, dim=2), UBOUND(total_cl, dim=2), 1
           do idx_16 = LBOUND(total_cl, dim=1), UBOUND(total_cl, dim=1), 1
@@ -627,9 +627,9 @@ module ukca_conserve_mod
           enddo
         enddo
       enddo
-      !$acc loop seq
+      !NO!$acc loop seq
       do m = 1, nbr_tracers, 1
-        !$acc loop gang vector independent collapse(3)
+        !NO!$acc loop gang vector independent collapse(3)
         do idx_17 = LBOUND(total_br, dim=3), UBOUND(total_br, dim=3), 1
           do idx_18 = LBOUND(total_br, dim=2), UBOUND(total_br, dim=2), 1
             do idx_19 = LBOUND(total_br, dim=1), UBOUND(total_br, dim=1), 1
@@ -638,9 +638,9 @@ module ukca_conserve_mod
           enddo
         enddo
       enddo
-      !$acc loop seq
+      !NO!$acc loop seq
       do m = 1, ncl_tracers, 1
-        !$acc loop gang vector independent collapse(3)
+        !NO!$acc loop gang vector independent collapse(3)
         do idx_20 = LBOUND(total_cl, dim=3), UBOUND(total_cl, dim=3), 1
           do idx_21 = LBOUND(total_cl, dim=2), UBOUND(total_cl, dim=2), 1
             do idx_22 = LBOUND(total_cl, dim=1), UBOUND(total_cl, dim=1), 1
@@ -649,11 +649,11 @@ module ukca_conserve_mod
           enddo
         enddo
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
       if (ukca_config%l_ukca_h2o_feedback .AND. ukca_config%l_ukca_conserve_h) then
         ALLOCATE(total_h(1:row_length,1:rows,1:model_levels))
-        !$acc kernels
-        !$acc loop gang vector independent collapse(3)
+        !NO!$acc kernels
+        !NO!$acc loop gang vector independent collapse(3)
         do idx_23 = LBOUND(total_h, dim=3), UBOUND(total_h, dim=3), 1
           do idx_24 = LBOUND(total_h, dim=2), UBOUND(total_h, dim=2), 1
             do idx_25 = LBOUND(total_h, dim=1), UBOUND(total_h, dim=1), 1
@@ -661,11 +661,11 @@ module ukca_conserve_mod
             enddo
           enddo
         enddo
-        !$acc end kernels
-        !$acc kernels
-        !$acc loop seq
+        !NO!$acc end kernels
+        !NO!$acc kernels
+        !NO!$acc loop seq
         do m = 1, nh_tracers, 1
-          !$acc loop gang vector independent collapse(3)
+          !NO!$acc loop gang vector independent collapse(3)
           do idx_26 = LBOUND(total_h, dim=3), UBOUND(total_h, dim=3), 1
             do idx_27 = LBOUND(total_h, dim=2), UBOUND(total_h, dim=2), 1
               do idx_28 = LBOUND(total_h, dim=1), UBOUND(total_h, dim=1), 1
@@ -674,10 +674,10 @@ module ukca_conserve_mod
             enddo
           enddo
         enddo
-        !$acc end kernels
+        !NO!$acc end kernels
         if (n_toth > 0) then
-          !$acc kernels
-          !$acc loop gang vector independent collapse(3)
+          !NO!$acc kernels
+          !NO!$acc loop gang vector independent collapse(3)
           do widx3 = 1, model_levels, 1
             do widx2 = 1, rows, 1
               do widx1 = 1, row_length, 1
@@ -687,7 +687,7 @@ module ukca_conserve_mod
               enddo
             enddo
           enddo
-          !$acc loop gang vector independent collapse(3)
+          !NO!$acc loop gang vector independent collapse(3)
           do widx3_1 = 1, model_levels, 1
             do widx2_1 = 1, rows, 1
               do widx1_1 = 1, row_length, 1
@@ -697,24 +697,24 @@ module ukca_conserve_mod
               enddo
             enddo
           enddo
-          !$acc end kernels
+          !NO!$acc end kernels
         end if
       end if
     else
       if (n_n2o > 0 .AND. model_levels /= 1) then
-        !$acc kernels
-        !$acc loop gang vector independent collapse(2)
+        !NO!$acc kernels
+        !NO!$acc loop gang vector independent collapse(2)
         do idx_29 = LBOUND(tracers, dim=2), UBOUND(tracers, dim=2), 1
           do idx_30 = LBOUND(tracers, dim=1), UBOUND(tracers, dim=1), 1
             tracers(idx_30,idx_29,model_levels,n_n2o) = 0.0
           enddo
         enddo
-        !$acc end kernels
+        !NO!$acc end kernels
       end if
       ALLOCATE(corrfac(1:row_length,1:rows,1:model_levels))
       if (nbr_tracers > 0) then
-        !$acc kernels
-        !$acc loop gang vector independent collapse(3)
+        !NO!$acc kernels
+        !NO!$acc loop gang vector independent collapse(3)
         do idx_31 = LBOUND(corrfac, dim=3), UBOUND(corrfac, dim=3), 1
           do idx_32 = LBOUND(corrfac, dim=2), UBOUND(corrfac, dim=2), 1
             do idx_33 = LBOUND(corrfac, dim=1), UBOUND(corrfac, dim=1), 1
@@ -722,9 +722,9 @@ module ukca_conserve_mod
             enddo
           enddo
         enddo
-        !$acc loop seq
+        !NO!$acc loop seq
         do m = 1, nbr_tracers, 1
-          !$acc loop gang vector independent collapse(3)
+          !NO!$acc loop gang vector independent collapse(3)
           do idx_34 = LBOUND(corrfac, dim=3), UBOUND(corrfac, dim=3), 1
             do idx_35 = LBOUND(corrfac, dim=2), UBOUND(corrfac, dim=2), 1
               do idx_36 = LBOUND(corrfac, dim=1), UBOUND(corrfac, dim=1), 1
@@ -733,7 +733,7 @@ module ukca_conserve_mod
             enddo
           enddo
         enddo
-        !$acc loop gang vector independent collapse(3)
+        !NO!$acc loop gang vector independent collapse(3)
         do idx_37 = LBOUND(corrfac, dim=3), UBOUND(corrfac, dim=3), 1
           do idx_38 = LBOUND(corrfac, dim=2), UBOUND(corrfac, dim=2), 1
             do idx_39 = LBOUND(corrfac, dim=1), UBOUND(corrfac, dim=1), 1
@@ -741,9 +741,9 @@ module ukca_conserve_mod
             enddo
           enddo
         enddo
-        !$acc loop seq
+        !NO!$acc loop seq
         do m = 1, nbr_tracers, 1
-          !$acc loop gang vector independent collapse(3)
+          !NO!$acc loop gang vector independent collapse(3)
           do i = 1, row_length, 1
             do j = 1, rows, 1
               do k = 2, model_levels, 1
@@ -756,7 +756,7 @@ module ukca_conserve_mod
             enddo
           enddo
         enddo
-        !$acc end kernels
+        !NO!$acc end kernels
         if ((MINVAL(corrfac) < 0.9 .OR. MAXVAL(corrfac) > 1.1) .AND. printstatus >= prstatus_normal) then
           ! PSyclone CodeBlock (unsupported code) reason:
           !  - Unsupported statement: Write_Stmt
@@ -765,8 +765,8 @@ module ukca_conserve_mod
         end if
       end if
       if (ncl_tracers > 0) then
-        !$acc kernels
-        !$acc loop gang vector independent collapse(3)
+        !NO!$acc kernels
+        !NO!$acc loop gang vector independent collapse(3)
         do idx_40 = LBOUND(corrfac, dim=3), UBOUND(corrfac, dim=3), 1
           do idx_41 = LBOUND(corrfac, dim=2), UBOUND(corrfac, dim=2), 1
             do idx_42 = LBOUND(corrfac, dim=1), UBOUND(corrfac, dim=1), 1
@@ -774,10 +774,10 @@ module ukca_conserve_mod
             enddo
           enddo
         enddo
-        !$acc loop seq
+        !NO!$acc loop seq
         do m = 1, ncl_tracers, 1
           if (.NOT.contains_bromine(m)) then
-            !$acc loop gang vector independent collapse(3)
+            !NO!$acc loop gang vector independent collapse(3)
             do idx_43 = LBOUND(corrfac, dim=3), UBOUND(corrfac, dim=3), 1
               do idx_44 = LBOUND(corrfac, dim=2), UBOUND(corrfac, dim=2), 1
                 do idx_45 = LBOUND(corrfac, dim=1), UBOUND(corrfac, dim=1), 1
@@ -786,7 +786,7 @@ module ukca_conserve_mod
               enddo
             enddo
           else
-            !$acc loop gang vector independent collapse(3)
+            !NO!$acc loop gang vector independent collapse(3)
             do idx_46 = LBOUND(total_cl, dim=3), UBOUND(total_cl, dim=3), 1
               do idx_47 = LBOUND(total_cl, dim=2), UBOUND(total_cl, dim=2), 1
                 do idx_48 = LBOUND(total_cl, dim=1), UBOUND(total_cl, dim=1), 1
@@ -796,7 +796,7 @@ module ukca_conserve_mod
             enddo
           end if
         enddo
-        !$acc loop gang vector independent collapse(3)
+        !NO!$acc loop gang vector independent collapse(3)
         do idx_49 = LBOUND(corrfac, dim=3), UBOUND(corrfac, dim=3), 1
           do idx_50 = LBOUND(corrfac, dim=2), UBOUND(corrfac, dim=2), 1
             do idx_51 = LBOUND(corrfac, dim=1), UBOUND(corrfac, dim=1), 1
@@ -804,10 +804,10 @@ module ukca_conserve_mod
             enddo
           enddo
         enddo
-        !$acc loop seq
+        !NO!$acc loop seq
         do m = 1, ncl_tracers, 1
           if (.NOT.contains_bromine(m)) then
-            !$acc loop gang vector independent collapse(3)
+            !NO!$acc loop gang vector independent collapse(3)
             do i = 1, row_length, 1
               do j = 1, rows, 1
                 do k = 2, model_levels, 1
@@ -821,7 +821,7 @@ module ukca_conserve_mod
             enddo
           end if
         enddo
-        !$acc end kernels
+        !NO!$acc end kernels
         if ((MINVAL(corrfac) < 0.9 .OR. MAXVAL(corrfac) > 1.1) .AND. printstatus >= prstatus_normal) then
           ! PSyclone CodeBlock (unsupported code) reason:
           !  - Unsupported statement: Write_Stmt
@@ -830,8 +830,8 @@ module ukca_conserve_mod
         end if
       end if
       if (ukca_config%l_ukca_h2o_feedback .AND. ukca_config%l_ukca_conserve_h) then
-        !$acc kernels
-        !$acc loop gang vector independent collapse(3)
+        !NO!$acc kernels
+        !NO!$acc loop gang vector independent collapse(3)
         do idx_52 = LBOUND(corrfac, dim=3), UBOUND(corrfac, dim=3), 1
           do idx_53 = LBOUND(corrfac, dim=2), UBOUND(corrfac, dim=2), 1
             do idx_54 = LBOUND(corrfac, dim=1), UBOUND(corrfac, dim=1), 1
@@ -839,10 +839,10 @@ module ukca_conserve_mod
             enddo
           enddo
         enddo
-        !$acc loop seq
+        !NO!$acc loop seq
         do m = 1, nh_tracers, 1
           if (.NOT.do_not_change(m)) then
-            !$acc loop gang vector independent collapse(3)
+            !NO!$acc loop gang vector independent collapse(3)
             do idx_55 = LBOUND(corrfac, dim=3), UBOUND(corrfac, dim=3), 1
               do idx_56 = LBOUND(corrfac, dim=2), UBOUND(corrfac, dim=2), 1
                 do idx_57 = LBOUND(corrfac, dim=1), UBOUND(corrfac, dim=1), 1
@@ -851,7 +851,7 @@ module ukca_conserve_mod
               enddo
             enddo
           else
-            !$acc loop gang vector independent collapse(3)
+            !NO!$acc loop gang vector independent collapse(3)
             do idx_58 = LBOUND(total_h, dim=3), UBOUND(total_h, dim=3), 1
               do idx_59 = LBOUND(total_h, dim=2), UBOUND(total_h, dim=2), 1
                 do idx_60 = LBOUND(total_h, dim=1), UBOUND(total_h, dim=1), 1
@@ -861,7 +861,7 @@ module ukca_conserve_mod
             enddo
           end if
         enddo
-        !$acc loop gang vector independent collapse(3)
+        !NO!$acc loop gang vector independent collapse(3)
         do idx_61 = LBOUND(corrfac, dim=3), UBOUND(corrfac, dim=3), 1
           do idx_62 = LBOUND(corrfac, dim=2), UBOUND(corrfac, dim=2), 1
             do idx_63 = LBOUND(corrfac, dim=1), UBOUND(corrfac, dim=1), 1
@@ -869,7 +869,7 @@ module ukca_conserve_mod
             enddo
           enddo
         enddo
-        !$acc loop gang vector independent collapse(3)
+        !NO!$acc loop gang vector independent collapse(3)
         do widx3_2 = 1, model_levels, 1
           do widx2_2 = 1, rows, 1
             do widx1_2 = 1, row_length, 1
@@ -879,10 +879,10 @@ module ukca_conserve_mod
             enddo
           enddo
         enddo
-        !$acc loop seq
+        !NO!$acc loop seq
         do m = 1, nh_tracers, 1
           if (.NOT.do_not_change(m)) then
-            !$acc loop gang vector independent collapse(3)
+            !NO!$acc loop gang vector independent collapse(3)
             do idx_64 = LBOUND(tracers, dim=3), UBOUND(tracers, dim=3), 1
               do idx_65 = LBOUND(tracers, dim=2), UBOUND(tracers, dim=2), 1
                 do idx_66 = LBOUND(tracers, dim=1), UBOUND(tracers, dim=1), 1
@@ -892,7 +892,7 @@ module ukca_conserve_mod
             enddo
           end if
         enddo
-        !$acc end kernels
+        !NO!$acc end kernels
       end if
       if (ALLOCATED(total_br)) then
         DEALLOCATE(total_br)

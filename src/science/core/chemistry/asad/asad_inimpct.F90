@@ -47,18 +47,18 @@ module asad_inimpct_mod
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
     call nvtxStartRange(ModuleName // ':' // RoutineName)
-    !$acc kernels
-    !$acc loop gang vector independent
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent
     do jt = 1, jpcspf, 1
       gtr(jt) = .false.
     enddo
-    !$acc loop gang vector independent
+    !NO!$acc loop gang vector independent
     do jt = 0, jpcspf, 1
       nltrim(jt,1) = 0
       nltrim(jt,2) = 0
       nltrim(jt,3) = 0
     enddo
-    !$acc loop gang vector independent
+    !NO!$acc loop gang vector independent
     do jt = 1, (jpspj - 2) * jppj, 1
       iwork(jt,1) = 0
       iwork(jt,2) = 0
@@ -67,7 +67,7 @@ module asad_inimpct_mod
     enddo
     iwork(0,1) = 0
     iwork(0,2) = 0
-    !$acc end kernels
+    !NO!$acc end kernels
     do jp = 1, jppj, 1
       ipr = nprkx(jp)
       ir = nspi(ipr,1)
@@ -76,8 +76,8 @@ module asad_inimpct_mod
         !  - Unsupported statement: Cycle_Stmt
         CYCLE
       end if
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do jm = 3, jpspj, 1
         ip = nspi(ipr,jm)
         if (ip /= 0) then
@@ -88,7 +88,7 @@ module asad_inimpct_mod
           itr(jm - 2) = 0
         end if
       enddo
-      !$acc loop seq
+      !NO!$acc loop seq
       do j = 1, jpspj - 2, 1
         if (itr(j) /= 0) then
           gtr(itr(j)) = .true.
@@ -106,9 +106,9 @@ module asad_inimpct_mod
           end if
         end if
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     enddo
-    !$acc kernels
+    !NO!$acc kernels
     do j = 1, jpcspf, 1
       if (gtr(j)) then
         nltrim(0,1) = nltrim(0,1) + 1
@@ -118,11 +118,11 @@ module asad_inimpct_mod
     ntr = nltrim(0,1)
     ientries = iwork(0,1)
     indx = 1
-    !$acc loop seq
+    !NO!$acc loop seq
     do j = 1, ntr, 1
       jt = nltrim(j,1)
       nltrim(j,3) = indx
-      !$acc loop seq
+      !NO!$acc loop seq
       do ji = 1, ientries, 1
         iprod = iwork(ji,2)
         if (jt == iprod) then
@@ -134,14 +134,14 @@ module asad_inimpct_mod
       enddo
       nltrim(j,2) = indx - nltrim(j,3)
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     do j = 1, ntr, 1
-      !$acc kernels
+      !NO!$acc kernels
       jt = nltrim(j,1)
       inf = nltrim(j,2)
       ipos = nltrim(j,3)
       icount = 0
-      !$acc loop seq
+      !NO!$acc loop seq
       do ji = 1, inf, 1
         ir = nlpdv(ipos + ji - 1,1)
         if (ir /= 0) then
@@ -154,7 +154,7 @@ module asad_inimpct_mod
           icount = icount + 1
           iwork(icount,1) = nlpdv(ipos + ji - 1,1)
           nlpdv(ipos + ji - 1,1) = 0
-          !$acc loop seq
+          !NO!$acc loop seq
           do jii = ji + 1, inf, 1
             ir2 = nlpdv(ipos + jii - 1,1)
             if (ir2 /= 0) then
@@ -173,7 +173,7 @@ module asad_inimpct_mod
           enddo
         end if
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
       do ji = 1, inf, 1
         indx = ipos + ji - 1
         nlpdv(indx,1) = iwork(ji,1)

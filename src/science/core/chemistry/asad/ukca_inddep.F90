@@ -31,8 +31,8 @@ module ukca_inddep_mod
       errcode = 1
       call ereport('UKCA_INDDEP', errcode, cmessage)
     end if
-    !$acc kernels
-    !$acc loop gang vector independent collapse(3)
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent collapse(3)
     do ns = 1, jpdd, 1
       do nc = 1, jddepc, 1
         do nt = 1, jddept, 1
@@ -40,7 +40,7 @@ module ukca_inddep_mod
         enddo
       enddo
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
     end if

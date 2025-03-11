@@ -162,120 +162,120 @@ module asad_cinit_mod
     sfmin = TINY(1.0)
     sfmin = 10.0 ** (INT(LOG10(sfmin)) + 1)
     peps = 1.0e19 * sfmin
-    !$acc kernels
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent collapse(2)
     do idx = LBOUND(f, dim=2), UBOUND(f, dim=2), 1
       do idx_1 = LBOUND(f, dim=1), UBOUND(f, dim=1), 1
         f(idx_1,idx) = 0.0
       enddo
     enddo
-    !$acc end kernels
-    !$acc kernels
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc end kernels
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent collapse(2)
     do idx_2 = LBOUND(fdot, dim=2), UBOUND(fdot, dim=2), 1
       do idx_3 = LBOUND(fdot, dim=1), UBOUND(fdot, dim=1), 1
         fdot(idx_3,idx_2) = 0.0
       enddo
     enddo
-    !$acc end kernels
-    !$acc kernels
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc end kernels
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent collapse(2)
     do idx_4 = LBOUND(ej, dim=2), UBOUND(ej, dim=2), 1
       do idx_5 = LBOUND(ej, dim=1), UBOUND(ej, dim=1), 1
         ej(idx_5,idx_4) = 0.0
       enddo
     enddo
-    !$acc end kernels
-    !$acc kernels
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc end kernels
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent collapse(2)
     do idx_6 = LBOUND(linfam, dim=2), UBOUND(linfam, dim=2), 1
       do idx_7 = LBOUND(linfam, dim=1), UBOUND(linfam, dim=1), 1
         linfam(idx_7,idx_6) = .false.
       enddo
     enddo
-    !$acc end kernels
-    !$acc kernels
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc end kernels
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent collapse(2)
     do idx_8 = LBOUND(y, dim=2), UBOUND(y, dim=2), 1
       do idx_9 = LBOUND(y, dim=1), UBOUND(y, dim=1), 1
         y(idx_9,idx_8) = 0.0
       enddo
     enddo
-    !$acc end kernels
-    !$acc kernels
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc end kernels
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent collapse(2)
     do idx_10 = LBOUND(ydot, dim=2), UBOUND(ydot, dim=2), 1
       do idx_11 = LBOUND(ydot, dim=1), UBOUND(ydot, dim=1), 1
         ydot(idx_11,idx_10) = 0.0
       enddo
     enddo
-    !$acc end kernels
-    !$acc kernels
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc end kernels
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent collapse(2)
     do idx_12 = LBOUND(prod, dim=2), UBOUND(prod, dim=2), 1
       do idx_13 = LBOUND(prod, dim=1), UBOUND(prod, dim=1), 1
         prod(idx_13,idx_12) = 0.0
       enddo
     enddo
-    !$acc end kernels
-    !$acc kernels
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc end kernels
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent collapse(2)
     do idx_14 = LBOUND(slos, dim=2), UBOUND(slos, dim=2), 1
       do idx_15 = LBOUND(slos, dim=1), UBOUND(slos, dim=1), 1
         slos(idx_15,idx_14) = 0.0
       enddo
     enddo
-    !$acc end kernels
-    !$acc kernels
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc end kernels
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent collapse(2)
     do idx_16 = LBOUND(dpd, dim=2), UBOUND(dpd, dim=2), 1
       do idx_17 = LBOUND(dpd, dim=1), UBOUND(dpd, dim=1), 1
         dpd(idx_17,idx_16) = 0.0
       enddo
     enddo
-    !$acc end kernels
-    !$acc kernels
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc end kernels
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent collapse(2)
     do idx_18 = LBOUND(dpw, dim=2), UBOUND(dpw, dim=2), 1
       do idx_19 = LBOUND(dpw, dim=1), UBOUND(dpw, dim=1), 1
         dpw(idx_19,idx_18) = 0.0
       enddo
     enddo
-    !$acc end kernels
-    !$acc kernels
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc end kernels
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent collapse(2)
     do idx_20 = LBOUND(emr, dim=2), UBOUND(emr, dim=2), 1
       do idx_21 = LBOUND(emr, dim=1), UBOUND(emr, dim=1), 1
         emr(idx_21,idx_20) = 0.0
       enddo
     enddo
-    !$acc end kernels
-    !$acc kernels
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc end kernels
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent collapse(2)
     do idx_22 = LBOUND(rk, dim=2), UBOUND(rk, dim=2), 1
       do idx_23 = LBOUND(rk, dim=1), UBOUND(rk, dim=1), 1
         rk(idx_23,idx_22) = 0.0
       enddo
     enddo
-    !$acc end kernels
-    !$acc kernels
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc end kernels
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent collapse(2)
     do idx_24 = LBOUND(prk, dim=2), UBOUND(prk, dim=2), 1
       do idx_25 = LBOUND(prk, dim=1), UBOUND(prk, dim=1), 1
         prk(idx_25,idx_24) = 0.0
       enddo
     enddo
-    !$acc end kernels
-    !$acc kernels
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc end kernels
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent collapse(2)
     do idx_26 = LBOUND(nspi, dim=2), UBOUND(nspi, dim=2), 1
       do idx_27 = LBOUND(nspi, dim=1), UBOUND(nspi, dim=1), 1
         nspi(idx_27,idx_26) = 0
       enddo
     enddo
-    !$acc end kernels
-    !$acc kernels
-    !$acc loop seq
+    !NO!$acc end kernels
+    !NO!$acc kernels
+    !NO!$acc loop seq
     do js = 1, jpspec, 1
       ngrp(js,1) = 0
       ngrp(js,2) = 0
@@ -297,9 +297,9 @@ module asad_cinit_mod
       nldepw(js) = 0
       nldepx(js) = 0
     enddo
-    !$acc end kernels
-    !$acc kernels
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc end kernels
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent collapse(2)
     do js = 1, 2 * jpspec, 1
       do jx = 1, jpnpx3, 1
         nprdx3(1,jx,js) = 0
@@ -307,211 +307,211 @@ module asad_cinit_mod
         nprdx3(3,jx,js) = 0
       enddo
     enddo
-    !$acc end kernels
-    !$acc kernels
-    !$acc loop gang vector independent
+    !NO!$acc end kernels
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent
     do idx_28 = LBOUND(nbrkx, dim=1), UBOUND(nbrkx, dim=1), 1
       nbrkx(idx_28) = 0
     enddo
-    !$acc end kernels
-    !$acc kernels
-    !$acc loop gang vector independent
+    !NO!$acc end kernels
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent
     do idx_29 = LBOUND(ntrkx, dim=1), UBOUND(ntrkx, dim=1), 1
       ntrkx(idx_29) = 0
     enddo
-    !$acc end kernels
-    !$acc kernels
-    !$acc loop gang vector independent
+    !NO!$acc end kernels
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent
     do idx_30 = LBOUND(nprkx, dim=1), UBOUND(nprkx, dim=1), 1
       nprkx(idx_30) = 0
     enddo
-    !$acc end kernels
-    !$acc kernels
-    !$acc loop gang vector independent
+    !NO!$acc end kernels
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent
     do idx_31 = LBOUND(nhrkx, dim=1), UBOUND(nhrkx, dim=1), 1
       nhrkx(idx_31) = 0
     enddo
-    !$acc end kernels
-    !$acc kernels
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc end kernels
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent collapse(2)
     do idx_32 = LBOUND(njacx3, dim=3), UBOUND(njacx3, dim=3), 1
       do idx_33 = LBOUND(njacx3, dim=2), UBOUND(njacx3, dim=2), 1
         njacx3(1,idx_33,idx_32) = 0
       enddo
     enddo
-    !$acc end kernels
-    !$acc kernels
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc end kernels
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent collapse(2)
     do idx_34 = LBOUND(njacx3, dim=3), UBOUND(njacx3, dim=3), 1
       do idx_35 = LBOUND(njacx3, dim=2), UBOUND(njacx3, dim=2), 1
         njacx3(2,idx_35,idx_34) = 0
       enddo
     enddo
-    !$acc end kernels
-    !$acc kernels
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc end kernels
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent collapse(2)
     do idx_36 = LBOUND(njacx3, dim=3), UBOUND(njacx3, dim=3), 1
       do idx_37 = LBOUND(njacx3, dim=2), UBOUND(njacx3, dim=2), 1
         njacx3(3,idx_37,idx_36) = 0
       enddo
     enddo
-    !$acc end kernels
-    !$acc kernels
-    !$acc loop gang vector independent
+    !NO!$acc end kernels
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent
     do idx_38 = LBOUND(njcgrp, dim=1), UBOUND(njcgrp, dim=1), 1
       njcgrp(idx_38,1) = 0
     enddo
-    !$acc end kernels
-    !$acc kernels
-    !$acc loop gang vector independent
+    !NO!$acc end kernels
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent
     do idx_39 = LBOUND(njcgrp, dim=1), UBOUND(njcgrp, dim=1), 1
       njcgrp(idx_39,2) = 0
     enddo
-    !$acc end kernels
-    !$acc kernels
-    !$acc loop gang vector independent
+    !NO!$acc end kernels
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent
     do idx_40 = LBOUND(njcgrp, dim=1), UBOUND(njcgrp, dim=1), 1
       njcgrp(idx_40,3) = 0
     enddo
-    !$acc end kernels
-    !$acc kernels
-    !$acc loop gang vector independent
+    !NO!$acc end kernels
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent
     do idx_41 = LBOUND(njacx2, dim=2), UBOUND(njacx2, dim=2), 1
       njacx2(1,idx_41) = 0
     enddo
-    !$acc end kernels
-    !$acc kernels
-    !$acc loop gang vector independent
+    !NO!$acc end kernels
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent
     do idx_42 = LBOUND(njacx2, dim=2), UBOUND(njacx2, dim=2), 1
       njacx2(2,idx_42) = 0
     enddo
-    !$acc end kernels
-    !$acc kernels
-    !$acc loop gang vector independent
+    !NO!$acc end kernels
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent
     do idx_43 = LBOUND(njacx1, dim=1), UBOUND(njacx1, dim=1), 1
       njacx1(idx_43) = 0
     enddo
-    !$acc end kernels
-    !$acc kernels
-    !$acc loop seq
+    !NO!$acc end kernels
+    !NO!$acc kernels
+    !NO!$acc loop seq
     do jc = 1, jpcspf, 1
       nmpjac(jc) = 0
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do jp = 1, jppjac, 1
         npjac1(jp,jc) = 0
       enddo
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     spb(:,:) = nullx(:)
     spt(:,:) = nullx(:)
     spj(:,:) = nullx(:)
     sph(:,:) = nullx(:)
-    !$acc kernels
-    !$acc loop gang vector independent
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent
     do idx_44 = LBOUND(frpb, dim=1), UBOUND(frpb, dim=1), 1
       frpb(idx_44) = 0.0
     enddo
-    !$acc end kernels
-    !$acc kernels
-    !$acc loop gang vector independent
+    !NO!$acc end kernels
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent
     do idx_45 = LBOUND(frpt, dim=1), UBOUND(frpt, dim=1), 1
       frpt(idx_45) = 0.0
     enddo
-    !$acc end kernels
-    !$acc kernels
-    !$acc loop gang vector independent
+    !NO!$acc end kernels
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent
     do idx_46 = LBOUND(frpj, dim=1), UBOUND(frpj, dim=1), 1
       frpj(idx_46) = 0.0
     enddo
-    !$acc end kernels
-    !$acc kernels
-    !$acc loop gang vector independent
+    !NO!$acc end kernels
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent
     do idx_47 = LBOUND(frph, dim=1), UBOUND(frph, dim=1), 1
       frph(idx_47) = 0.0
     enddo
-    !$acc end kernels
-    !$acc kernels
-    !$acc loop gang vector independent
+    !NO!$acc end kernels
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent
     do idx_48 = LBOUND(frpx, dim=1), UBOUND(frpx, dim=1), 1
       frpx(idx_48) = 0.0
     enddo
-    !$acc end kernels
-    !$acc kernels
-    !$acc loop gang vector independent
+    !NO!$acc end kernels
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent
     do idx_49 = LBOUND(nfrpx, dim=1), UBOUND(nfrpx, dim=1), 1
       nfrpx(idx_49) = 0
     enddo
-    !$acc end kernels
-    !$acc kernels
-    !$acc loop gang vector independent
+    !NO!$acc end kernels
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent
     do idx_50 = 1, jpfrpx, 1
       ntabfp(idx_50,1) = 0
     enddo
-    !$acc end kernels
-    !$acc kernels
-    !$acc loop gang vector independent
+    !NO!$acc end kernels
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent
     do idx_51 = 1, jpfrpx, 1
       ntabfp(idx_51,2) = 0
     enddo
-    !$acc end kernels
-    !$acc kernels
-    !$acc loop gang vector independent
+    !NO!$acc end kernels
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent
     do idx_52 = 1, jpfrpx, 1
       ntabfp(idx_52,3) = 0
     enddo
-    !$acc end kernels
-    !$acc kernels
-    !$acc loop gang vector independent
+    !NO!$acc end kernels
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent
     do idx_53 = LBOUND(nmzjac, dim=1), UBOUND(nmzjac, dim=1), 1
       nmzjac(idx_53) = 0
     enddo
-    !$acc end kernels
-    !$acc kernels
-    !$acc loop gang vector independent
+    !NO!$acc end kernels
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent
     do idx_54 = LBOUND(nmsjac, dim=1), UBOUND(nmsjac, dim=1), 1
       nmsjac(idx_54) = 0
     enddo
-    !$acc end kernels
-    !$acc kernels
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc end kernels
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent collapse(2)
     do idx_55 = LBOUND(nzjac1, dim=2), UBOUND(nzjac1, dim=2), 1
       do idx_56 = LBOUND(nzjac1, dim=1), UBOUND(nzjac1, dim=1), 1
         nzjac1(idx_56,idx_55) = 0
       enddo
     enddo
-    !$acc end kernels
-    !$acc kernels
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc end kernels
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent collapse(2)
     do idx_57 = LBOUND(nsjac1, dim=2), UBOUND(nsjac1, dim=2), 1
       do idx_58 = LBOUND(nsjac1, dim=1), UBOUND(nsjac1, dim=1), 1
         nsjac1(idx_58,idx_57) = 0
       enddo
     enddo
-    !$acc end kernels
-    !$acc kernels
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc end kernels
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent collapse(2)
     do idx_59 = LBOUND(ntabpd, dim=2), UBOUND(ntabpd, dim=2), 1
       do idx_60 = LBOUND(ntabpd, dim=1), UBOUND(ntabpd, dim=1), 1
         ntabpd(idx_60,idx_59) = 0
       enddo
     enddo
-    !$acc end kernels
-    !$acc kernels
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc end kernels
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent collapse(2)
     do idx_61 = LBOUND(ztabpd, dim=2), UBOUND(ztabpd, dim=2), 1
       do idx_62 = LBOUND(ztabpd, dim=1), UBOUND(ztabpd, dim=1), 1
         ztabpd(idx_62,idx_61) = 0.0
       enddo
     enddo
-    !$acc end kernels
-    !$acc kernels
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc end kernels
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent collapse(2)
     do idx_63 = LBOUND(npdfr, dim=2), UBOUND(npdfr, dim=2), 1
       do idx_64 = LBOUND(npdfr, dim=1), UBOUND(npdfr, dim=1), 1
         npdfr(idx_64,idx_63) = 0
       enddo
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     call asad_inrats()
     do js = 1, jpspec, 1
       if (ldepd(js) .AND. ctype(js)(1 : 1) == 'C') then

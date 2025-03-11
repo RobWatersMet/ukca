@@ -145,110 +145,110 @@ module ukca_chemistry_ctl_full_mod
     jy = 0
     klevel = 0
     if (ukca_config%l_ukca_het_psc) then
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do idx = 1, tot_n_pnts, 1
         shno3(idx) = 0.0
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     end if
-    !$acc kernels
-    !$acc loop gang vector independent
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent
     do idx_1 = LBOUND(stratflag, dim=1), UBOUND(stratflag, dim=1), 1
       stratflag(idx_1) = l_stratosphere(idx_1)
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     do l = 1, dim_ntp, 1
       if (all_ntp(l)%l_required) then
         ntp_data(:,l) = RESHAPE(all_ntp(l)%data_3d(:,:,:), [tot_n_pnts])
       end if
     enddo
-    !$acc kernels
-    !$acc loop gang vector independent
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent
     do idx_2 = LBOUND(zq, dim=1), UBOUND(zq, dim=1), 1
       zq(idx_2) = q(idx_2) / c_h2o
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     if (ukca_config%l_ukca_offline) then
-      !$acc kernels
-      !$acc loop gang vector independent collapse(2)
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent collapse(2)
       do idx_3 = LBOUND(zprt1d, dim=2), UBOUND(zprt1d, dim=2), 1
         do idx_4 = LBOUND(zprt1d, dim=1), UBOUND(zprt1d, dim=1), 1
           zprt1d(idx_4,idx_3) = 0.0
         enddo
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     else
-      !$acc kernels
-      !$acc loop gang vector independent collapse(2)
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent collapse(2)
       do idx_5 = LBOUND(zprt1d, dim=2), UBOUND(zprt1d, dim=2), 1
         do idx_6 = LBOUND(zprt1d, dim=1), UBOUND(zprt1d, dim=1), 1
           zprt1d(idx_6,idx_5) = photol_rates(idx_6,idx_5)
         enddo
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     end if
     if (ANY(speci(:) == 'CO2       ')) then
       if (ukca_config%l_chem_environ_co2_fld) then
-        !$acc kernels
-        !$acc loop gang vector independent
+        !NO!$acc kernels
+        !NO!$acc loop gang vector independent
         do idx_7 = LBOUND(co2_1d, dim=1), UBOUND(co2_1d, dim=1), 1
           co2_1d(idx_7) = co2_interactive(idx_7) / c_co2
         enddo
-        !$acc end kernels
+        !NO!$acc end kernels
       else
-        !$acc kernels
-        !$acc loop gang vector independent
+        !NO!$acc kernels
+        !NO!$acc loop gang vector independent
         do idx_8 = LBOUND(co2_1d, dim=1), UBOUND(co2_1d, dim=1), 1
           co2_1d(idx_8) = rmdi
         enddo
-        !$acc end kernels
+        !NO!$acc end kernels
       end if
     end if
     if (ukca_config%l_ukca_trophet) then
       l = name2ntpindex('het_n2o5  ')
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do idx_9 = LBOUND(rc_het, dim=1), UBOUND(rc_het, dim=1), 1
         rc_het(idx_9,1) = ntp_data(idx_9,l)
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
       l = name2ntpindex('het_ho2   ')
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do idx_10 = LBOUND(rc_het, dim=1), UBOUND(rc_het, dim=1), 1
         rc_het(idx_10,2) = ntp_data(idx_10,l)
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     else
-      !$acc kernels
-      !$acc loop gang vector independent collapse(2)
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent collapse(2)
       do idx_11 = LBOUND(rc_het, dim=2), UBOUND(rc_het, dim=2), 1
         do idx_12 = LBOUND(rc_het, dim=1), UBOUND(rc_het, dim=1), 1
           rc_het(idx_12,idx_11) = 0.0
         enddo
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     end if
-    !$acc kernels
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent collapse(2)
     do idx_13 = LBOUND(zdryrt2, dim=2), UBOUND(zdryrt2, dim=2), 1
       do idx_14 = LBOUND(zdryrt2, dim=1), UBOUND(zdryrt2, dim=1), 1
         zdryrt2(idx_14,idx_13) = 0.0e0
       enddo
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     if (ukca_config%l_ukca_intdd) then
-      !$acc kernels
-      !$acc loop seq
+      !NO!$acc kernels
+      !NO!$acc loop seq
       do k = 1, model_levels, 1
         kcs = (k - 1) * theta_field_size + 1
         kce = k * theta_field_size
-        !$acc loop gang vector independent
+        !NO!$acc loop gang vector independent
         do idx_15 = LBOUND(ddmask, dim=1), UBOUND(ddmask, dim=1), 1
           ddmask(idx_15) = k <= nlev_with_ddep(idx_15)
         enddo
-        !$acc loop gang vector independent collapse(2)
+        !NO!$acc loop gang vector independent collapse(2)
         do l = 1, jpdd, 1
           do widx1 = 1, theta_field_size, 1
             if (ddmask(widx1)) then
@@ -257,28 +257,28 @@ module ukca_chemistry_ctl_full_mod
           enddo
         enddo
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     else
-      !$acc kernels
-      !$acc loop gang vector independent collapse(2)
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent collapse(2)
       do idx_16 = LBOUND(zdryrt2, dim=2), UBOUND(zdryrt2, dim=2), 1
         do idx_17 = 1, theta_field_size, 1
           zdryrt2(idx_17,idx_16) = zdryrt(idx_17,idx_16)
         enddo
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     end if
     jspf = 0
     do js = 1, jpspec, 1
       do jtr = 1, jpctr, 1
         if (advt(jtr) == speci(js)) then
-          !$acc kernels
+          !NO!$acc kernels
           jspf = jspf + 1
-          !$acc loop gang vector independent
+          !NO!$acc loop gang vector independent
           do idx_18 = LBOUND(zftr, dim=1), UBOUND(zftr, dim=1), 1
             zftr(idx_18,jspf) = tracer(idx_18,jtr) / c_species(jtr)
           enddo
-          !$acc end kernels
+          !NO!$acc end kernels
         end if
       enddo
       if (ukca_config%l_ukca_ro2_ntp) then
@@ -287,13 +287,13 @@ module ukca_chemistry_ctl_full_mod
             l = name2ntpindex(spro2(jro2))
             jna = nlnaro2(jro2)
             if (nadvt(jna) == spro2(jro2)) then
-              !$acc kernels
+              !NO!$acc kernels
               jspf = jspf + 1
-              !$acc loop gang vector independent
+              !NO!$acc loop gang vector independent
               do idx_19 = LBOUND(zftr, dim=1), UBOUND(zftr, dim=1), 1
                 zftr(idx_19,jspf) = ntp_data(idx_19,l) / c_na_species(jna)
               enddo
-              !$acc end kernels
+              !NO!$acc end kernels
             else
               errcode = jro2
               ! PSyclone CodeBlock (unsupported code) reason:
@@ -332,115 +332,115 @@ module ukca_chemistry_ctl_full_mod
       ALLOCATE(ystore(1:tot_n_pnts))
     end if
     if (ukca_config%l_ukca_het_psc) then
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do idx_20 = LBOUND(sph2o, dim=1), UBOUND(sph2o, dim=1), 1
         sph2o(idx_20) = qcf(idx_20 + (LBOUND(qcf, dim=1) - LBOUND(sph2o, dim=1))) / c_h2o
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     end if
-    !$acc kernels
-    !$acc loop gang vector independent
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent
     do idx_21 = LBOUND(za, dim=1), UBOUND(za, dim=1), 1
       za(idx_21) = so4_sa(idx_21 + (LBOUND(so4_sa, dim=1) - LBOUND(za, dim=1)))
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     if (uph2so4inaer == 1) then
       if (ukca_config%l_fix_ukca_h2so4_ystore) then
-        !$acc kernels
-        !$acc loop gang vector independent
+        !NO!$acc kernels
+        !NO!$acc loop gang vector independent
         do idx_22 = LBOUND(ystore, dim=1), UBOUND(ystore, dim=1), 1
           ystore(idx_22) = zftr(idx_22 + (LBOUND(zftr, dim=1) - LBOUND(ystore, dim=1)),istore_h2so4)
         enddo
-        !$acc end kernels
+        !NO!$acc end kernels
       else
-        !$acc kernels
-        !$acc loop gang vector independent
+        !NO!$acc kernels
+        !NO!$acc loop gang vector independent
         do idx_23 = LBOUND(ystore, dim=1), UBOUND(ystore, dim=1), 1
           ystore(idx_23) = y(idx_23 + (LBOUND(y, dim=1) - LBOUND(ystore, dim=1)),nn_h2so4)
         enddo
-        !$acc end kernels
+        !NO!$acc end kernels
       end if
     end if
     call asad_cdrive(cdot, zftr, pres, temp, zq, co2_1d, cloud_frac, qcl, ix, jy, k, zdryrt2, zwetrt, rc_het, zprt1d, tot_n_pnts, have_nat, stratflag, h_plus)
     if (ukca_config%l_ukca_het_psc) then
       if (ANY(sphno3(:) > 0.0)) then
-        !$acc kernels
-        !$acc loop gang vector independent
+        !NO!$acc kernels
+        !NO!$acc loop gang vector independent
         do idx_24 = LBOUND(shno3, dim=1), UBOUND(shno3, dim=1), 1
           shno3(idx_24) = sphno3(idx_24 + (LBOUND(sphno3, dim=1) - LBOUND(shno3, dim=1))) / tnd(idx_24 + (LBOUND(tnd, dim=1) - LBOUND(shno3, dim=1))) * c_hono2
         enddo
-        !$acc end kernels
+        !NO!$acc end kernels
       else
-        !$acc kernels
-        !$acc loop gang vector independent
+        !NO!$acc kernels
+        !NO!$acc loop gang vector independent
         do idx_25 = LBOUND(shno3, dim=1), UBOUND(shno3, dim=1), 1
           shno3(idx_25) = 0.0
         enddo
-        !$acc end kernels
+        !NO!$acc end kernels
       end if
     end if
     if (ukca_config%l_ukca_chem .AND. ukca_config%l_ukca_nr_aqchem) then
       if (ihso3_h2o2 > 0) then
-        !$acc kernels
-        !$acc loop gang vector independent
+        !NO!$acc kernels
+        !NO!$acc loop gang vector independent
         do idx_26 = LBOUND(delso2_wet_h2o2, dim=1), UBOUND(delso2_wet_h2o2, dim=1), 1
           delso2_wet_h2o2(idx_26) = delso2_wet_h2o2(idx_26) + rk(idx_26 + (LBOUND(rk, dim=1) - LBOUND(delso2_wet_h2o2, dim=1)),ihso3_h2o2) * y(idx_26 + (LBOUND(y, dim=1) - LBOUND(delso2_wet_h2o2, dim=1)),nn_so2) * y(idx_26 + (LBOUND(y, dim=1) - LBOUND(delso2_wet_h2o2, dim=1)),nn_h2o2) * cdt
         enddo
-        !$acc end kernels
+        !NO!$acc end kernels
       end if
       if (ihso3_o3 > 0) then
-        !$acc kernels
-        !$acc loop gang vector independent
+        !NO!$acc kernels
+        !NO!$acc loop gang vector independent
         do idx_27 = LBOUND(delso2_wet_o3, dim=1), UBOUND(delso2_wet_o3, dim=1), 1
           delso2_wet_o3(idx_27) = delso2_wet_o3(idx_27) + rk(idx_27 + (LBOUND(rk, dim=1) - LBOUND(delso2_wet_o3, dim=1)),ihso3_o3) * y(idx_27 + (LBOUND(y, dim=1) - LBOUND(delso2_wet_o3, dim=1)),nn_so2) * y(idx_27 + (LBOUND(y, dim=1) - LBOUND(delso2_wet_o3, dim=1)),nn_o3) * cdt
         enddo
-        !$acc end kernels
+        !NO!$acc end kernels
       end if
       if (iso3_o3 > 0) then
-        !$acc kernels
-        !$acc loop gang vector independent
+        !NO!$acc kernels
+        !NO!$acc loop gang vector independent
         do idx_28 = LBOUND(delso2_wet_o3, dim=1), UBOUND(delso2_wet_o3, dim=1), 1
           delso2_wet_o3(idx_28) = delso2_wet_o3(idx_28) + rk(idx_28 + (LBOUND(rk, dim=1) - LBOUND(delso2_wet_o3, dim=1)),iso3_o3) * y(idx_28 + (LBOUND(y, dim=1) - LBOUND(delso2_wet_o3, dim=1)),nn_so2) * y(idx_28 + (LBOUND(y, dim=1) - LBOUND(delso2_wet_o3, dim=1)),nn_o3) * cdt
         enddo
-        !$acc end kernels
+        !NO!$acc end kernels
       end if
       if (iso2_oh > 0 .AND. ih2so4_hv > 0) then
-        !$acc kernels
-        !$acc loop gang vector independent
+        !NO!$acc kernels
+        !NO!$acc loop gang vector independent
         do idx_29 = LBOUND(delh2so4_chem, dim=1), UBOUND(delh2so4_chem, dim=1), 1
           delh2so4_chem(idx_29) = delh2so4_chem(idx_29) + (rk(idx_29 + (LBOUND(rk, dim=1) - LBOUND(delh2so4_chem, dim=1)),iso2_oh) * y(idx_29 + (LBOUND(y, dim=1) - LBOUND(delh2so4_chem, dim=1)),nn_so2) * y(idx_29 + (LBOUND(y, dim=1) - LBOUND(delh2so4_chem, dim=1)),nn_oh) - rk(idx_29 + (LBOUND(rk, dim=1) - LBOUND(delh2so4_chem, dim=1)),ih2so4_hv) * y(idx_29 + (LBOUND(y, dim=1) - LBOUND(delh2so4_chem, dim=1)),nn_h2so4)) * cdt
         enddo
-        !$acc end kernels
+        !NO!$acc end kernels
       else
         if (iso2_oh > 0) then
-          !$acc kernels
-          !$acc loop gang vector independent
+          !NO!$acc kernels
+          !NO!$acc loop gang vector independent
           do idx_30 = LBOUND(delh2so4_chem, dim=1), UBOUND(delh2so4_chem, dim=1), 1
             delh2so4_chem(idx_30) = delh2so4_chem(idx_30) + rk(idx_30 + (LBOUND(rk, dim=1) - LBOUND(delh2so4_chem, dim=1)),iso2_oh) * y(idx_30 + (LBOUND(y, dim=1) - LBOUND(delh2so4_chem, dim=1)),nn_so2) * y(idx_30 + (LBOUND(y, dim=1) - LBOUND(delh2so4_chem, dim=1)),nn_oh) * cdt
           enddo
-          !$acc end kernels
+          !NO!$acc end kernels
         end if
       end if
       if (uph2so4inaer == 1) then
         if (ukca_config%l_fix_ukca_h2so4_ystore) then
-          !$acc kernels
-          !$acc loop gang vector independent
+          !NO!$acc kernels
+          !NO!$acc loop gang vector independent
           do idx_31 = LBOUND(delh2so4_chem, dim=1), UBOUND(delh2so4_chem, dim=1), 1
             delh2so4_chem(idx_31) = (zftr(idx_31,istore_h2so4) - ystore(idx_31 + (LBOUND(ystore, dim=1) - LBOUND(delh2so4_chem, dim=1)))) / cdt
           enddo
-          !$acc loop gang vector independent
+          !NO!$acc loop gang vector independent
           do idx_32 = LBOUND(zftr, dim=1), UBOUND(zftr, dim=1), 1
             zftr(idx_32,istore_h2so4) = ystore(idx_32 + (LBOUND(ystore, dim=1) - LBOUND(zftr, dim=1)))
           enddo
-          !$acc end kernels
+          !NO!$acc end kernels
         else
-          !$acc kernels
-          !$acc loop gang vector independent
+          !NO!$acc kernels
+          !NO!$acc loop gang vector independent
           do idx_33 = LBOUND(y, dim=1), UBOUND(y, dim=1), 1
             y(idx_33,nn_h2so4) = ystore(idx_33 + (LBOUND(ystore, dim=1) - LBOUND(y, dim=1)))
           enddo
-          !$acc end kernels
+          !NO!$acc end kernels
         end if
       end if
     end if
@@ -452,91 +452,91 @@ module ukca_chemistry_ctl_full_mod
     end if
     if (o1d_in_ss) then
       l = name2ntpindex('O(1D)     ')
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do idx_34 = LBOUND(ntp_data, dim=1), UBOUND(ntp_data, dim=1), 1
         ntp_data(idx_34,l) = y(idx_34 + (LBOUND(y, dim=1) - LBOUND(ntp_data, dim=1)),nn_o1d) / tnd(idx_34 + (LBOUND(tnd, dim=1) - LBOUND(ntp_data, dim=1))) * c_o1d
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     end if
     if (o3p_in_ss) then
       l = name2ntpindex('O(3P)     ')
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do idx_35 = LBOUND(ntp_data, dim=1), UBOUND(ntp_data, dim=1), 1
         ntp_data(idx_35,l) = y(idx_35 + (LBOUND(y, dim=1) - LBOUND(ntp_data, dim=1)),nn_o3p) / tnd(idx_35 + (LBOUND(tnd, dim=1) - LBOUND(ntp_data, dim=1))) * c_o3p
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     end if
     do jspf = 1, jpcspf, 1
       if (n_ch4 > 0) then
         if (specf(jspf) == advt(n_ch4)) then
-          !$acc kernels
-          !$acc loop gang vector independent
+          !NO!$acc kernels
+          !NO!$acc loop gang vector independent
           do idx_36 = LBOUND(atm_ch4_mol, dim=1), UBOUND(atm_ch4_mol, dim=1), 1
             atm_ch4_mol(idx_36) = zftr(idx_36,jspf) * tnd(idx_36 + (LBOUND(tnd, dim=1) - LBOUND(atm_ch4_mol, dim=1))) * volume(idx_36) * 1.0e6 / avogadro
           enddo
-          !$acc end kernels
+          !NO!$acc end kernels
         end if
       end if
       if (n_co > 0) then
         if (specf(jspf) == advt(n_co)) then
-          !$acc kernels
-          !$acc loop gang vector independent
+          !NO!$acc kernels
+          !NO!$acc loop gang vector independent
           do idx_37 = LBOUND(atm_co_mol, dim=1), UBOUND(atm_co_mol, dim=1), 1
             atm_co_mol(idx_37) = zftr(idx_37,jspf) * tnd(idx_37 + (LBOUND(tnd, dim=1) - LBOUND(atm_co_mol, dim=1))) * volume(idx_37) * 1.0e6 / avogadro
           enddo
-          !$acc end kernels
+          !NO!$acc end kernels
         end if
       end if
       if (n_n2o > 0) then
         if (specf(jspf) == advt(n_n2o)) then
-          !$acc kernels
-          !$acc loop gang vector independent
+          !NO!$acc kernels
+          !NO!$acc loop gang vector independent
           do idx_38 = LBOUND(atm_n2o_mol, dim=1), UBOUND(atm_n2o_mol, dim=1), 1
             atm_n2o_mol(idx_38) = zftr(idx_38,jspf) * tnd(idx_38 + (LBOUND(tnd, dim=1) - LBOUND(atm_n2o_mol, dim=1))) * volume(idx_38) * 1.0e6 / avogadro
           enddo
-          !$acc end kernels
+          !NO!$acc end kernels
         end if
       end if
       if (n_cf2cl2 > 0) then
         if (specf(jspf) == advt(n_cf2cl2)) then
-          !$acc kernels
-          !$acc loop gang vector independent
+          !NO!$acc kernels
+          !NO!$acc loop gang vector independent
           do idx_39 = LBOUND(atm_cf2cl2_mol, dim=1), UBOUND(atm_cf2cl2_mol, dim=1), 1
             atm_cf2cl2_mol(idx_39) = zftr(idx_39,jspf) * tnd(idx_39 + (LBOUND(tnd, dim=1) - LBOUND(atm_cf2cl2_mol, dim=1))) * volume(idx_39) * 1.0e6 / avogadro
           enddo
-          !$acc end kernels
+          !NO!$acc end kernels
         end if
       end if
       if (n_cfcl3 > 0) then
         if (specf(jspf) == advt(n_cfcl3)) then
-          !$acc kernels
-          !$acc loop gang vector independent
+          !NO!$acc kernels
+          !NO!$acc loop gang vector independent
           do idx_40 = LBOUND(atm_cfcl3_mol, dim=1), UBOUND(atm_cfcl3_mol, dim=1), 1
             atm_cfcl3_mol(idx_40) = zftr(idx_40,jspf) * tnd(idx_40 + (LBOUND(tnd, dim=1) - LBOUND(atm_cfcl3_mol, dim=1))) * volume(idx_40) * 1.0e6 / avogadro
           enddo
-          !$acc end kernels
+          !NO!$acc end kernels
         end if
       end if
       if (n_mebr > 0) then
         if (specf(jspf) == advt(n_mebr)) then
-          !$acc kernels
-          !$acc loop gang vector independent
+          !NO!$acc kernels
+          !NO!$acc loop gang vector independent
           do idx_41 = LBOUND(atm_mebr_mol, dim=1), UBOUND(atm_mebr_mol, dim=1), 1
             atm_mebr_mol(idx_41) = zftr(idx_41,jspf) * tnd(idx_41 + (LBOUND(tnd, dim=1) - LBOUND(atm_mebr_mol, dim=1))) * volume(idx_41) * 1.0e6 / avogadro
           enddo
-          !$acc end kernels
+          !NO!$acc end kernels
         end if
       end if
       if (n_h2 > 0) then
         if (specf(jspf) == advt(n_h2)) then
-          !$acc kernels
-          !$acc loop gang vector independent
+          !NO!$acc kernels
+          !NO!$acc loop gang vector independent
           do idx_42 = LBOUND(atm_h2_mol, dim=1), UBOUND(atm_h2_mol, dim=1), 1
             atm_h2_mol(idx_42) = zftr(idx_42,jspf) * tnd(idx_42 + (LBOUND(tnd, dim=1) - LBOUND(atm_h2_mol, dim=1))) * volume(idx_42) * 1.0e6 / avogadro
           enddo
-          !$acc end kernels
+          !NO!$acc end kernels
         end if
       end if
     enddo
@@ -547,13 +547,13 @@ module ukca_chemistry_ctl_full_mod
     do js = 1, jpspec, 1
       do jtr = 1, jpctr, 1
         if (advt(jtr) == speci(js)) then
-          !$acc kernels
+          !NO!$acc kernels
           jspf = jspf + 1
-          !$acc loop gang vector independent
+          !NO!$acc loop gang vector independent
           do idx_43 = LBOUND(tracer, dim=1), UBOUND(tracer, dim=1), 1
             tracer(idx_43,jtr) = zftr(idx_43,jspf) * c_species(jtr)
           enddo
-          !$acc end kernels
+          !NO!$acc end kernels
         end if
       enddo
       if (ukca_config%l_ukca_ro2_ntp) then
@@ -561,13 +561,13 @@ module ukca_chemistry_ctl_full_mod
           if (spro2(jro2) == speci(js) .AND. ctype(js) == 'OO') then
             jspf = jspf + 1
             l = name2ntpindex(spro2(jro2))
-            !$acc kernels
+            !NO!$acc kernels
             jna = nlnaro2(jro2)
-            !$acc loop gang vector independent
+            !NO!$acc loop gang vector independent
             do idx_44 = LBOUND(ntp_data, dim=1), UBOUND(ntp_data, dim=1), 1
               ntp_data(idx_44,l) = zftr(idx_44,jspf) * c_na_species(jna)
             enddo
-            !$acc end kernels
+            !NO!$acc end kernels
           end if
         enddo
       end if

@@ -69,44 +69,44 @@ module asad_cdrive_mod
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
     call nvtxStartRange(ModuleName // ':' // RoutineName)
-    !$acc kernels
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent collapse(2)
     do jtr = 1, jpcspf, 1
       do jl = 1, n_points, 1
         cdot(jl,jtr) = 0.0
       enddo
     enddo
-    !$acc loop gang vector independent
+    !NO!$acc loop gang vector independent
     do jl = 1, n_points, 1
       p(jl) = pp(jl)
       t(jl) = pt(jl)
     enddo
-    !$acc loop gang vector independent
+    !NO!$acc loop gang vector independent
     do jl = 1, n_points, 1
       wp(jl) = pq(jl)
       co2(jl) = co2_1d(jl)
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     call asad_totnud(n_points)
     if (lvmr) then
-      !$acc kernels
-      !$acc loop gang vector independent collapse(2)
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent collapse(2)
       do jtr = 1, jpcspf, 1
         do jl = 1, n_points, 1
           ftr(jl,jtr) = ftr(jl,jtr) * tnd(jl)
           f(jl,jtr) = ftr(jl,jtr)
         enddo
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     else
-      !$acc kernels
-      !$acc loop gang vector independent collapse(2)
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent collapse(2)
       do jtr = 1, jpcspf, 1
         do jl = 1, n_points, 1
           f(jl,jtr) = ftr(jl,jtr)
         enddo
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     end if
     call asad_bimol(n_points)
     call asad_trimol(n_points)
@@ -216,14 +216,14 @@ module asad_cdrive_mod
         call asad_posthet()
       end if
     end if
-    !$acc kernels
-    !$acc loop seq
+    !NO!$acc kernels
+    !NO!$acc loop seq
     do js = 1, jpspec, 1
       if (ctype(js) == jpif(:)) then
         ifam = moffam(js)
         itr = madvtr(js)
         iodd = nodd(js)
-        !$acc loop gang vector independent
+        !NO!$acc loop gang vector independent
         do jl = 1, n_points, 1
           if (linfam(jl,itr)) then
             f(jl,ifam) = f(jl,ifam) - iodd * f(jl,itr)
@@ -231,33 +231,33 @@ module asad_cdrive_mod
         enddo
       end if
     enddo
-    !$acc loop seq
+    !NO!$acc loop seq
     do jtr = 1, jpcspf, 1
       if (method /= 0) then
-        !$acc loop gang vector independent
+        !NO!$acc loop gang vector independent
         do jl = 1, n_points, 1
           cdot(jl,jtr) = (f(jl,jtr) - ftr(jl,jtr)) / (cdt * ncsteps)
           ftr(jl,jtr) = f(jl,jtr)
         enddo
       else
-        !$acc loop gang vector independent
+        !NO!$acc loop gang vector independent
         do jl = 1, n_points, 1
           cdot(jl,jtr) = fdot(jl,jtr)
           ftr(jl,jtr) = f(jl,jtr)
         enddo
       end if
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     if (lvmr) then
-      !$acc kernels
-      !$acc loop gang vector independent collapse(2)
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent collapse(2)
       do jtr = 1, jpcspf, 1
         do jl = 1, n_points, 1
           ftr(jl,jtr) = ftr(jl,jtr) / tnd(jl)
           cdot(jl,jtr) = cdot(jl,jtr) / tnd(jl)
         enddo
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     end if
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)

@@ -89,8 +89,8 @@ module ukca_stratf_mod
       call nvtxEndRange()
       return
     end if
-    !$acc kernels
-    !$acc loop gang vector independent collapse(3)
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent collapse(3)
     do idx = LBOUND(hno33d, dim=3), UBOUND(hno33d, dim=3), 1
       do idx_1 = LBOUND(hno33d, dim=2), UBOUND(hno33d, dim=2), 1
         do idx_2 = LBOUND(hno33d, dim=1), UBOUND(hno33d, dim=1), 1
@@ -98,7 +98,7 @@ module ukca_stratf_mod
         enddo
       enddo
     enddo
-    !$acc loop gang vector independent collapse(3)
+    !NO!$acc loop gang vector independent collapse(3)
     do idx_3 = LBOUND(mask, dim=3), UBOUND(mask, dim=3), 1
       do idx_4 = LBOUND(mask, dim=2), UBOUND(mask, dim=2), 1
         do idx_5 = LBOUND(mask, dim=1), UBOUND(mask, dim=1), 1
@@ -106,7 +106,7 @@ module ukca_stratf_mod
         enddo
       enddo
     enddo
-    !$acc loop gang vector independent collapse(3)
+    !NO!$acc loop gang vector independent collapse(3)
     do l = model_levels, 1, -1
       do idx_6 = LBOUND(mask, dim=2), UBOUND(mask, dim=2), 1
         do idx_7 = LBOUND(mask, dim=1), UBOUND(mask, dim=1), 1
@@ -114,7 +114,7 @@ module ukca_stratf_mod
         enddo
       enddo
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     ! PSyclone CodeBlock (unsupported code) reason:
     !  - PSyclone doesn't yet support reference to imported symbols inside WHERE clauses.
     WHERE (mask(:, :, :))

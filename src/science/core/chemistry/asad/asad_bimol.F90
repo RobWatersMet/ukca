@@ -120,66 +120,66 @@ module asad_bimol_mod
     ALLOCATE(z6(1:n_points))
     ALLOCATE(ratioa2b(1:n_points))
     ALLOCATE(ratiob2total(1:n_points))
-    !$acc kernels
-    !$acc loop gang vector independent
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent
     do idx = LBOUND(z1, dim=1), UBOUND(z1, dim=1), 1
       z1(idx) = 0.0
     enddo
-    !$acc end kernels
-    !$acc kernels
-    !$acc loop gang vector independent
+    !NO!$acc end kernels
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent
     do idx_1 = LBOUND(z3, dim=1), UBOUND(z3, dim=1), 1
       z3(idx_1) = 0.0
     enddo
-    !$acc end kernels
-    !$acc kernels
-    !$acc loop gang vector independent
+    !NO!$acc end kernels
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent
     do idx_2 = LBOUND(z4, dim=1), UBOUND(z4, dim=1), 1
       z4(idx_2) = 0.0
     enddo
-    !$acc end kernels
-    !$acc kernels
-    !$acc loop gang vector independent
+    !NO!$acc end kernels
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent
     do idx_3 = LBOUND(z5, dim=1), UBOUND(z5, dim=1), 1
       z5(idx_3) = 0.0
     enddo
-    !$acc end kernels
-    !$acc kernels
-    !$acc loop gang vector independent
+    !NO!$acc end kernels
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent
     do idx_4 = LBOUND(z6, dim=1), UBOUND(z6, dim=1), 1
       z6(idx_4) = 0.0
     enddo
-    !$acc end kernels
-    !$acc kernels
-    !$acc loop gang vector independent
+    !NO!$acc end kernels
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent
     do idx_5 = LBOUND(ratioa2b, dim=1), UBOUND(ratioa2b, dim=1), 1
       ratioa2b(idx_5) = 0.0
     enddo
-    !$acc end kernels
-    !$acc kernels
-    !$acc loop gang vector independent
+    !NO!$acc end kernels
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent
     do idx_6 = LBOUND(ratiob2total, dim=1), UBOUND(ratiob2total, dim=1), 1
       ratiob2total(idx_6) = 0.0
     enddo
-    !$acc end kernels
-    !$acc kernels
-    !$acc loop gang vector independent
+    !NO!$acc end kernels
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent
     do idx_7 = 1, n_points, 1
       t300(idx_7) = t(idx_7) / 300.0
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     call oneover_v(n_points, t, inv_t)
     if (first_pass) then
       if (first) then
         first = .false.
-        !$acc kernels
-        !$acc loop seq
+        !NO!$acc kernels
+        !NO!$acc loop seq
         do jtr = 1, jpcspf, 1
           if (specf(jtr) == 'H2O       ') then
             ih2o = jtr
           end if
         enddo
-        !$acc end kernels
+        !NO!$acc end kernels
         r1(:) = '          '
         r2(:) = r1(:)
         prods(:) = r1(:)
@@ -266,8 +266,8 @@ module asad_bimol_mod
           cmessage(:) = ' Rate coefficient for DMS + OH lacks correction'
           call ereport('ASAD_BIMOL', errcode, cmessage)
         end if
-        !$acc kernels
-        !$acc loop seq
+        !NO!$acc kernels
+        !NO!$acc loop seq
         do j = 1, jpbk, 1
           jr = nbrkx(j)
           if (spb(j,1) == 'OH     ' .AND. spb(j,2) == 'CO     ' .OR. spb(j,1) == 'CO     ' .AND. spb(j,2) == 'OH     ') then
@@ -286,275 +286,275 @@ module asad_bimol_mod
             ics2oh = jr
           end if
         enddo
-        !$acc end kernels
+        !NO!$acc end kernels
       end if
       first_pass = .false.
     end if
     do j = 1, jpbk, 1
       jr = nbrkx(j)
       if (ABS(ab(j,2)) < peps .AND. ABS(ab(j,3)) < peps) then
-        !$acc kernels
-        !$acc loop gang vector independent
+        !NO!$acc kernels
+        !NO!$acc loop gang vector independent
         do idx_8 = 1, n_points, 1
           rk(idx_8,jr) = ab(j,1)
         enddo
-        !$acc end kernels
+        !NO!$acc end kernels
       else
         if (ABS(ab(j,2)) < peps) then
-          !$acc kernels
-          !$acc loop gang vector independent
+          !NO!$acc kernels
+          !NO!$acc loop gang vector independent
           do idx_9 = 1, n_points, 1
             tmp(idx_9) = -ab(j,3) * inv_t(idx_9)
           enddo
-          !$acc end kernels
+          !NO!$acc end kernels
           call exp_v(n_points, tmp, tmp_out)
-          !$acc kernels
-          !$acc loop gang vector independent
+          !NO!$acc kernels
+          !NO!$acc loop gang vector independent
           do idx_10 = 1, n_points, 1
             rk(idx_10,jr) = ab(j,1) * tmp_out(idx_10)
           enddo
-          !$acc end kernels
+          !NO!$acc end kernels
         else
           if (ABS(ab(j,3)) < peps) then
             call powr_v(n_points, t300, ab(j,2), tmp1)
-            !$acc kernels
-            !$acc loop gang vector independent
+            !NO!$acc kernels
+            !NO!$acc loop gang vector independent
             do idx_11 = 1, n_points, 1
               rk(idx_11,jr) = ab(j,1) * tmp1(idx_11)
             enddo
-            !$acc end kernels
+            !NO!$acc end kernels
           else
-            !$acc kernels
-            !$acc loop gang vector independent
+            !NO!$acc kernels
+            !NO!$acc loop gang vector independent
             do idx_12 = 1, n_points, 1
               tmp(idx_12) = -ab(j,3) * inv_t(idx_12)
             enddo
-            !$acc end kernels
+            !NO!$acc end kernels
             call exp_v(n_points, tmp, tmp_out)
             call powr_v(n_points, t300, ab(j,2), tmp1)
-            !$acc kernels
-            !$acc loop gang vector independent
+            !NO!$acc kernels
+            !NO!$acc loop gang vector independent
             do idx_13 = 1, n_points, 1
               rk(idx_13,jr) = ab(j,1) * tmp1(idx_13) * tmp_out(idx_13)
             enddo
-            !$acc end kernels
+            !NO!$acc end kernels
           end if
         end if
       end if
     enddo
     if (iohco /= 0) then
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do idx_14 = 1, n_points, 1
         rk(idx_14,iohco) = rk(idx_14,iohco) * (1.0 + tnd(idx_14) / 4.2e19)
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     end if
     if (iohhno3 /= 0) then
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do idx_15 = 1, n_points, 1
         tmp(idx_15) = 460.0 * inv_t(idx_15)
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
       call exp_v(n_points, tmp, tmp_out)
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do idx_16 = LBOUND(z1, dim=1), UBOUND(z1, dim=1), 1
         z1(idx_16) = 2.4e-14 * tmp_out(idx_16 + (1 - LBOUND(z1, dim=1)))
       enddo
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do idx_17 = 1, n_points, 1
         tmp(idx_17) = 1335.0 * inv_t(idx_17)
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
       call exp_v(n_points, tmp, tmp_out)
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do idx_18 = LBOUND(z3, dim=1), UBOUND(z3, dim=1), 1
         z3(idx_18) = (6.5e-34 * tmp_out(idx_18 + (1 - LBOUND(z3, dim=1)))) * tnd(idx_18 + (1 - LBOUND(z3, dim=1)))
       enddo
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do idx_19 = 1, n_points, 1
         tmp(idx_19) = 2199.0 * inv_t(idx_19)
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
       call exp_v(n_points, tmp, tmp_out)
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do idx_20 = LBOUND(z4, dim=1), UBOUND(z4, dim=1), 1
         z4(idx_20) = 2.7e-17 * tmp_out(idx_20 + (1 - LBOUND(z4, dim=1)))
       enddo
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do idx_21 = 1, n_points, 1
         rk(idx_21,iohhno3) = z1(idx_21 + (LBOUND(z1, dim=1) - 1)) + z3(idx_21 + (LBOUND(z3, dim=1) - 1)) / (1.0 + z3(idx_21 + (LBOUND(z3, dim=1) - 1)) / z4(idx_21 + (LBOUND(z4, dim=1) - 1)))
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     end if
     if (ih2o /= 0 .AND. iho2 /= 0) then
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do idx_22 = 1, n_points, 1
         tmp(idx_22) = 2200.0 * inv_t(idx_22)
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
       call exp_v(n_points, tmp, tmp_out)
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do idx_23 = 1, n_points, 1
         rk(idx_23,iho2) = rk(idx_23,iho2) * (1.0 + 1.4e-21 * f(idx_23,ih2o) * tmp_out(idx_23))
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     else
       if (ih2o == 0 .AND. iho2 /= 0) then
-        !$acc kernels
-        !$acc loop gang vector independent
+        !NO!$acc kernels
+        !NO!$acc loop gang vector independent
         do idx_24 = 1, n_points, 1
           tmp(idx_24) = 2200.0 * inv_t(idx_24)
         enddo
-        !$acc end kernels
+        !NO!$acc end kernels
         call exp_v(n_points, tmp, tmp_out)
-        !$acc kernels
-        !$acc loop gang vector independent
+        !NO!$acc kernels
+        !NO!$acc loop gang vector independent
         do idx_25 = 1, n_points, 1
           rk(idx_25,iho2) = rk(idx_25,iho2) * (1.0 + 1.4e-21 * wp(idx_25) * tnd(idx_25) * tmp_out(idx_25))
         enddo
-        !$acc end kernels
+        !NO!$acc end kernels
       end if
     end if
     if (iho2no /= 0) then
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do idx_26 = 1, n_points, 1
         rk(idx_26,iho2no) = rk(idx_26,iho2no) * (530.0 * inv_t(idx_26) + 8.53e-4 * (1e-2 * p(idx_26)) - 1.73) / 100.0
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     end if
     if (ih2o /= 0 .AND. iso3h2o /= 0) then
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do idx_27 = 1, n_points, 1
         rk(idx_27,iso3h2o) = rk(idx_27,iso3h2o) * f(idx_27,ih2o)
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     else
       if (ih2o == 0 .AND. iso3h2o /= 0) then
-        !$acc kernels
-        !$acc loop gang vector independent
+        !NO!$acc kernels
+        !NO!$acc loop gang vector independent
         do idx_28 = 1, n_points, 1
           rk(idx_28,iso3h2o) = rk(idx_28,iso3h2o) * wp(idx_28) * tnd(idx_28)
         enddo
-        !$acc end kernels
+        !NO!$acc end kernels
       end if
     end if
     if (ics2oh /= 0) then
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do idx_29 = 1, n_points, 1
         tmp(idx_29) = 3400.0 * inv_t(idx_29)
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
       call exp_v(n_points, tmp, tmp_out)
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do idx_30 = LBOUND(z6, dim=1), UBOUND(z6, dim=1), 1
         z6(idx_30) = 1.81e-3 * tmp_out(idx_30 + (1 - LBOUND(z6, dim=1)))
       enddo
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do idx_31 = 1, n_points, 1
         rk(idx_31,ics2oh) = rk(idx_31,ics2oh) / (t(idx_31) + z6(idx_31 + (LBOUND(z6, dim=1) - 1)))
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     end if
     if (idmsoh /= 0) then
       ALLOCATE(alpha(1:n_points))
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do idx_32 = 1, n_points, 1
         tmp(idx_32) = 7460.0 * inv_t(idx_32)
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
       call exp_v(n_points, tmp, tmp_out)
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do idx_33 = LBOUND(alpha, dim=1), UBOUND(alpha, dim=1), 1
         alpha(idx_33) = 1.106e-31 * tmp_out(idx_33 + (1 - LBOUND(alpha, dim=1))) * tnd(idx_33 + (1 - LBOUND(alpha, dim=1)))
       enddo
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do idx_34 = 1, n_points, 1
         rk(idx_34,idmsoh) = rk(idx_34,idmsoh) * alpha(idx_34 + (LBOUND(alpha, dim=1) - 1)) / (1.0 + alpha(idx_34 + (LBOUND(alpha, dim=1) - 1)))
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     end if
     if (iohc3h8a /= 0 .AND. iohc3h8b /= 0) then
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do idx_35 = 1, n_points, 1
         tmp(idx_35) = -816.0 * inv_t(idx_35)
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
       call exp_v(n_points, tmp, tmp_out)
       call powr_v(n_points, t, -0.64, tmp1)
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do idx_36 = 1, n_points, 1
         ratioa2b(idx_36) = 226.0 * tmp1(idx_36) * tmp_out(idx_36)
       enddo
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do idx_37 = 1, n_points, 1
         rk(idx_37,iohc3h8a) = rk(idx_37,iohc3h8a) * (ratioa2b(idx_37) / (ratioa2b(idx_37) + 1.0))
       enddo
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do idx_38 = 1, n_points, 1
         rk(idx_38,iohc3h8b) = rk(idx_38,iohc3h8b) / (ratioa2b(idx_38) + 1.0)
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     end if
     if ((imeoo2a /= 0 .AND. imeoo2b /= 0) .AND. (.NOT.ukca_config%l_ukca_cristrat)) then
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do idx_39 = 1, n_points, 1
         tmp(idx_39) = 1300.0 * inv_t(idx_39)
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
       call exp_v(n_points, tmp, tmp_out)
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do idx_40 = 1, n_points, 1
         ratiob2total(idx_40) = 1.0 / (1.0 + tmp_out(idx_40) / 33.0)
       enddo
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do idx_41 = 1, n_points, 1
         rk(idx_41,imeoo2a) = rk(idx_41,imeoo2a) * (1.0 - ratiob2total(idx_41))
       enddo
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do idx_42 = 1, n_points, 1
         rk(idx_42,imeoo2b) = rk(idx_42,imeoo2b) * ratiob2total(idx_42)
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     end if
     if (imeooho2a /= 0 .AND. imeooho2b /= 0) then
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do idx_43 = 1, n_points, 1
         tmp(idx_43) = -1160.0 * inv_t(idx_43)
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
       call exp_v(n_points, tmp, tmp_out)
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do idx_44 = 1, n_points, 1
         ratiob2total(idx_44) = 1.0 / (1.0 + 498.0 * tmp_out(idx_44))
       enddo
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do idx_45 = 1, n_points, 1
         rk(idx_45,imeooho2a) = rk(idx_45,imeooho2a) * (1.0 - ratiob2total(idx_45))
       enddo
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do idx_46 = 1, n_points, 1
         rk(idx_46,imeooho2b) = rk(idx_46,imeooho2b) * ratiob2total(idx_46)
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     end if
     if (ALLOCATED(z1)) then
       DEALLOCATE(z1)

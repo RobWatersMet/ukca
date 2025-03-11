@@ -153,8 +153,8 @@ module ukca_transform_halogen_mod
     ALLOCATE(total_all(1:row_length,1:rows,1:model_levels))
     ALLOCATE(total_source(1:row_length,1:rows,1:model_levels))
     ALLOCATE(total_nochange(1:row_length,1:rows,1:model_levels))
-    !$acc kernels
-    !$acc loop gang vector independent collapse(3)
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent collapse(3)
     do idx = LBOUND(total_all, dim=3), UBOUND(total_all, dim=3), 1
       do idx_1 = LBOUND(total_all, dim=2), UBOUND(total_all, dim=2), 1
         do idx_2 = LBOUND(total_all, dim=1), UBOUND(total_all, dim=1), 1
@@ -162,9 +162,9 @@ module ukca_transform_halogen_mod
         enddo
       enddo
     enddo
-    !$acc end kernels
-    !$acc kernels
-    !$acc loop gang vector independent collapse(3)
+    !NO!$acc end kernels
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent collapse(3)
     do idx_3 = LBOUND(total_source, dim=3), UBOUND(total_source, dim=3), 1
       do idx_4 = LBOUND(total_source, dim=2), UBOUND(total_source, dim=2), 1
         do idx_5 = LBOUND(total_source, dim=1), UBOUND(total_source, dim=1), 1
@@ -172,9 +172,9 @@ module ukca_transform_halogen_mod
         enddo
       enddo
     enddo
-    !$acc end kernels
-    !$acc kernels
-    !$acc loop gang vector independent collapse(3)
+    !NO!$acc end kernels
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent collapse(3)
     do idx_6 = LBOUND(total_nochange, dim=3), UBOUND(total_nochange, dim=3), 1
       do idx_7 = LBOUND(total_nochange, dim=2), UBOUND(total_nochange, dim=2), 1
         do idx_8 = LBOUND(total_nochange, dim=1), UBOUND(total_nochange, dim=1), 1
@@ -182,12 +182,12 @@ module ukca_transform_halogen_mod
         enddo
       enddo
     enddo
-    !$acc end kernels
-    !$acc kernels
-    !$acc loop seq
+    !NO!$acc end kernels
+    !NO!$acc kernels
+    !NO!$acc loop seq
     do i = 1, n_tracers, 1
       if (s_tracers(i) == unrestricted) then
-        !$acc loop gang vector independent collapse(3)
+        !NO!$acc loop gang vector independent collapse(3)
         do idx_9 = LBOUND(total_all, dim=3), UBOUND(total_all, dim=3), 1
           do idx_10 = LBOUND(total_all, dim=2), UBOUND(total_all, dim=2), 1
             do idx_11 = LBOUND(total_all, dim=1), UBOUND(total_all, dim=1), 1
@@ -197,7 +197,7 @@ module ukca_transform_halogen_mod
         enddo
       else
         if (s_tracers(i) == source_gas) then
-          !$acc loop gang vector independent collapse(3)
+          !NO!$acc loop gang vector independent collapse(3)
           do idx_12 = LBOUND(total_source, dim=3), UBOUND(total_source, dim=3), 1
             do idx_13 = LBOUND(total_source, dim=2), UBOUND(total_source, dim=2), 1
               do idx_14 = LBOUND(total_source, dim=1), UBOUND(total_source, dim=1), 1
@@ -207,7 +207,7 @@ module ukca_transform_halogen_mod
           enddo
         else
           if (s_tracers(i) == mixed_compound) then
-            !$acc loop gang vector independent collapse(3)
+            !NO!$acc loop gang vector independent collapse(3)
             do idx_15 = LBOUND(total_nochange, dim=3), UBOUND(total_nochange, dim=3), 1
               do idx_16 = LBOUND(total_nochange, dim=2), UBOUND(total_nochange, dim=2), 1
                 do idx_17 = LBOUND(total_nochange, dim=1), UBOUND(total_nochange, dim=1), 1
@@ -219,10 +219,10 @@ module ukca_transform_halogen_mod
         end if
       end if
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     if (forward) then
-      !$acc kernels
-      !$acc loop gang vector independent collapse(3)
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent collapse(3)
       do idx_18 = LBOUND(tracers, dim=3), UBOUND(tracers, dim=3), 1
         do idx_19 = LBOUND(tracers, dim=2), UBOUND(tracers, dim=2), 1
           do idx_20 = LBOUND(tracers, dim=1), UBOUND(tracers, dim=1), 1
@@ -230,10 +230,10 @@ module ukca_transform_halogen_mod
           enddo
         enddo
       enddo
-      !$acc loop seq
+      !NO!$acc loop seq
       do i = 1, n_tracers, 1
         if (s_tracers(i) < mixed_compound) then
-          !$acc loop gang vector independent collapse(3)
+          !NO!$acc loop gang vector independent collapse(3)
           do widx3_2 = 1, SIZE(tracers, dim=3), 1
             do widx2_2 = 1, SIZE(tracers, dim=2), 1
               do widx1_2 = 1, SIZE(tracers, dim=1), 1
@@ -245,7 +245,7 @@ module ukca_transform_halogen_mod
           enddo
         end if
       enddo
-      !$acc loop gang vector independent collapse(3)
+      !NO!$acc loop gang vector independent collapse(3)
       do widx3 = 1, SIZE(tracers, dim=3), 1
         do widx2 = 1, SIZE(tracers, dim=2), 1
           do widx1 = 1, SIZE(tracers, dim=1), 1
@@ -257,7 +257,7 @@ module ukca_transform_halogen_mod
           enddo
         enddo
       enddo
-      !$acc loop gang vector independent collapse(3)
+      !NO!$acc loop gang vector independent collapse(3)
       do idx_21 = LBOUND(total_nochange, dim=3), UBOUND(total_nochange, dim=3), 1
         do idx_22 = LBOUND(total_nochange, dim=2), UBOUND(total_nochange, dim=2), 1
           do idx_23 = LBOUND(total_nochange, dim=1), UBOUND(total_nochange, dim=1), 1
@@ -265,10 +265,10 @@ module ukca_transform_halogen_mod
           enddo
         enddo
       enddo
-      !$acc loop seq
+      !NO!$acc loop seq
       do i = 1, n_tracers, 1
         if (s_tracers(i) == unrestricted) then
-          !$acc loop gang vector independent collapse(3)
+          !NO!$acc loop gang vector independent collapse(3)
           do widx3_1_1 = 1, SIZE(total_nochange(:,:,:), dim=3), 1
             do widx2_1_1 = 1, SIZE(total_nochange(:,:,:), dim=2), 1
               do widx1_1_1 = 1, SIZE(total_nochange(:,:,:), dim=1), 1
@@ -280,7 +280,7 @@ module ukca_transform_halogen_mod
           enddo
         else
           if (s_tracers(i) == source_gas) then
-            !$acc loop gang vector independent collapse(3)
+            !NO!$acc loop gang vector independent collapse(3)
             do widx3_1_2 = 1, SIZE(total_nochange(:,:,:), dim=3), 1
               do widx2_1_2 = 1, SIZE(total_nochange(:,:,:), dim=2), 1
                 do widx1_1_2 = 1, SIZE(total_nochange(:,:,:), dim=1), 1
@@ -293,7 +293,7 @@ module ukca_transform_halogen_mod
           end if
         end if
       enddo
-      !$acc loop gang vector independent collapse(3)
+      !NO!$acc loop gang vector independent collapse(3)
       do widx3_1 = 1, SIZE(total_nochange(:,:,:), dim=3), 1
         do widx2_1 = 1, SIZE(total_nochange(:,:,:), dim=2), 1
           do widx1_1 = 1, SIZE(total_nochange(:,:,:), dim=1), 1
@@ -303,7 +303,7 @@ module ukca_transform_halogen_mod
           enddo
         enddo
       enddo
-      !$acc loop gang vector independent collapse(3)
+      !NO!$acc loop gang vector independent collapse(3)
       do idx_24 = LBOUND(tracers, dim=3), UBOUND(tracers, dim=3), 1
         do idx_25 = LBOUND(tracers, dim=2), UBOUND(tracers, dim=2), 1
           do idx_26 = LBOUND(tracers, dim=1), UBOUND(tracers, dim=1), 1
@@ -311,7 +311,7 @@ module ukca_transform_halogen_mod
           enddo
         enddo
       enddo
-      !$acc loop gang vector independent collapse(3)
+      !NO!$acc loop gang vector independent collapse(3)
       do idx_27 = LBOUND(total_nochange, dim=3), UBOUND(total_nochange, dim=3), 1
         do idx_28 = LBOUND(total_nochange, dim=2), UBOUND(total_nochange, dim=2), 1
           do idx_29 = LBOUND(total_nochange, dim=1), UBOUND(total_nochange, dim=1), 1
@@ -319,10 +319,10 @@ module ukca_transform_halogen_mod
           enddo
         enddo
       enddo
-      !$acc loop seq
+      !NO!$acc loop seq
       do i = 1, n_tracers, 1
         if (s_tracers(i) == unrestricted) then
-          !$acc loop gang vector independent collapse(3)
+          !NO!$acc loop gang vector independent collapse(3)
           do widx3_2_1 = 1, SIZE(total_nochange(:,:,:), dim=3), 1
             do widx2_2_1 = 1, SIZE(total_nochange(:,:,:), dim=2), 1
               do widx1_2_1 = 1, SIZE(total_nochange(:,:,:), dim=1), 1
@@ -334,7 +334,7 @@ module ukca_transform_halogen_mod
           enddo
         end if
       enddo
-      !$acc loop gang vector independent collapse(3)
+      !NO!$acc loop gang vector independent collapse(3)
       do idx_30 = LBOUND(tracers, dim=3), UBOUND(tracers, dim=3), 1
         do idx_31 = LBOUND(tracers, dim=2), UBOUND(tracers, dim=2), 1
           do idx_32 = LBOUND(tracers, dim=1), UBOUND(tracers, dim=1), 1
@@ -342,10 +342,10 @@ module ukca_transform_halogen_mod
           enddo
         enddo
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     else
-      !$acc kernels
-      !$acc loop gang vector independent collapse(3)
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent collapse(3)
       do idx_33 = LBOUND(tracers, dim=3), UBOUND(tracers, dim=3), 1
         do idx_34 = LBOUND(tracers, dim=2), UBOUND(tracers, dim=2), 1
           do idx_35 = LBOUND(tracers, dim=1), UBOUND(tracers, dim=1), 1
@@ -353,7 +353,7 @@ module ukca_transform_halogen_mod
           enddo
         enddo
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     end if
     DEALLOCATE(total_all)
     DEALLOCATE(total_source)

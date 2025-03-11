@@ -67,8 +67,8 @@ module ukca_chemistry_cleanup_mod
     end if
     if (ukca_config%l_ukca_strat .OR. ukca_config%l_ukca_stratcfc .OR. ukca_config%l_ukca_strattrop .OR. ukca_config%l_ukca_cristrat) then
       if (ukca_config%l_ukca_het_psc) then
-        !$acc kernels
-        !$acc loop gang vector independent collapse(3)
+        !NO!$acc kernels
+        !NO!$acc loop gang vector independent collapse(3)
         do idx = LBOUND(tracer, dim=3), UBOUND(tracer, dim=3), 1
           do idx_1 = LBOUND(tracer, dim=2), UBOUND(tracer, dim=2), 1
             do idx_2 = LBOUND(tracer, dim=1), UBOUND(tracer, dim=1), 1
@@ -76,10 +76,10 @@ module ukca_chemistry_cleanup_mod
             enddo
           enddo
         enddo
-        !$acc end kernels
+        !NO!$acc end kernels
         call ukca_sediment(rows, row_length, model_levels, shno3_3d, qcf, r_theta_levels, mass, secs_per_step, l_stratosphere(:,:,:))
-        !$acc kernels
-        !$acc loop gang vector independent collapse(3)
+        !NO!$acc kernels
+        !NO!$acc loop gang vector independent collapse(3)
         do idx_3 = LBOUND(tracer, dim=3), UBOUND(tracer, dim=3), 1
           do idx_4 = LBOUND(tracer, dim=2), UBOUND(tracer, dim=2), 1
             do idx_5 = LBOUND(tracer, dim=1), UBOUND(tracer, dim=1), 1
@@ -87,11 +87,11 @@ module ukca_chemistry_cleanup_mod
             enddo
           enddo
         enddo
-        !$acc end kernels
+        !NO!$acc end kernels
       end if
       if (ukca_config%i_ukca_topboundary == i_top_2levh2o) then
-        !$acc kernels
-        !$acc loop gang vector independent collapse(3)
+        !NO!$acc kernels
+        !NO!$acc loop gang vector independent collapse(3)
         do i = 1, rows, 1
           do j = 1, row_length, 1
             do k = 1, ntracers, 1
@@ -102,11 +102,11 @@ module ukca_chemistry_cleanup_mod
             enddo
           enddo
         enddo
-        !$acc end kernels
+        !NO!$acc end kernels
       else
         if (ukca_config%i_ukca_topboundary == i_top_1lev) then
-          !$acc kernels
-          !$acc loop gang vector independent collapse(3)
+          !NO!$acc kernels
+          !NO!$acc loop gang vector independent collapse(3)
           do i = 1, rows, 1
             do j = 1, row_length, 1
               do k = 1, ntracers, 1
@@ -114,7 +114,7 @@ module ukca_chemistry_cleanup_mod
               enddo
             enddo
           enddo
-          !$acc end kernels
+          !NO!$acc end kernels
         else
           if (ukca_config%i_ukca_topboundary >= i_top_bc) then
             if (z_top_of_model > 85500.0 .OR. z_top_of_model < 79000.0) then
@@ -132,8 +132,8 @@ module ukca_chemistry_cleanup_mod
         end if
       end if
       if (ukca_config%l_ukca_het_psc) then
-        !$acc kernels
-        !$acc loop gang vector independent collapse(3)
+        !NO!$acc kernels
+        !NO!$acc loop gang vector independent collapse(3)
         do idx_6 = LBOUND(nat_psc, dim=3), UBOUND(nat_psc, dim=3), 1
           do idx_7 = LBOUND(nat_psc, dim=2), UBOUND(nat_psc, dim=2), 1
             do idx_8 = LBOUND(nat_psc, dim=1), UBOUND(nat_psc, dim=1), 1
@@ -141,7 +141,7 @@ module ukca_chemistry_cleanup_mod
             enddo
           enddo
         enddo
-        !$acc end kernels
+        !NO!$acc end kernels
       end if
     else
       if (.NOT.ukca_config%l_ukca_offline) then

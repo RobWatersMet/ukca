@@ -24,22 +24,22 @@ module ukca_be_wetdep_mod
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
     call nvtxStartRange(ModuleName // ':' // RoutineName)
-    !$acc kernels
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent collapse(2)
     do js = 1, jpspec, 1
       do i = 1, n_pnts, 1
         owetrt(i,js) = 0.0
       enddo
     enddo
-    !$acc loop seq
+    !NO!$acc loop seq
     do js = 1, ndepw, 1
       nspec = nldepw(js)
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do i = 1, n_pnts, 1
         owetrt(i,nspec) = wetrt(i,js)
       enddo
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
     end if

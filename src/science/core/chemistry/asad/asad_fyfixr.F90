@@ -27,33 +27,33 @@ module asad_fyfixr_mod
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
     call nvtxStartRange(ModuleName // ':' // RoutineName)
-    !$acc kernels
+    !NO!$acc kernels
     istart = nlmajmin(1)
     iend = nlmajmin(2)
-    !$acc loop seq
+    !NO!$acc loop seq
     do j = istart, iend, 1
       js = nlmajmin(j)
       ifam = moffam(js)
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do jl = 1, n_points, 1
         y(jl,js) = f(jl,ifam) * ratio(jl,js)
       enddo
     enddo
     istart = nlmajmin(3)
     iend = nlmajmin(4)
-    !$acc loop seq
+    !NO!$acc loop seq
     do j = istart, iend, 1
       js = nlmajmin(j)
       ifam = moffam(js)
       imaj = majors(ifam)
       if (ctype(js) /= jpif(:)) then
-        !$acc loop gang vector independent
+        !NO!$acc loop gang vector independent
         do jl = 1, n_points, 1
           y(jl,js) = y(jl,imaj) * ratio(jl,js)
         enddo
       else
         itr = madvtr(js)
-        !$acc loop gang vector independent
+        !NO!$acc loop gang vector independent
         do jl = 1, n_points, 1
           if (linfam(jl,itr)) then
             y(jl,js) = y(jl,imaj) * ratio(jl,js)
@@ -61,7 +61,7 @@ module asad_fyfixr_mod
         enddo
       end if
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
     end if

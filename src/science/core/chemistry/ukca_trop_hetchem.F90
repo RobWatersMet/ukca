@@ -124,14 +124,14 @@ module ukca_trop_hetchem_mod
         end if
       enddo
     end if
-    !$acc kernels
-    !$acc loop gang vector independent
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent
     do idx = LBOUND(molec_weight, dim=1), UBOUND(molec_weight, dim=1), 1
       molec_weight(idx) = 9.0e5
     enddo
     molec_weight(ihet_n2o5) = m_n2o5
     molec_weight(ihet_ho2_ho2) = m_ho2
-    !$acc end kernels
+    !NO!$acc end kernels
     if (ANY(molec_weight > 1.0e5)) then
       cmessage(:) = ' Molecular weights not defined for all cases'
       errcode = 1
@@ -140,8 +140,8 @@ module ukca_trop_hetchem_mod
     if (printstatus >= prstatus_diag) then
       call umprint('Sticking_cf:')
     end if
-    !$acc kernels
-    !$acc loop gang vector independent collapse(3)
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent collapse(3)
     do idx_1 = LBOUND(sticking_cf, dim=3), UBOUND(sticking_cf, dim=3), 1
       do idx_2 = LBOUND(sticking_cf, dim=2), UBOUND(sticking_cf, dim=2), 1
         do idx_3 = LBOUND(sticking_cf, dim=1), UBOUND(sticking_cf, dim=1), 1
@@ -149,7 +149,7 @@ module ukca_trop_hetchem_mod
         enddo
       enddo
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     do i = 1, nhet, 1
       if (i == ihet_n2o5) then
         do icp = 1, ncp, 1
@@ -183,20 +183,20 @@ module ukca_trop_hetchem_mod
         end if
       end if
     enddo
-    !$acc kernels
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent collapse(2)
     do idx_4 = LBOUND(total_vol, dim=2), UBOUND(total_vol, dim=2), 1
       do idx_5 = LBOUND(total_vol, dim=1), UBOUND(total_vol, dim=1), 1
         total_vol(idx_5,idx_4) = 0.0e0
       enddo
     enddo
-    !$acc loop seq
+    !NO!$acc loop seq
     do imode = 1, nmodes, 1
       if (mode(imode)) then
-        !$acc loop seq
+        !NO!$acc loop seq
         do icp = 1, ncp, 1
           if (component(imode,icp) .AND. icp /= cp_nh4) then
-            !$acc loop gang vector independent
+            !NO!$acc loop gang vector independent
             do idx_6 = LBOUND(total_vol, dim=1), UBOUND(total_vol, dim=1), 1
               total_vol(idx_6,imode) = total_vol(idx_6,imode) + pvol(idx_6,imode,icp)
             enddo
@@ -204,12 +204,12 @@ module ukca_trop_hetchem_mod
         enddo
       end if
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     if (printstatus >= prstatus_diag) then
       call umprint('frac_vol:')
     end if
-    !$acc kernels
-    !$acc loop gang vector independent collapse(3)
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent collapse(3)
     do idx_7 = LBOUND(frac_vol, dim=3), UBOUND(frac_vol, dim=3), 1
       do idx_8 = LBOUND(frac_vol, dim=2), UBOUND(frac_vol, dim=2), 1
         do idx_9 = LBOUND(frac_vol, dim=1), UBOUND(frac_vol, dim=1), 1
@@ -217,17 +217,17 @@ module ukca_trop_hetchem_mod
         enddo
       enddo
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     do imode = 1, nmodes, 1
       if (mode(imode)) then
         do icp = 1, ncp, 1
           if (component(imode,icp) .AND. icp /= cp_nh4) then
-            !$acc kernels
-            !$acc loop gang vector independent
+            !NO!$acc kernels
+            !NO!$acc loop gang vector independent
             do idx_10 = LBOUND(frac_vol, dim=1), UBOUND(frac_vol, dim=1), 1
               frac_vol(idx_10,imode,icp) = pvol(idx_10,imode,icp) / total_vol(idx_10,imode)
             enddo
-            !$acc end kernels
+            !NO!$acc end kernels
             if (printstatus >= prstatus_diag) then
               ! PSyclone CodeBlock (unsupported code) reason:
               !  - Unsupported statement: Write_Stmt
@@ -238,8 +238,8 @@ module ukca_trop_hetchem_mod
         enddo
       end if
     enddo
-    !$acc kernels
-    !$acc loop gang vector independent collapse(3)
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent collapse(3)
     do idx_11 = LBOUND(mode_gamma, dim=3), UBOUND(mode_gamma, dim=3), 1
       do idx_12 = LBOUND(mode_gamma, dim=2), UBOUND(mode_gamma, dim=2), 1
         do idx_13 = LBOUND(mode_gamma, dim=1), UBOUND(mode_gamma, dim=1), 1
@@ -247,15 +247,15 @@ module ukca_trop_hetchem_mod
         enddo
       enddo
     enddo
-    !$acc loop seq
+    !NO!$acc loop seq
     do i = 1, nhet, 1
-      !$acc loop seq
+      !NO!$acc loop seq
       do imode = 1, nmodes, 1
         if (mode(imode)) then
-          !$acc loop seq
+          !NO!$acc loop seq
           do icp = 1, ncp, 1
             if (component(imode,icp) .AND. icp /= cp_nh4) then
-              !$acc loop gang vector independent
+              !NO!$acc loop gang vector independent
               do idx_14 = LBOUND(mode_gamma, dim=1), UBOUND(mode_gamma, dim=1), 1
                 mode_gamma(idx_14,i,imode) = mode_gamma(idx_14,i,imode) + frac_vol(idx_14,imode,icp) * sticking_cf(idx_14,i,icp)
               enddo
@@ -264,12 +264,12 @@ module ukca_trop_hetchem_mod
         end if
       enddo
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     if (printstatus >= prstatus_diag) then
       call umprint('Mode_rate:')
     end if
-    !$acc kernels
-    !$acc loop gang vector independent collapse(3)
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent collapse(3)
     do idx_15 = LBOUND(mode_rate, dim=3), UBOUND(mode_rate, dim=3), 1
       do idx_16 = LBOUND(mode_rate, dim=2), UBOUND(mode_rate, dim=2), 1
         do idx_17 = LBOUND(mode_rate, dim=1), UBOUND(mode_rate, dim=1), 1
@@ -277,7 +277,7 @@ module ukca_trop_hetchem_mod
         enddo
       enddo
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     do i = 1, nhet, 1
       do imode = 1, nmodes, 1
         if (mode(imode)) then
@@ -291,32 +291,32 @@ module ukca_trop_hetchem_mod
         end if
       enddo
     enddo
-    !$acc kernels
-    !$acc loop gang vector independent
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent
     do idx_18 = LBOUND(total_sa, dim=1), UBOUND(total_sa, dim=1), 1
       total_sa(idx_18) = 0.0e0
     enddo
-    !$acc loop seq
+    !NO!$acc loop seq
     do imode = 1, nmodes, 1
       if (mode(imode)) then
-        !$acc loop gang vector independent
+        !NO!$acc loop gang vector independent
         do idx_19 = LBOUND(total_sa, dim=1), UBOUND(total_sa, dim=1), 1
           total_sa(idx_19) = total_sa(idx_19) + sarea(idx_19,imode)
         enddo
       end if
     enddo
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc loop gang vector independent collapse(2)
     do idx_20 = LBOUND(het_rates, dim=2), UBOUND(het_rates, dim=2), 1
       do idx_21 = LBOUND(het_rates, dim=1), UBOUND(het_rates, dim=1), 1
         het_rates(idx_21,idx_20) = 0.0e0
       enddo
     enddo
-    !$acc loop seq
+    !NO!$acc loop seq
     do i = 1, nhet, 1
-      !$acc loop seq
+      !NO!$acc loop seq
       do imode = 1, nmodes, 1
         if (mode(imode)) then
-          !$acc loop gang vector independent
+          !NO!$acc loop gang vector independent
           do widx1 = 1, nbox, 1
             if (total_sa(widx1) > 1.0e-30) then
               het_rates(widx1,i) = het_rates(widx1,i) + mode_rate(widx1,i,imode)
@@ -325,7 +325,7 @@ module ukca_trop_hetchem_mod
         end if
       enddo
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     if (printstatus >= prstatus_diag) then
       ! PSyclone CodeBlock (unsupported code) reason:
       !  - Unsupported statement: Write_Stmt
@@ -375,28 +375,28 @@ module ukca_trop_hetchem_mod
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
     call nvtxStartRange(ModuleName // ':' // RoutineName)
-    !$acc kernels
-    !$acc loop gang vector independent
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent
     do idx = LBOUND(rh_p, dim=1), UBOUND(rh_p, dim=1), 1
       rh_p(idx) = rh(idx) * 100.0
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     if (aerotype == cp_du) then
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do idx_1 = LBOUND(cal_n2o5, dim=1), UBOUND(cal_n2o5, dim=1), 1
         cal_n2o5(idx_1) = 0.1
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     else
       if (aerotype == cp_su) then
-        !$acc kernels
-        !$acc loop gang vector independent
+        !NO!$acc kernels
+        !NO!$acc loop gang vector independent
         do idx_2 = LBOUND(cal_n2o5, dim=1), UBOUND(cal_n2o5, dim=1), 1
           cal_n2o5(idx_2) = 2.79e-4 + rh_p(idx_2) * (1.30e-4 + rh_p(idx_2) * (-3.43e-6 + rh_p(idx_2) * 7.52e-8))
         enddo
         maxtemp = 282.0 - 294.0
-        !$acc loop gang vector independent
+        !NO!$acc loop gang vector independent
         do widx1 = 1, nbox, 1
           if (temp(widx1) < 282.0e0) then
             ttemp(widx1) = maxtemp
@@ -404,23 +404,23 @@ module ukca_trop_hetchem_mod
             ttemp(widx1) = temp(widx1) - 294.0
           end if
         enddo
-        !$acc loop gang vector independent
+        !NO!$acc loop gang vector independent
         do idx_3 = LBOUND(cal_n2o5, dim=1), UBOUND(cal_n2o5, dim=1), 1
           cal_n2o5(idx_3) = cal_n2o5(idx_3) * 10.0 ** (-2.0 - 4.0e-2 * ttemp(idx_3)) / 1.0e-2
         enddo
-        !$acc end kernels
+        !NO!$acc end kernels
       else
         if (aerotype == cp_bc) then
-          !$acc kernels
-          !$acc loop gang vector independent
+          !NO!$acc kernels
+          !NO!$acc loop gang vector independent
           do idx_4 = LBOUND(cal_n2o5, dim=1), UBOUND(cal_n2o5, dim=1), 1
             cal_n2o5(idx_4) = 0.005e0
           enddo
-          !$acc end kernels
+          !NO!$acc end kernels
         else
           if (aerotype == cp_oc .OR. aerotype == cp_so) then
-            !$acc kernels
-            !$acc loop gang vector independent
+            !NO!$acc kernels
+            !NO!$acc loop gang vector independent
             do widx1_1 = 1, nbox, 1
               if (rh_p(widx1_1) >= 57.0e0) then
                 cal_n2o5(widx1_1) = 0.03e0
@@ -428,11 +428,11 @@ module ukca_trop_hetchem_mod
                 cal_n2o5(widx1_1) = rh_p(widx1_1) * 5.2e-4
               end if
             enddo
-            !$acc end kernels
+            !NO!$acc end kernels
           else
             if (aerotype == cp_cl) then
-              !$acc kernels
-              !$acc loop gang vector independent
+              !NO!$acc kernels
+              !NO!$acc loop gang vector independent
               do widx1_2 = 1, nbox, 1
                 if (rh_p(widx1_2) >= 62.0) then
                   cal_n2o5(widx1_2) = 0.03e0
@@ -440,29 +440,29 @@ module ukca_trop_hetchem_mod
                   cal_n2o5(widx1_2) = rh_p(widx1_2) * 0.0005e0
                 end if
               enddo
-              !$acc end kernels
+              !NO!$acc end kernels
             else
               if (aerotype == cp_no3) then
-                !$acc kernels
-                !$acc loop gang vector independent
+                !NO!$acc kernels
+                !NO!$acc loop gang vector independent
                 do idx_5 = LBOUND(lambda, dim=1), UBOUND(lambda, dim=1), 1
                   lambda(idx_5) = -8.107744 + 0.04902 * rh_p(idx_5)
                 enddo
-                !$acc loop gang vector independent
+                !NO!$acc loop gang vector independent
                 do idx_6 = LBOUND(cal_n2o5, dim=1), UBOUND(cal_n2o5, dim=1), 1
                   cal_n2o5(idx_6) = 1.0 / (1.0 + EXP(-1.0 * lambda(idx_6)))
                 enddo
-                !$acc loop gang vector independent
+                !NO!$acc loop gang vector independent
                 do widx1_3 = 1, nbox, 1
                   if (cal_n2o5(widx1_3) > 0.0154) then
                     cal_n2o5(widx1_3) = 0.0154
                   end if
                 enddo
-                !$acc end kernels
+                !NO!$acc end kernels
               else
                 if (aerotype == cp_nn) then
-                  !$acc kernels
-                  !$acc loop gang vector independent
+                  !NO!$acc kernels
+                  !NO!$acc loop gang vector independent
                   do widx1_4 = 1, nbox, 1
                     if (rh_p(widx1_4) < 50.0) then
                       cal_n2o5(widx1_4) = 0.0018
@@ -480,7 +480,7 @@ module ukca_trop_hetchem_mod
                       end if
                     end if
                   enddo
-                  !$acc end kernels
+                  !NO!$acc end kernels
                 else
                   cmessage(:) = ' Unknown aerosol surface for N2O5 hydrolysis'
                   ! PSyclone CodeBlock (unsupported code) reason:
@@ -534,15 +534,15 @@ module ukca_trop_hetchem_mod
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
     call nvtxStartRange(ModuleName // ':' // RoutineName)
-    !$acc kernels
-    !$acc loop gang vector independent
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent
     do idx = LBOUND(rh_p, dim=1), UBOUND(rh_p, dim=1), 1
       rh_p(idx) = rh(idx) * 100.0
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     if (aerotype == cp_du) then
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do widx1 = 1, nbox, 1
         if (rh_p(widx1) >= 50.0) then
           cal_ho2(widx1) = 0.1e0
@@ -550,11 +550,11 @@ module ukca_trop_hetchem_mod
           cal_ho2(widx1) = 0.05e0
         end if
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     else
       if (aerotype == cp_su) then
-        !$acc kernels
-        !$acc loop gang vector independent
+        !NO!$acc kernels
+        !NO!$acc loop gang vector independent
         do widx1_1 = 1, nbox, 1
           if (rh_p(widx1_1) <= 35.0) then
             cal_ho2(widx1_1) = 0.01e0
@@ -564,27 +564,27 @@ module ukca_trop_hetchem_mod
             cal_ho2(widx1_1) = 0.11 * factt(widx1_1) * facth(widx1_1)
           end if
         enddo
-        !$acc end kernels
+        !NO!$acc end kernels
       else
         if (aerotype == cp_bc) then
-          !$acc kernels
-          !$acc loop gang vector independent
+          !NO!$acc kernels
+          !NO!$acc loop gang vector independent
           do idx_1 = LBOUND(cal_ho2, dim=1), UBOUND(cal_ho2, dim=1), 1
             cal_ho2(idx_1) = 0.01e0
           enddo
-          !$acc end kernels
+          !NO!$acc end kernels
         else
           if (aerotype == cp_oc .OR. aerotype == cp_so) then
-            !$acc kernels
-            !$acc loop gang vector independent
+            !NO!$acc kernels
+            !NO!$acc loop gang vector independent
             do idx_2 = LBOUND(cal_ho2, dim=1), UBOUND(cal_ho2, dim=1), 1
               cal_ho2(idx_2) = 2.5e-2
             enddo
-            !$acc end kernels
+            !NO!$acc end kernels
           else
             if (aerotype == cp_cl) then
-              !$acc kernels
-              !$acc loop gang vector independent
+              !NO!$acc kernels
+              !NO!$acc loop gang vector independent
               do widx1_2 = 1, nbox, 1
                 if (rh_p(widx1_2) >= 62.0) then
                   cal_ho2(widx1_2) = 0.05e0
@@ -592,23 +592,23 @@ module ukca_trop_hetchem_mod
                   cal_ho2(widx1_2) = 5.66e-5 * EXP(1560.0 / temp(widx1_2))
                 end if
               enddo
-              !$acc end kernels
+              !NO!$acc end kernels
             else
               if (aerotype == cp_no3) then
-                !$acc kernels
-                !$acc loop gang vector independent
+                !NO!$acc kernels
+                !NO!$acc loop gang vector independent
                 do idx_3 = LBOUND(cal_ho2, dim=1), UBOUND(cal_ho2, dim=1), 1
                   cal_ho2(idx_3) = 0.005
                 enddo
-                !$acc end kernels
+                !NO!$acc end kernels
               else
                 if (aerotype == cp_nn) then
-                  !$acc kernels
-                  !$acc loop gang vector independent
+                  !NO!$acc kernels
+                  !NO!$acc loop gang vector independent
                   do idx_4 = LBOUND(cal_ho2, dim=1), UBOUND(cal_ho2, dim=1), 1
                     cal_ho2(idx_4) = 0.015
                   enddo
-                  !$acc end kernels
+                  !NO!$acc end kernels
                 else
                   cmessage(:) = 'Unknown aerosol surface for HO2 self reaction'
                   ! PSyclone CodeBlock (unsupported code) reason:
@@ -663,25 +663,25 @@ module ukca_trop_hetchem_mod
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
     call nvtxStartRange(ModuleName // ':' // RoutineName)
-    !$acc kernels
+    !NO!$acc kernels
     mw_s = molec_wt_s / 1.0e3
-    !$acc loop gang vector independent
+    !NO!$acc loop gang vector independent
     do idx = LBOUND(rho_a, dim=1), UBOUND(rho_a, dim=1), 1
       rho_a(idx) = aird(idx) * m_air * 1.0e6 / avogadro
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     if (printstatus >= prstatus_diag) then
       ! PSyclone CodeBlock (unsupported code) reason:
       !  - Unsupported statement: Write_Stmt
       WRITE(umMessage, '(A,2E15.6)') 'RHO_A: ', MAXVAL(rho_a), MINVAL(rho_a)
       call umprint(ummessage, src='ukca_trop_hetchem')
     end if
-    !$acc kernels
-    !$acc loop gang vector independent
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent
     do idx_1 = LBOUND(dfkg, dim=1), UBOUND(dfkg, dim=1), 1
       dfkg(idx_1) = 0.0
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     if (ukca_config%l_ukca_classic_hetchem) then
       sarea_min = 1.0e-30
       cal_loss1k_min = 0.0

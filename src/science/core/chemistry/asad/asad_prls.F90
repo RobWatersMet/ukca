@@ -45,114 +45,114 @@ module asad_prls_mod
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
     call nvtxStartRange(ModuleName // ':' // RoutineName)
-    !$acc kernels
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent collapse(2)
     do js = 1, jpspec, 1
       do jl = 1, kl, 1
         prod(jl,js) = 0.0
         slos(jl,js) = 0.0
       enddo
     enddo
-    !$acc loop seq
+    !NO!$acc loop seq
     do jr = 1, nuni, 1
       ir1 = nspi(jr,1)
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do jl = 1, kl, 1
         prk(jl,jr) = rk(jl,jr) * y(jl,ir1)
       enddo
     enddo
     iunip1 = nuni + 1
-    !$acc loop seq
+    !NO!$acc loop seq
     do jr = iunip1, jpnr, 1
       ir1 = nspi(jr,1)
       ir2 = nspi(jr,2)
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do jl = 1, kl, 1
         prk(jl,jr) = rk(jl,jr) * y(jl,ir1) * y(jl,ir2)
       enddo
     enddo
-    !$acc loop seq
+    !NO!$acc loop seq
     do jskip = 0, jpspec, jpspec
-      !$acc loop seq
+      !NO!$acc loop seq
       do j = 1, knspec, 1
         js = kspec(j) + jskip
         ip3 = ngrp(js,3)
         ip2 = ngrp(js,2)
         ip1 = ngrp(js,1)
-        !$acc loop seq
+        !NO!$acc loop seq
         do j3 = 1, ip3, 1
           i1 = nprdx3(1,j3,js)
           i2 = nprdx3(2,j3,js)
           i3 = nprdx3(3,j3,js)
-          !$acc loop gang vector independent
+          !NO!$acc loop gang vector independent
           do jl = 1, kl, 1
             pd(jl,js) = pd(jl,js) + prk(jl,i1) + prk(jl,i2) + prk(jl,i3)
           enddo
         enddo
-        !$acc loop seq
+        !NO!$acc loop seq
         do j2 = 1, ip2, 1
           i1 = nprdx2(1,js)
           i2 = nprdx2(2,js)
-          !$acc loop gang vector independent
+          !NO!$acc loop gang vector independent
           do jl = 1, kl, 1
             pd(jl,js) = pd(jl,js) + prk(jl,i1) + prk(jl,i2)
           enddo
         enddo
-        !$acc loop seq
+        !NO!$acc loop seq
         do j1 = 1, ip1, 1
           i1 = nprdx1(js)
-          !$acc loop gang vector independent
+          !NO!$acc loop gang vector independent
           do jl = 1, kl, 1
             pd(jl,js) = pd(jl,js) + prk(jl,i1)
           enddo
         enddo
       enddo
     enddo
-    !$acc loop seq
+    !NO!$acc loop seq
     do jr = 1, nnfrp, 1
       iss = ntabfp(jr,1)
       ir = ntabfp(jr,2)
       ix = ntabfp(jr,3)
       fr = frpx(ix)
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do jl = 1, kl, 1
         pd(jl,iss) = pd(jl,iss) + fr * prk(jl,ir)
       enddo
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     if (ldepem) then
-      !$acc kernels
+      !NO!$acc kernels
       istart = nldepx(1)
       iend = nldepx(2)
-      !$acc loop seq
+      !NO!$acc loop seq
       do j = istart, iend, 1
         js = nldepx(j)
-        !$acc loop gang vector independent
+        !NO!$acc loop gang vector independent
         do jl = 1, kl, 1
           slos(jl,js) = slos(jl,js) + (dpd(jl,js) + dpw(jl,js)) * y(jl,js)
         enddo
       enddo
       istart = nldepx(3)
       iend = nldepx(4)
-      !$acc loop seq
+      !NO!$acc loop seq
       do j = istart, iend, 1
         js = nldepx(j)
-        !$acc loop gang vector independent
+        !NO!$acc loop gang vector independent
         do jl = 1, kl, 1
           slos(jl,js) = slos(jl,js) + dpd(jl,js) * y(jl,js)
         enddo
       enddo
       istart = nldepx(5)
       iend = nldepx(6)
-      !$acc loop seq
+      !NO!$acc loop seq
       do j = istart, iend, 1
         js = nldepx(j)
-        !$acc loop gang vector independent
+        !NO!$acc loop gang vector independent
         do jl = 1, kl, 1
           slos(jl,js) = slos(jl,js) + dpw(jl,js) * y(jl,js)
         enddo
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     end if
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)

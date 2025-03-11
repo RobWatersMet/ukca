@@ -28,39 +28,39 @@ module ukca_be_drydep_mod
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
     call nvtxStartRange(ModuleName // ':' // RoutineName)
-    !$acc kernels
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent collapse(2)
     do js = 1, jpspec, 1
       do i = 1, n_pnts, 1
         odryrt(i,js) = 0.0
       enddo
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     if (ukca_config%l_ukca_intdd) then
-      !$acc kernels
-      !$acc loop seq
+      !NO!$acc kernels
+      !NO!$acc loop seq
       do i = 1, n_pnts, 1
         if (k <= nlev_with_ddep2(i)) then
-          !$acc loop seq
+          !NO!$acc loop seq
           do js = 1, ndepd, 1
             nspec = nldepd(js)
             odryrt(i,nspec) = dryrt(i,js)
           enddo
         end if
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     else
       if (k == bottom_level) then
-        !$acc kernels
-        !$acc loop seq
+        !NO!$acc kernels
+        !NO!$acc loop seq
         do js = 1, ndepd, 1
           nspec = nldepd(js)
-          !$acc loop gang vector independent
+          !NO!$acc loop gang vector independent
           do i = 1, n_pnts, 1
             odryrt(i,nspec) = dryrt(i,js)
           enddo
         enddo
-        !$acc end kernels
+        !NO!$acc end kernels
       end if
     end if
     if (lhook) then

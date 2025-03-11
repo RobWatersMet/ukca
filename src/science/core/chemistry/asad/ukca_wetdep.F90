@@ -23,16 +23,16 @@ module ukca_wetdep_mod
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
     call nvtxStartRange(ModuleName // ':' // RoutineName)
-    !$acc kernels
-    !$acc loop seq
+    !NO!$acc kernels
+    !NO!$acc loop seq
     do js = 1, ndepw, 1
       nspec = nldepw(js)
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do i = 1, n_points, 1
         dpw(i,nspec) = wetrt(i,js)
       enddo
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
     end if

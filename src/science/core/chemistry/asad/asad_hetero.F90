@@ -182,15 +182,15 @@ module asad_hetero_mod
     end if
     if ((ukca_config%l_ukca_nr_aqchem .OR. ukca_config%l_ukca_offline_be) .AND. ANY(cld_l > qcl_min)) then
       call ukca_fdiss(n_points, qcl_min, t, p, cld_l, fdiss, h_plus_1d_arr)
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do idx = LBOUND(todo, dim=1), UBOUND(todo, dim=1), 1
         todo(idx) = cld_l(idx) > qcl_min
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     else
-      !$acc kernels
-      !$acc loop gang vector independent collapse(3)
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent collapse(3)
       do idx_1 = LBOUND(fdiss, dim=3), UBOUND(fdiss, dim=3), 1
         do idx_2 = LBOUND(fdiss, dim=2), UBOUND(fdiss, dim=2), 1
           do idx_3 = LBOUND(fdiss, dim=1), UBOUND(fdiss, dim=1), 1
@@ -198,30 +198,30 @@ module asad_hetero_mod
           enddo
         enddo
       enddo
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do idx_4 = LBOUND(todo, dim=1), UBOUND(todo, dim=1), 1
         todo(idx_4) = .false.
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     end if
     if (ANY(cld_l > qcl_min)) then
       if ((ukca_config%l_ukca_offline .OR. ukca_config%l_ukca_offline_be) .AND. nwet_constant > 0) then
         ALLOCATE(fdiss_constant(1:n_points,1:nwet_constant,1:jpeq + 1))
         call ukca_fdiss_constant(n_points, qcl_min, t, p, cld_l, fdiss_constant, h_plus_1d_arr)
-        !$acc kernels
-        !$acc loop gang vector independent
+        !NO!$acc kernels
+        !NO!$acc loop gang vector independent
         do idx_5 = LBOUND(fdiss_o3, dim=1), UBOUND(fdiss_o3, dim=1), 1
           fdiss_o3(idx_5) = fdiss_constant(idx_5 + (LBOUND(fdiss_constant, dim=1) - LBOUND(fdiss_o3, dim=1)),ih_o3_const,1)
         enddo
-        !$acc end kernels
+        !NO!$acc end kernels
         DEALLOCATE(fdiss_constant)
       else
-        !$acc kernels
-        !$acc loop gang vector independent
+        !NO!$acc kernels
+        !NO!$acc loop gang vector independent
         do idx_6 = LBOUND(fdiss_o3, dim=1), UBOUND(fdiss_o3, dim=1), 1
           fdiss_o3(idx_6) = fdiss(idx_6,ih_o3,1)
         enddo
-        !$acc end kernels
+        !NO!$acc end kernels
       end if
     end if
     if (ukca_config%l_ukca_nr_aqchem .OR. ukca_config%l_ukca_offline_be) then
@@ -247,32 +247,32 @@ module asad_hetero_mod
       END WHERE
     end if
     if (ukca_config%l_ukca_trophet) then
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do idx_7 = LBOUND(rk, dim=1), UBOUND(rk, dim=1), 1
         rk(idx_7,in2o5_h) = rc_het(idx_7 + (LBOUND(rc_het, dim=1) - LBOUND(rk, dim=1)),1)
       enddo
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do idx_8 = LBOUND(rk, dim=1), UBOUND(rk, dim=1), 1
         rk(idx_8,iho2_h) = rc_het(idx_8 + (LBOUND(rc_het, dim=1) - LBOUND(rk, dim=1)),2)
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     else
       if (in2o5_h > 0) then
-        !$acc kernels
-        !$acc loop gang vector independent
+        !NO!$acc kernels
+        !NO!$acc loop gang vector independent
         do idx_9 = LBOUND(rk, dim=1), UBOUND(rk, dim=1), 1
           rk(idx_9,in2o5_h) = 0.0
         enddo
-        !$acc end kernels
+        !NO!$acc end kernels
       end if
       if (iho2_h > 0) then
-        !$acc kernels
-        !$acc loop gang vector independent
+        !NO!$acc kernels
+        !NO!$acc loop gang vector independent
         do idx_10 = LBOUND(rk, dim=1), UBOUND(rk, dim=1), 1
           rk(idx_10,iho2_h) = 0.0
         enddo
-        !$acc end kernels
+        !NO!$acc end kernels
       end if
     end if
     if (lhook) then

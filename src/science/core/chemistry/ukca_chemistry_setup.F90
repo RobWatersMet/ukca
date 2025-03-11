@@ -145,8 +145,8 @@ module ukca_chemistry_setup_mod
         end if
       end if
     end if
-    !$acc kernels
-    !$acc loop gang vector independent collapse(3)
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent collapse(3)
     do idx = 1, jpdd, 1
       do idx_1 = 1, rows, 1
         do idx_2 = 1, row_length, 1
@@ -154,7 +154,7 @@ module ukca_chemistry_setup_mod
         enddo
       enddo
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     if (ndepd /= 0 .AND. (.NOT.ukca_config%l_ukca_drydep_off)) then
       if (ukca_config%l_ukca_intdd) then
         if (ukca_config%l_deposition_jules) then
@@ -170,8 +170,8 @@ module ukca_chemistry_setup_mod
         call ukca_ddeprt(theta_field_size, bl_levels, i_day_number, i_month, i_hour, r_minute, secs_per_step, longitude, latitude, tanlat, dzl, z0m, u_s, t_surf, zdryrt)
       end if
     end if
-    !$acc kernels
-    !$acc loop gang vector independent collapse(4)
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent collapse(4)
     do idx_3 = 1, jpdw, 1
       do idx_4 = 1, model_levels, 1
         do idx_5 = 1, rows, 1
@@ -181,7 +181,7 @@ module ukca_chemistry_setup_mod
         enddo
       enddo
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     if (ndepw /= 0 .AND. (.NOT.ukca_config%l_ukca_wetdep_off)) then
       call ukca_wdeprt(theta_field_size, model_levels, drain, crain, temp, latitude, secs_per_step, zwetrt, h_plus)
     end if

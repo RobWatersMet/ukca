@@ -31,8 +31,8 @@ module ukca_inwdep_mod
       errcode = 1
       call ereport('UKCA_INWDEP', errcode, cmessage)
     end if
-    !$acc kernels
-    !$acc loop gang vector independent
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent
     do ns = 1, jpdw, 1
       k298(ns) = henry_defs(1,ns)
       dhr(ns) = henry_defs(2,ns)
@@ -41,11 +41,11 @@ module ukca_inwdep_mod
       kd298(ns,2) = henry_defs(5,ns)
       ddhr(ns,2) = henry_defs(6,ns)
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     if (ukca_config%l_ukca_offline .OR. ukca_config%l_ukca_offline_be) then
       if (nwet_constant > 0) then
-        !$acc kernels
-        !$acc loop gang vector independent
+        !NO!$acc kernels
+        !NO!$acc loop gang vector independent
         do ns = 1, nwet_constant, 1
           ct_k298(ns) = henry_defs_const(1,ns)
           ct_dhr(ns) = henry_defs_const(2,ns)
@@ -54,7 +54,7 @@ module ukca_inwdep_mod
           ct_kd298(ns,2) = henry_defs_const(5,ns)
           ct_ddhr(ns,2) = henry_defs_const(6,ns)
         enddo
-        !$acc end kernels
+        !NO!$acc end kernels
       end if
     end if
     if (lhook) then

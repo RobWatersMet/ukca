@@ -154,34 +154,34 @@ module ukca_chemistry_ctl_be_mod
     if (.NOT.ALLOCATED(ystore) .AND. uph2so4inaer == 1) then
       ALLOCATE(ystore(1:theta_field_size))
     end if
-    !$acc kernels
+    !NO!$acc kernels
     ix = 0
     jy = 0
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc loop gang vector independent collapse(2)
     do idx = 1, jpspec, 1
       do idx_1 = 1, model_levels, 1
         dpd_dummy(idx_1,idx) = 0.0
       enddo
     enddo
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc loop gang vector independent collapse(2)
     do idx_2 = 1, jpspec, 1
       do idx_3 = 1, model_levels, 1
         dpw_dummy(idx_3,idx_2) = 0.0
       enddo
     enddo
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc loop gang vector independent collapse(2)
     do idx_4 = 1, jpnr, 1
       do idx_5 = 1, model_levels, 1
         prk_dummy(idx_5,idx_4) = 0.0
       enddo
     enddo
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc loop gang vector independent collapse(2)
     do idx_6 = 1, jpspec, 1
       do idx_7 = 1, model_levels, 1
         y_dummy(idx_7,idx_6) = 0.0
       enddo
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     if (firstcall) then
       n_be_calls = INT(secs_per_step / ukca_config%dts0)
       if (n_be_calls == 0) then
@@ -205,23 +205,23 @@ module ukca_chemistry_ctl_be_mod
       ALLOCATE(rc(1:theta_field_size,1:nr))
     end if
     do k = 1, k_be_top, 1
-      !$acc kernels
+      !NO!$acc kernels
       kcs = (k - 1) * theta_field_size + 1
       kce = k * theta_field_size
-      !$acc loop gang vector independent collapse(2)
+      !NO!$acc loop gang vector independent collapse(2)
       do idx_8 = LBOUND(zdryrt2, dim=2), UBOUND(zdryrt2, dim=2), 1
         do idx_9 = LBOUND(zdryrt2, dim=1), UBOUND(zdryrt2, dim=1), 1
           zdryrt2(idx_9,idx_8) = 0.0e0
         enddo
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
       if (ukca_config%l_ukca_intdd) then
-        !$acc kernels
-        !$acc loop gang vector independent
+        !NO!$acc kernels
+        !NO!$acc loop gang vector independent
         do idx_10 = LBOUND(blmask, dim=1), UBOUND(blmask, dim=1), 1
           blmask(idx_10) = k <= nlev_with_ddep2(idx_10)
         enddo
-        !$acc loop gang vector independent collapse(2)
+        !NO!$acc loop gang vector independent collapse(2)
         do l = 1, jpdd, 1
           do widx1 = 1, theta_field_size, 1
             if (blmask(widx1)) then
@@ -229,75 +229,75 @@ module ukca_chemistry_ctl_be_mod
             end if
           enddo
         enddo
-        !$acc end kernels
+        !NO!$acc end kernels
       else
         if (k == 1) then
-          !$acc kernels
-          !$acc loop gang vector independent collapse(2)
+          !NO!$acc kernels
+          !NO!$acc loop gang vector independent collapse(2)
           do idx_11 = LBOUND(zdryrt2, dim=2), UBOUND(zdryrt2, dim=2), 1
             do idx_12 = LBOUND(zdryrt2, dim=1), UBOUND(zdryrt2, dim=1), 1
               zdryrt2(idx_12,idx_11) = dryrt(idx_12,idx_11)
             enddo
           enddo
-          !$acc end kernels
+          !NO!$acc end kernels
         end if
       end if
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do idx_13 = LBOUND(zp, dim=1), UBOUND(zp, dim=1), 1
         zp(idx_13) = p_theta_levels(idx_13 + (kcs - LBOUND(zp, dim=1)))
       enddo
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do idx_14 = LBOUND(zt, dim=1), UBOUND(zt, dim=1), 1
         zt(idx_14) = temp(idx_14 + (kcs - LBOUND(zt, dim=1)))
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
       if (ukca_config%l_fix_ukca_offox_h2o_fac) then
-        !$acc kernels
-        !$acc loop gang vector independent
+        !NO!$acc kernels
+        !NO!$acc loop gang vector independent
         do idx_15 = LBOUND(zq, dim=1), UBOUND(zq, dim=1), 1
           zq(idx_15) = q(idx_15 + (kcs - LBOUND(zq, dim=1))) / c_h2o
         enddo
-        !$acc end kernels
+        !NO!$acc end kernels
       else
-        !$acc kernels
-        !$acc loop gang vector independent
+        !NO!$acc kernels
+        !NO!$acc loop gang vector independent
         do idx_16 = LBOUND(zq, dim=1), UBOUND(zq, dim=1), 1
           zq(idx_16) = q(idx_16 + (kcs - LBOUND(zq, dim=1)))
         enddo
-        !$acc end kernels
+        !NO!$acc end kernels
       end if
       if (k <= model_levels) then
-        !$acc kernels
-        !$acc loop gang vector independent
+        !NO!$acc kernels
+        !NO!$acc loop gang vector independent
         do idx_17 = LBOUND(zclw, dim=1), UBOUND(zclw, dim=1), 1
           zclw(idx_17) = qcl(idx_17 + (kcs - LBOUND(zclw, dim=1)))
         enddo
-        !$acc loop gang vector independent
+        !NO!$acc loop gang vector independent
         do idx_18 = LBOUND(zfcloud, dim=1), UBOUND(zfcloud, dim=1), 1
           zfcloud(idx_18) = cloud_frac(idx_18 + (kcs - LBOUND(zfcloud, dim=1)))
         enddo
-        !$acc end kernels
+        !NO!$acc end kernels
       else
-        !$acc kernels
-        !$acc loop gang vector independent
+        !NO!$acc kernels
+        !NO!$acc loop gang vector independent
         do idx_19 = LBOUND(zclw, dim=1), UBOUND(zclw, dim=1), 1
           zclw(idx_19) = 0.0
         enddo
-        !$acc loop gang vector independent
+        !NO!$acc loop gang vector independent
         do idx_20 = LBOUND(zfcloud, dim=1), UBOUND(zfcloud, dim=1), 1
           zfcloud(idx_20) = 0.0
         enddo
-        !$acc end kernels
+        !NO!$acc end kernels
       end if
-      !$acc kernels
-      !$acc loop gang vector independent collapse(2)
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent collapse(2)
       do js = 1, jpctr, 1
         do idx_21 = LBOUND(zftr, dim=1), UBOUND(zftr, dim=1), 1
           zftr(idx_21,js) = tracer(idx_21 + (kcs - LBOUND(zftr, dim=1)),js) / c_species(js)
         enddo
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
       call ukca_be_wetdep(theta_field_size, wetrt(:,k,:), zwetrt)
       call ukca_be_drydep(k, theta_field_size, nlev_with_ddep2, zdryrt2, zdryrt)
       if (ndepw /= 0) then
@@ -307,97 +307,97 @@ module ukca_chemistry_ctl_be_mod
         call ukca_drydep(k, zdryrt2, theta_field_size)
       end if
       call ukca_chemco_be_offline(theta_field_size, zt, zp, zq, zfcloud, zclw, h_plus(kcs:kce))
-      !$acc kernels
-      !$acc loop gang vector independent collapse(2)
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent collapse(2)
       do js = 1, jpctr, 1
         do idx_22 = LBOUND(f, dim=1), UBOUND(f, dim=1), 1
           f(idx_22,js) = zftr(idx_22 + (LBOUND(zftr, dim=1) - LBOUND(f, dim=1)),js) * tnd(idx_22 + (LBOUND(tnd, dim=1) - LBOUND(f, dim=1)))
         enddo
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
       jit = 0
       call asad_ftoy(ofirst, nitfg, jit, theta_field_size, ix, jy, k)
       lflux = l_asad_use_chem_diags .AND. (l_asad_use_flux_rxns .OR. l_asad_use_wetdep .OR. l_asad_use_drydep)
       if (uph2so4inaer == 1) then
-        !$acc kernels
-        !$acc loop gang vector independent
+        !NO!$acc kernels
+        !NO!$acc loop gang vector independent
         do idx_23 = LBOUND(ystore, dim=1), UBOUND(ystore, dim=1), 1
           ystore(idx_23) = y(idx_23 + (LBOUND(y, dim=1) - LBOUND(ystore, dim=1)),nn_h2so4)
         enddo
-        !$acc end kernels
+        !NO!$acc end kernels
       end if
       call ukca_deriv_offline(nr, n_be_calls, theta_field_size, dts, y, zdryrt, zwetrt, so2_wetox_h2o2, so2_wetox_o3, so2_dryox_oh, lflux, dflux)
       if (uph2so4inaer == 1) then
-        !$acc kernels
-        !$acc loop gang vector independent
+        !NO!$acc kernels
+        !NO!$acc loop gang vector independent
         do idx_24 = LBOUND(y, dim=1), UBOUND(y, dim=1), 1
           y(idx_24,nn_h2so4) = ystore(idx_24 + (LBOUND(ystore, dim=1) - LBOUND(y, dim=1)))
         enddo
-        !$acc end kernels
+        !NO!$acc end kernels
       end if
       do j = 1, jpctr, 1
         do i = 1, jpspec, 1
           if (advt(j) == speci(i)) then
-            !$acc kernels
-            !$acc loop gang vector independent
+            !NO!$acc kernels
+            !NO!$acc loop gang vector independent
             do idx_25 = kcs, kce, 1
               tracer(idx_25,j) = y(idx_25 + (LBOUND(y, dim=1) - kcs),i) / tnd(idx_25 + (LBOUND(tnd, dim=1) - kcs)) * c_species(j)
             enddo
-            !$acc end kernels
+            !NO!$acc end kernels
             ! PSyclone CodeBlock (unsupported code) reason:
             !  - Unsupported statement: Exit_Stmt
             EXIT
           end if
         enddo
       enddo
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do idx_26 = kcs, kce, 1
         delso2_wet_h2o2(idx_26) = so2_wetox_h2o2(idx_26 + (LBOUND(so2_wetox_h2o2, dim=1) - kcs))
       enddo
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do idx_27 = kcs, kce, 1
         delso2_wet_o3(idx_27) = so2_wetox_o3(idx_27 + (LBOUND(so2_wetox_o3, dim=1) - kcs))
       enddo
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do idx_28 = kcs, kce, 1
         delh2so4_chem(idx_28) = so2_dryox_oh(idx_28 + (LBOUND(so2_dryox_oh, dim=1) - kcs))
       enddo
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do idx_29 = kcs, kce, 1
         delso2_drydep(idx_29) = zdryrt(idx_29 + (LBOUND(zdryrt, dim=1) - kcs),nn_so2) * y(idx_29 + (LBOUND(y, dim=1) - kcs),nn_so2) * dts
       enddo
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do idx_30 = kcs, kce, 1
         delso2_wetdep(idx_30) = zwetrt(idx_30 + (LBOUND(zwetrt, dim=1) - kcs),nn_so2) * y(idx_30 + (LBOUND(y, dim=1) - kcs),nn_so2) * dts
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
       if (lflux) then
-        !$acc kernels
-        !$acc loop seq
+        !NO!$acc kernels
+        !NO!$acc loop seq
         do i = 1, jpbk, 1
-          !$acc loop gang vector independent
+          !NO!$acc loop gang vector independent
           do idx_31 = LBOUND(prk, dim=1), UBOUND(prk, dim=1), 1
             prk(idx_31,ibimol(i)) = dflux(idx_31 + (LBOUND(dflux, dim=1) - LBOUND(prk, dim=1)),i)
           enddo
         enddo
         j = jpbk
-        !$acc loop seq
+        !NO!$acc loop seq
         do i = 1, jptk, 1
-          !$acc loop gang vector independent
+          !NO!$acc loop gang vector independent
           do idx_32 = LBOUND(prk, dim=1), UBOUND(prk, dim=1), 1
             prk(idx_32,itrimol(i)) = dflux(idx_32 + (LBOUND(dflux, dim=1) - LBOUND(prk, dim=1)),i + j)
           enddo
         enddo
         j = jpbk + jptk
-        !$acc loop seq
+        !NO!$acc loop seq
         do i = 1, jphk, 1
-          !$acc loop gang vector independent
+          !NO!$acc loop gang vector independent
           do idx_33 = LBOUND(prk, dim=1), UBOUND(prk, dim=1), 1
             prk(idx_33,ihetero(i)) = dflux(idx_33 + (LBOUND(dflux, dim=1) - LBOUND(prk, dim=1)),i + j)
           enddo
         enddo
-        !$acc end kernels
+        !NO!$acc end kernels
         call asad_chemical_diagnostics(row_length, rows, model_levels, theta_field_size, dpd_dummy, dpw_dummy, prk_dummy, y_dummy, ix, jy, k, volume, ierr)
       end if
     enddo
@@ -473,21 +473,21 @@ module ukca_chemistry_ctl_be_mod
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
     call nvtxStartRange(ModuleName // ':' // RoutineName)
-    !$acc kernels
+    !NO!$acc kernels
     npnts = theta_field_size
-    !$acc loop gang vector independent
+    !NO!$acc loop gang vector independent
     do idx = 1, npnts, 1
       p(idx) = zp(idx)
     enddo
-    !$acc loop gang vector independent
+    !NO!$acc loop gang vector independent
     do idx_1 = 1, npnts, 1
       t(idx_1) = zt(idx_1)
     enddo
-    !$acc loop gang vector independent
+    !NO!$acc loop gang vector independent
     do idx_2 = 1, npnts, 1
       wp(idx_2) = zq(idx_2)
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     call asad_totnud(npnts)
     call asad_bimol(npnts)
     call asad_trimol(npnts)
@@ -502,16 +502,16 @@ module ukca_chemistry_ctl_be_mod
       if (.NOT.ALLOCATED(ihetero)) then
         ALLOCATE(ihetero(1:jphk))
       end if
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do idx_3 = LBOUND(ibimol, dim=1), UBOUND(ibimol, dim=1), 1
         ibimol(idx_3) = imdi
       enddo
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do idx_4 = LBOUND(itrimol, dim=1), UBOUND(itrimol, dim=1), 1
         itrimol(idx_4) = imdi
       enddo
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do idx_5 = LBOUND(ihetero, dim=1), UBOUND(ihetero, dim=1), 1
         ihetero(idx_5) = imdi
       enddo
@@ -519,14 +519,14 @@ module ukca_chemistry_ctl_be_mod
       frac_dms_dmso = rmdi
       frac_dmso_so2 = rmdi
       frac_monoterp_sec_org(3) = rmdi
-      !$acc loop gang vector independent collapse(2)
+      !NO!$acc loop gang vector independent collapse(2)
       do idx_6 = LBOUND(rc, dim=2), UBOUND(rc, dim=2), 1
         do idx_7 = LBOUND(rc, dim=1), UBOUND(rc, dim=1), 1
           rc(idx_7,idx_6) = rmdi
         enddo
       enddo
       errcode = 0
-      !$acc end kernels
+      !NO!$acc end kernels
       do i = 1, jpbk, 1
         r1(:) = ratb_defs(i)%react1
         r2(:) = ratb_defs(i)%react2
@@ -596,28 +596,28 @@ module ukca_chemistry_ctl_be_mod
         call ereport(ModuleName // ':' // RoutineName, errcode, cmessage)
       end if
     end if
-    !$acc kernels
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent collapse(2)
     do i = 1, jpbk, 1
       do idx_8 = LBOUND(rc, dim=1), UBOUND(rc, dim=1), 1
         rc(idx_8,i) = rk(idx_8 + (LBOUND(rk, dim=1) - LBOUND(rc, dim=1)),ibimol(i))
       enddo
     enddo
     j = jpbk
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc loop gang vector independent collapse(2)
     do i = 1, jptk, 1
       do idx_9 = LBOUND(rc, dim=1), UBOUND(rc, dim=1), 1
         rc(idx_9,i + j) = rk(idx_9 + (LBOUND(rk, dim=1) - LBOUND(rc, dim=1)),itrimol(i))
       enddo
     enddo
     j = jpbk + jptk
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc loop gang vector independent collapse(2)
     do i = 1, jphk, 1
       do idx_10 = LBOUND(rc, dim=1), UBOUND(rc, dim=1), 1
         rc(idx_10,i + j) = rk(idx_10 + (LBOUND(rk, dim=1) - LBOUND(rc, dim=1)),ihetero(i))
       enddo
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     if (first .AND. ANY(ABS(rc - rmdi) < EPSILON(0.0))) then
       errcode = 1
       cmessage(:) = 'Missing rate coefficient data in array rc'
@@ -729,241 +729,241 @@ module ukca_chemistry_ctl_be_mod
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
     call nvtxStartRange(ModuleName // ':' // RoutineName)
-    !$acc kernels
+    !NO!$acc kernels
     npnts = theta_field_size
-    !$acc loop gang vector independent
+    !NO!$acc loop gang vector independent
     do idx = LBOUND(so2_wetox_h2o2, dim=1), UBOUND(so2_wetox_h2o2, dim=1), 1
       so2_wetox_h2o2(idx) = 0.0
     enddo
-    !$acc loop gang vector independent
+    !NO!$acc loop gang vector independent
     do idx_1 = LBOUND(so2_wetox_o3, dim=1), UBOUND(so2_wetox_o3, dim=1), 1
       so2_wetox_o3(idx_1) = 0.0
     enddo
-    !$acc loop gang vector independent
+    !NO!$acc loop gang vector independent
     do idx_2 = LBOUND(so2_dryox_oh, dim=1), UBOUND(so2_dryox_oh, dim=1), 1
       so2_dryox_oh(idx_2) = 0.0
     enddo
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc loop gang vector independent collapse(2)
     do idx_3 = LBOUND(dflux, dim=2), UBOUND(dflux, dim=2), 1
       do idx_4 = LBOUND(dflux, dim=1), UBOUND(dflux, dim=1), 1
         dflux(idx_4,idx_3) = 0.0
       enddo
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     do n = 1, n_be_calls, 1
-      !$acc kernels
-      !$acc loop gang vector independent collapse(2)
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent collapse(2)
       do j = 1, jpspec, 1
         do idx_5 = LBOUND(yp, dim=1), UBOUND(yp, dim=1), 1
           yp(idx_5,j) = y(idx_5,j)
         enddo
       enddo
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do idx_6 = LBOUND(p, dim=1), UBOUND(p, dim=1), 1
         p(idx_6) = 0.0
       enddo
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do idx_7 = LBOUND(l, dim=1), UBOUND(l, dim=1), 1
         l(idx_7) = dryrt(idx_7,2) + wetrt(idx_7,2) + (rc(idx_7 + (LBOUND(rc, dim=1) - LBOUND(l, dim=1)),1) + rc(idx_7 + (LBOUND(rc, dim=1) - LBOUND(l, dim=1)),2)) * y(idx_7,9) + rc(idx_7 + (LBOUND(rc, dim=1) - LBOUND(l, dim=1)),3) * y(idx_7,10)
       enddo
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do idx_8 = LBOUND(y, dim=1), UBOUND(y, dim=1), 1
         y(idx_8,3) = (yp(idx_8,3) + dts * p(idx_8)) / (1.0 + dts * l(idx_8))
       enddo
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do idx_9 = LBOUND(tmp2, dim=1), UBOUND(tmp2, dim=1), 1
         tmp2(idx_9) = 1.0 + dts * l(idx_9)
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
       call oneover_v(npnts, tmp2, tmp1)
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do idx_10 = LBOUND(y, dim=1), UBOUND(y, dim=1), 1
         y(idx_10,2) = (yp(idx_10,2) + dts * p(idx_10)) * tmp1(idx_10)
       enddo
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do idx_11 = LBOUND(p, dim=1), UBOUND(p, dim=1), 1
         p(idx_11) = rc(idx_11 + (LBOUND(rc, dim=1) - LBOUND(p, dim=1)),2) * y(idx_11,2) * y(idx_11,9) * frac_dms_dmso
       enddo
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do idx_12 = LBOUND(l, dim=1), UBOUND(l, dim=1), 1
         l(idx_12) = dryrt(idx_12,5) + wetrt(idx_12,5) + rc(idx_12 + (LBOUND(rc, dim=1) - LBOUND(l, dim=1)),4) * y(idx_12,9)
       enddo
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do idx_13 = LBOUND(tmp2, dim=1), UBOUND(tmp2, dim=1), 1
         tmp2(idx_13) = 1.0 + dts * l(idx_13)
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
       call oneover_v(npnts, tmp2, tmp1)
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do idx_14 = LBOUND(y, dim=1), UBOUND(y, dim=1), 1
         y(idx_14,5) = (yp(idx_14,5) + dts * p(idx_14)) * tmp1(idx_14)
       enddo
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do idx_15 = LBOUND(p, dim=1), UBOUND(p, dim=1), 1
         p(idx_15) = (rc(idx_15 + (LBOUND(rc, dim=1) - LBOUND(p, dim=1)),1) + rc(idx_15 + (LBOUND(rc, dim=1) - LBOUND(p, dim=1)),2) * frac_dms_so2) * y(idx_15,2) * y(idx_15,9) + rc(idx_15 + (LBOUND(rc, dim=1) - LBOUND(p, dim=1)),3) * y(idx_15,2) * y(idx_15,10) + rc(idx_15 + (LBOUND(rc, dim=1) - LBOUND(p, dim=1)),4) * y(idx_15,5) * y(idx_15,9) * frac_dmso_so2
       enddo
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do idx_16 = LBOUND(l, dim=1), UBOUND(l, dim=1), 1
         l(idx_16) = dryrt(idx_16,3) + wetrt(idx_16,3) + rc(idx_16 + (LBOUND(rc, dim=1) - LBOUND(l, dim=1)),10) * y(idx_16,9) + rc(idx_16 + (LBOUND(rc, dim=1) - LBOUND(l, dim=1)),11) * y(idx_16,1) + (rc(idx_16 + (LBOUND(rc, dim=1) - LBOUND(l, dim=1)),12) + rc(idx_16 + (LBOUND(rc, dim=1) - LBOUND(l, dim=1)),13)) * y(idx_16,8)
       enddo
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do idx_17 = LBOUND(tmp2, dim=1), UBOUND(tmp2, dim=1), 1
         tmp2(idx_17) = 1.0 + dts * l(idx_17)
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
       call oneover_v(npnts, tmp2, tmp1)
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do idx_18 = LBOUND(y, dim=1), UBOUND(y, dim=1), 1
         y(idx_18,3) = (yp(idx_18,3) + dts * p(idx_18)) * tmp1(idx_18)
       enddo
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do idx_19 = LBOUND(p, dim=1), UBOUND(p, dim=1), 1
         p(idx_19) = rc(idx_19 + (LBOUND(rc, dim=1) - LBOUND(p, dim=1)),10) * y(idx_19,3) * y(idx_19,9)
       enddo
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do idx_20 = LBOUND(l, dim=1), UBOUND(l, dim=1), 1
         l(idx_20) = dryrt(idx_20,4) + wetrt(idx_20,4)
       enddo
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do idx_21 = LBOUND(tmp2, dim=1), UBOUND(tmp2, dim=1), 1
         tmp2(idx_21) = 1.0 + dts * l(idx_21)
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
       call oneover_v(npnts, tmp2, tmp1)
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do idx_22 = LBOUND(y, dim=1), UBOUND(y, dim=1), 1
         y(idx_22,4) = (yp(idx_22,4) + dts * p(idx_22)) * tmp1(idx_22)
       enddo
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do idx_23 = LBOUND(p, dim=1), UBOUND(p, dim=1), 1
         p(idx_23) = 0.0
       enddo
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do idx_24 = LBOUND(l, dim=1), UBOUND(l, dim=1), 1
         l(idx_24) = dryrt(idx_24,6) + wetrt(idx_24,6) + rc(idx_24 + (LBOUND(rc, dim=1) - LBOUND(l, dim=1)),5) * y(idx_24,9) + rc(idx_24 + (LBOUND(rc, dim=1) - LBOUND(l, dim=1)),6) * y(idx_24,8) + rc(idx_24 + (LBOUND(rc, dim=1) - LBOUND(l, dim=1)),7) * y(idx_24,10)
       enddo
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do idx_25 = LBOUND(tmp2, dim=1), UBOUND(tmp2, dim=1), 1
         tmp2(idx_25) = 1.0 + dts * l(idx_25)
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
       call oneover_v(npnts, tmp2, tmp1)
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do idx_26 = LBOUND(y, dim=1), UBOUND(y, dim=1), 1
         y(idx_26,6) = (yp(idx_26,6) + dts * p(idx_26)) * tmp1(idx_26)
       enddo
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do idx_27 = LBOUND(p, dim=1), UBOUND(p, dim=1), 1
         p(idx_27) = rc(idx_27 + (LBOUND(rc, dim=1) - LBOUND(p, dim=1)),5) * y(idx_27,6) * y(idx_27,9) * frac_monoterp_sec_org(1) + rc(idx_27 + (LBOUND(rc, dim=1) - LBOUND(p, dim=1)),6) * y(idx_27,6) * y(idx_27,8) * frac_monoterp_sec_org(2) + rc(idx_27 + (LBOUND(rc, dim=1) - LBOUND(p, dim=1)),7) * y(idx_27,6) * y(idx_27,10) * frac_monoterp_sec_org(3)
       enddo
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do idx_28 = LBOUND(l, dim=1), UBOUND(l, dim=1), 1
         l(idx_28) = dryrt(idx_28,7) + wetrt(idx_28,7)
       enddo
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do idx_29 = LBOUND(tmp2, dim=1), UBOUND(tmp2, dim=1), 1
         tmp2(idx_29) = 1.0 + dts * l(idx_29)
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
       call oneover_v(npnts, tmp2, tmp1)
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do idx_30 = LBOUND(y, dim=1), UBOUND(y, dim=1), 1
         y(idx_30,7) = (yp(idx_30,7) + dts * p(idx_30)) * tmp1(idx_30)
       enddo
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do idx_31 = LBOUND(p, dim=1), UBOUND(p, dim=1), 1
         p(idx_31) = rc(idx_31 + (LBOUND(rc, dim=1) - LBOUND(p, dim=1)),8) * y(idx_31,11) * y(idx_31,11)
       enddo
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do idx_32 = LBOUND(l, dim=1), UBOUND(l, dim=1), 1
         l(idx_32) = dryrt(idx_32,1) + wetrt(idx_32,1) + rc(idx_32 + (LBOUND(rc, dim=1) - LBOUND(l, dim=1)),9) * y(idx_32,9) + rc(idx_32 + (LBOUND(rc, dim=1) - LBOUND(l, dim=1)),11) * y(idx_32,3)
       enddo
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do idx_33 = LBOUND(tmp2, dim=1), UBOUND(tmp2, dim=1), 1
         tmp2(idx_33) = 1.0 + dts * l(idx_33)
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
       call oneover_v(npnts, tmp2, tmp1)
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do idx_34 = LBOUND(y, dim=1), UBOUND(y, dim=1), 1
         y(idx_34,1) = (yp(idx_34,1) + dts * p(idx_34)) * tmp1(idx_34)
       enddo
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do idx_35 = LBOUND(so2_wetox_h2o2, dim=1), UBOUND(so2_wetox_h2o2, dim=1), 1
         so2_wetox_h2o2(idx_35) = so2_wetox_h2o2(idx_35) + rc(idx_35 + (LBOUND(rc, dim=1) - LBOUND(so2_wetox_h2o2, dim=1)),11) * y(idx_35,3) * y(idx_35,1) * dts
       enddo
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do idx_36 = LBOUND(so2_wetox_o3, dim=1), UBOUND(so2_wetox_o3, dim=1), 1
         so2_wetox_o3(idx_36) = so2_wetox_o3(idx_36) + ((rc(idx_36 + (LBOUND(rc, dim=1) - LBOUND(so2_wetox_o3, dim=1)),12) + rc(idx_36 + (LBOUND(rc, dim=1) - LBOUND(so2_wetox_o3, dim=1)),13)) * y(idx_36,3) * y(idx_36,8)) * dts
       enddo
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do idx_37 = LBOUND(so2_dryox_oh, dim=1), UBOUND(so2_dryox_oh, dim=1), 1
         so2_dryox_oh(idx_37) = so2_dryox_oh(idx_37) + rc(idx_37 + (LBOUND(rc, dim=1) - LBOUND(so2_dryox_oh, dim=1)),10) * y(idx_37,3) * y(idx_37,9) * dts
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
       if (lflux) then
-        !$acc kernels
+        !NO!$acc kernels
         f_inv = 1.0 / n_be_calls
-        !$acc loop gang vector independent
+        !NO!$acc loop gang vector independent
         do idx_38 = LBOUND(dflux, dim=1), UBOUND(dflux, dim=1), 1
           dflux(idx_38,1) = dflux(idx_38,1) + rc(idx_38 + (LBOUND(rc, dim=1) - LBOUND(dflux, dim=1)),1) * y(idx_38,2) * y(idx_38,9) * f_inv
         enddo
-        !$acc loop gang vector independent
+        !NO!$acc loop gang vector independent
         do idx_39 = LBOUND(dflux, dim=1), UBOUND(dflux, dim=1), 1
           dflux(idx_39,2) = dflux(idx_39,1) + rc(idx_39 + (LBOUND(rc, dim=1) - LBOUND(dflux, dim=1)),2) * y(idx_39,2) * y(idx_39,9) * f_inv
         enddo
-        !$acc loop gang vector independent
+        !NO!$acc loop gang vector independent
         do idx_40 = LBOUND(dflux, dim=1), UBOUND(dflux, dim=1), 1
           dflux(idx_40,3) = dflux(idx_40,3) + rc(idx_40 + (LBOUND(rc, dim=1) - LBOUND(dflux, dim=1)),3) * y(idx_40,2) * y(idx_40,10) * f_inv
         enddo
-        !$acc loop gang vector independent
+        !NO!$acc loop gang vector independent
         do idx_41 = LBOUND(dflux, dim=1), UBOUND(dflux, dim=1), 1
           dflux(idx_41,4) = dflux(idx_41,4) + rc(idx_41 + (LBOUND(rc, dim=1) - LBOUND(dflux, dim=1)),4) * y(idx_41,5) * y(idx_41,9) * f_inv
         enddo
-        !$acc loop gang vector independent
+        !NO!$acc loop gang vector independent
         do idx_42 = LBOUND(dflux, dim=1), UBOUND(dflux, dim=1), 1
           dflux(idx_42,5) = dflux(idx_42,5) + rc(idx_42 + (LBOUND(rc, dim=1) - LBOUND(dflux, dim=1)),5) * y(idx_42,6) * y(idx_42,9) * f_inv
         enddo
-        !$acc loop gang vector independent
+        !NO!$acc loop gang vector independent
         do idx_43 = LBOUND(dflux, dim=1), UBOUND(dflux, dim=1), 1
           dflux(idx_43,6) = dflux(idx_43,6) + rc(idx_43 + (LBOUND(rc, dim=1) - LBOUND(dflux, dim=1)),6) * y(idx_43,6) * y(idx_43,8) * f_inv
         enddo
-        !$acc loop gang vector independent
+        !NO!$acc loop gang vector independent
         do idx_44 = LBOUND(dflux, dim=1), UBOUND(dflux, dim=1), 1
           dflux(idx_44,7) = dflux(idx_44,7) + rc(idx_44 + (LBOUND(rc, dim=1) - LBOUND(dflux, dim=1)),7) * y(idx_44,6) * y(idx_44,10) * f_inv
         enddo
-        !$acc loop gang vector independent
+        !NO!$acc loop gang vector independent
         do idx_45 = LBOUND(dflux, dim=1), UBOUND(dflux, dim=1), 1
           dflux(idx_45,8) = dflux(idx_45,8) + rc(idx_45 + (LBOUND(rc, dim=1) - LBOUND(dflux, dim=1)),8) * y(idx_45,11) * y(idx_45,11) * f_inv
         enddo
-        !$acc loop gang vector independent
+        !NO!$acc loop gang vector independent
         do idx_46 = LBOUND(dflux, dim=1), UBOUND(dflux, dim=1), 1
           dflux(idx_46,9) = dflux(idx_46,9) + rc(idx_46 + (LBOUND(rc, dim=1) - LBOUND(dflux, dim=1)),9) * y(idx_46,1) * y(idx_46,9) * f_inv
         enddo
-        !$acc loop gang vector independent
+        !NO!$acc loop gang vector independent
         do idx_47 = LBOUND(dflux, dim=1), UBOUND(dflux, dim=1), 1
           dflux(idx_47,10) = dflux(idx_47,10) + rc(idx_47 + (LBOUND(rc, dim=1) - LBOUND(dflux, dim=1)),10) * y(idx_47,3) * y(idx_47,9) * f_inv
         enddo
-        !$acc loop gang vector independent
+        !NO!$acc loop gang vector independent
         do idx_48 = LBOUND(dflux, dim=1), UBOUND(dflux, dim=1), 1
           dflux(idx_48,11) = dflux(idx_48,11) + rc(idx_48 + (LBOUND(rc, dim=1) - LBOUND(dflux, dim=1)),11) * y(idx_48,3) * y(idx_48,1) * f_inv
         enddo
-        !$acc loop gang vector independent
+        !NO!$acc loop gang vector independent
         do idx_49 = LBOUND(dflux, dim=1), UBOUND(dflux, dim=1), 1
           dflux(idx_49,12) = dflux(idx_49,12) + rc(idx_49 + (LBOUND(rc, dim=1) - LBOUND(dflux, dim=1)),12) * y(idx_49,3) * y(idx_49,8) * f_inv
         enddo
-        !$acc loop gang vector independent
+        !NO!$acc loop gang vector independent
         do idx_50 = LBOUND(dflux, dim=1), UBOUND(dflux, dim=1), 1
           dflux(idx_50,13) = dflux(idx_50,13) + rc(idx_50 + (LBOUND(rc, dim=1) - LBOUND(dflux, dim=1)),13) * y(idx_50,3) * y(idx_50,8) * f_inv
         enddo
-        !$acc end kernels
+        !NO!$acc end kernels
       end if
     enddo
     if (lhook) then

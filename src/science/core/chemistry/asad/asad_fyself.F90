@@ -24,26 +24,26 @@ module asad_fyself_mod
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
     call nvtxStartRange(ModuleName // ':' // RoutineName)
-    !$acc kernels
-    !$acc loop seq
+    !NO!$acc kernels
+    !NO!$acc loop seq
     do j = 1, nstst, 1
       js = nlstst(j)
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do jl = 1, n_points, 1
         qa(jl,js) = 0.0
       enddo
     enddo
-    !$acc loop seq
+    !NO!$acc loop seq
     do jr = 1, jpnr, 1
       isp = nspi(jr,1)
       if (isp == nspi(jr,2)) then
-        !$acc loop gang vector independent
+        !NO!$acc loop gang vector independent
         do jl = 1, n_points, 1
           qa(jl,isp) = qa(jl,isp) + 2.0 * rk(jl,jr)
         enddo
       end if
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
     end if

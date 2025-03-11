@@ -77,11 +77,11 @@ module ukca_wdeprt_mod
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
     call nvtxStartRange(ModuleName // ':' // RoutineName)
-    !$acc kernels
+    !NO!$acc kernels
     first_point = 1
     last_point = p_fieldda
     rgas = rmol / 100.0
-    !$acc loop gang vector independent collapse(3)
+    !NO!$acc loop gang vector independent collapse(3)
     do idx = LBOUND(wetrt, dim=3), UBOUND(wetrt, dim=3), 1
       do idx_1 = LBOUND(wetrt, dim=2), UBOUND(wetrt, dim=2), 1
         do idx_2 = LBOUND(wetrt, dim=1), UBOUND(wetrt, dim=1), 1
@@ -89,7 +89,7 @@ module ukca_wdeprt_mod
         enddo
       enddo
     enddo
-    !$acc loop gang vector independent collapse(3)
+    !NO!$acc loop gang vector independent collapse(3)
     do idx_3 = LBOUND(rwdyn, dim=3), UBOUND(rwdyn, dim=3), 1
       do idx_4 = LBOUND(rwdyn, dim=2), UBOUND(rwdyn, dim=2), 1
         do idx_5 = LBOUND(rwdyn, dim=1), UBOUND(rwdyn, dim=1), 1
@@ -97,7 +97,7 @@ module ukca_wdeprt_mod
         enddo
       enddo
     enddo
-    !$acc loop gang vector independent collapse(3)
+    !NO!$acc loop gang vector independent collapse(3)
     do idx_6 = LBOUND(rwcon, dim=3), UBOUND(rwcon, dim=3), 1
       do idx_7 = LBOUND(rwcon, dim=2), UBOUND(rwcon, dim=2), 1
         do idx_8 = LBOUND(rwcon, dim=1), UBOUND(rwcon, dim=1), 1
@@ -105,25 +105,25 @@ module ukca_wdeprt_mod
         enddo
       enddo
     enddo
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc loop gang vector independent collapse(2)
     do idx_9 = 1, model_levels, 1
       do idx_10 = 1, p_fieldda, 1
         ddrain(idx_10,idx_9) = drain(idx_10,idx_9)
       enddo
     enddo
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc loop gang vector independent collapse(2)
     do idx_11 = 1, model_levels, 1
       do idx_12 = 1, p_fieldda, 1
         ccrain(idx_12,idx_11) = crain(idx_12,idx_11)
       enddo
     enddo
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc loop gang vector independent collapse(2)
     do k = 1, model_levels, 1
       do i = first_point, last_point, 1
         tmp1(i,k) = (298.0 - t(i,k)) / (t(i,k) * 298.0)
       enddo
     enddo
-    !$acc loop gang vector independent collapse(3)
+    !NO!$acc loop gang vector independent collapse(3)
     do ns = 1, jpdw, 1
       do k = 1, model_levels, 1
         do i = first_point, last_point, 1
@@ -132,11 +132,11 @@ module ukca_wdeprt_mod
         enddo
       enddo
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     call exp_v(jpdw * model_levels * p_fieldda, tmp5, tmp5_out)
     call exp_v(jpdw * model_levels * p_fieldda, tmp4, tmp4_out)
-    !$acc kernels
-    !$acc loop gang vector independent collapse(3)
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent collapse(3)
     do ns = 1, jpdw, 1
       do k = 1, model_levels, 1
         do i = first_point, last_point, 1
@@ -150,10 +150,10 @@ module ukca_wdeprt_mod
         enddo
       enddo
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     call exp_v(jpdw * model_levels * p_fieldda, rcw, rcw_out)
-    !$acc kernels
-    !$acc loop gang vector independent collapse(3)
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent collapse(3)
     do idx_13 = 1, jpdw, 1
       do idx_14 = 1, model_levels, 1
         do idx_15 = 1, p_fieldda, 1
@@ -161,10 +161,10 @@ module ukca_wdeprt_mod
         enddo
       enddo
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     call log_v(jpdw * model_levels * p_fieldda, rcw, rcw_out)
-    !$acc kernels
-    !$acc loop gang vector independent collapse(3)
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent collapse(3)
     do ns = 1, jpdw, 1
       do k = 1, model_levels, 1
         do i = first_point, last_point, 1
@@ -172,7 +172,7 @@ module ukca_wdeprt_mod
         enddo
       enddo
     enddo
-    !$acc loop gang vector independent collapse(3)
+    !NO!$acc loop gang vector independent collapse(3)
     do ns = 1, jpdw, 1
       do k = 1, model_levels, 1
         do i = first_point, last_point, 1
@@ -193,7 +193,7 @@ module ukca_wdeprt_mod
         enddo
       enddo
     enddo
-    !$acc loop gang vector independent collapse(3)
+    !NO!$acc loop gang vector independent collapse(3)
     do ns = 1, jpdw, 1
       do k = 1, model_levels, 1
         do i = first_point, last_point, 1
@@ -201,7 +201,7 @@ module ukca_wdeprt_mod
         enddo
       enddo
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
     end if

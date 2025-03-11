@@ -76,8 +76,8 @@ module asad_steady_mod
       jl1 = jl1
       jl2 = jl1
     end if
-    !$acc kernels
-    !$acc loop gang vector independent collapse(3)
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent collapse(3)
     do idx = LBOUND(deriv, dim=3), UBOUND(deriv, dim=3), 1
       do idx_1 = LBOUND(deriv, dim=2), UBOUND(deriv, dim=2), 1
         do idx_2 = LBOUND(deriv, dim=1), UBOUND(deriv, dim=1), 1
@@ -85,146 +85,146 @@ module asad_steady_mod
         enddo
       enddo
     enddo
-    !$acc loop seq
+    !NO!$acc loop seq
     do ix = 1, nsst, 1
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do idx_3 = 1, kl, 1
         ssnum(idx_3) = 0.0
       enddo
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do idx_4 = 1, kl, 1
         ssden(idx_4) = 0.0
       enddo
-      !$acc loop gang vector independent collapse(2)
+      !NO!$acc loop gang vector independent collapse(2)
       do idx_5 = 1, 4, 1
         do idx_6 = 1, kl, 1
           dssden(idx_6,idx_5) = 0.0
         enddo
       enddo
-      !$acc loop gang vector independent collapse(2)
+      !NO!$acc loop gang vector independent collapse(2)
       do idx_7 = 1, 4, 1
         do idx_8 = 1, kl, 1
           dssnum(idx_8,idx_7) = 0.0
         enddo
       enddo
-      !$acc loop seq
+      !NO!$acc loop seq
       do jr = 1, nsspt(ix), 1
         i = nsspi(ix,jr)
         if (i <= nuni) then
-          !$acc loop gang vector independent
+          !NO!$acc loop gang vector independent
           do idx_9 = jl1, jl2, 1
             ssnum(idx_9) = ssnum(idx_9) + rk(idx_9,i) * y(idx_9,nspi(i,1))
           enddo
           if (ix < 5 .AND. nspi(i,1) == nspo3) then
-            !$acc loop gang vector independent
+            !NO!$acc loop gang vector independent
             do idx_10 = jl1, jl2, 1
               dssnum(idx_10,n_o3) = dssnum(idx_10,n_o3) + rk(idx_10,i)
             enddo
           end if
           if (ix < 5 .AND. nspi(i,1) == nspno) then
-            !$acc loop gang vector independent
+            !NO!$acc loop gang vector independent
             do idx_11 = jl1, jl2, 1
               dssnum(idx_11,n_no) = dssnum(idx_11,n_no) + rk(idx_11,i)
             enddo
           end if
         else
-          !$acc loop gang vector independent
+          !NO!$acc loop gang vector independent
           do idx_12 = jl1, jl2, 1
             ssnum(idx_12) = ssnum(idx_12) + rk(idx_12,i) * y(idx_12,nspi(i,1)) * y(idx_12,nspi(i,2))
           enddo
           if (ix < 5) then
             if (nspi(i,1) == nspo1d) then
-              !$acc loop gang vector independent
+              !NO!$acc loop gang vector independent
               do idx_13 = jl1, jl2, 1
                 dssnum(idx_13,n_o3) = dssnum(idx_13,n_o3) + rk(idx_13,i) * y(idx_13,nspi(i,2)) * deriv(idx_13,nss_o1d,n_o3)
               enddo
             end if
             if (nspi(i,2) == nspo1d) then
-              !$acc loop gang vector independent
+              !NO!$acc loop gang vector independent
               do idx_14 = jl1, jl2, 1
                 dssnum(idx_14,n_o3) = dssnum(idx_14,n_o3) + rk(idx_14,i) * y(idx_14,nspi(i,1)) * deriv(idx_14,nss_o1d,n_o3)
               enddo
             end if
             if (nspi(i,1) == nspo3p) then
-              !$acc loop gang vector independent
+              !NO!$acc loop gang vector independent
               do idx_15 = jl1, jl2, 1
                 dssnum(idx_15,n_o3) = dssnum(idx_15,n_o3) + rk(idx_15,i) * y(idx_15,nspi(i,2)) * deriv(idx_15,nss_o3p,n_o3)
               enddo
             end if
             if (nspi(i,2) == nspo3p) then
-              !$acc loop gang vector independent
+              !NO!$acc loop gang vector independent
               do idx_16 = jl1, jl2, 1
                 dssnum(idx_16,n_o3) = dssnum(idx_16,n_o3) + rk(idx_16,i) * y(idx_16,nspi(i,1)) * deriv(idx_16,nss_o3p,n_o3)
               enddo
             end if
             if (nspi(i,1) == nspo3) then
-              !$acc loop gang vector independent
+              !NO!$acc loop gang vector independent
               do idx_17 = jl1, jl2, 1
                 dssnum(idx_17,n_o3) = dssnum(idx_17,n_o3) + rk(idx_17,i) * y(idx_17,nspi(i,2))
               enddo
             end if
             if (nspi(i,2) == nspo3) then
-              !$acc loop gang vector independent
+              !NO!$acc loop gang vector independent
               do idx_18 = jl1, jl2, 1
                 dssnum(idx_18,n_o3) = dssnum(idx_18,n_o3) + rk(idx_18,i) * y(idx_18,nspi(i,1))
               enddo
             end if
             if (nspi(i,1) == nspo3p) then
-              !$acc loop gang vector independent
+              !NO!$acc loop gang vector independent
               do idx_19 = jl1, jl2, 1
                 dssnum(idx_19,n_oh) = dssnum(idx_19,n_oh) + rk(idx_19,i) * y(idx_19,nspi(i,2)) * deriv(idx_19,nss_o3p,n_oh)
               enddo
             end if
             if (nspi(i,2) == nspo3p) then
-              !$acc loop gang vector independent
+              !NO!$acc loop gang vector independent
               do idx_20 = jl1, jl2, 1
                 dssnum(idx_20,n_oh) = dssnum(idx_20,n_oh) + rk(idx_20,i) * y(idx_20,nspi(i,1)) * deriv(idx_20,nss_o3p,n_oh)
               enddo
             end if
             if (nspi(i,1) == nspoh) then
-              !$acc loop gang vector independent
+              !NO!$acc loop gang vector independent
               do idx_21 = jl1, jl2, 1
                 dssnum(idx_21,n_oh) = dssnum(idx_21,n_oh) + rk(idx_21,i) * y(idx_21,nspi(i,2))
               enddo
             end if
             if (nspi(i,2) == nspoh) then
-              !$acc loop gang vector independent
+              !NO!$acc loop gang vector independent
               do idx_22 = jl1, jl2, 1
                 dssnum(idx_22,n_oh) = dssnum(idx_22,n_oh) + rk(idx_22,i) * y(idx_22,nspi(i,1))
               enddo
             end if
             if (nspi(i,1) == nspo3p) then
-              !$acc loop gang vector independent
+              !NO!$acc loop gang vector independent
               do idx_23 = jl1, jl2, 1
                 dssnum(idx_23,n_ho2) = dssnum(idx_23,n_ho2) + rk(idx_23,i) * y(idx_23,nspi(i,2)) * deriv(idx_23,nss_o3p,n_ho2)
               enddo
             end if
             if (nspi(i,2) == nspo3p) then
-              !$acc loop gang vector independent
+              !NO!$acc loop gang vector independent
               do idx_24 = jl1, jl2, 1
                 dssnum(idx_24,n_ho2) = dssnum(idx_24,n_ho2) + rk(idx_24,i) * y(idx_24,nspi(i,1)) * deriv(idx_24,nss_o3p,n_ho2)
               enddo
             end if
             if (nspi(i,1) == nspho2) then
-              !$acc loop gang vector independent
+              !NO!$acc loop gang vector independent
               do idx_25 = jl1, jl2, 1
                 dssnum(idx_25,n_ho2) = dssnum(idx_25,n_ho2) + rk(idx_25,i) * y(idx_25,nspi(i,2))
               enddo
             end if
             if (nspi(i,2) == nspho2) then
-              !$acc loop gang vector independent
+              !NO!$acc loop gang vector independent
               do idx_26 = jl1, jl2, 1
                 dssnum(idx_26,n_ho2) = dssnum(idx_26,n_ho2) + rk(idx_26,i) * y(idx_26,nspi(i,1))
               enddo
             end if
             if (nspi(i,1) == nspno) then
-              !$acc loop gang vector independent
+              !NO!$acc loop gang vector independent
               do idx_27 = jl1, jl2, 1
                 dssnum(idx_27,n_no) = dssnum(idx_27,n_no) + rk(idx_27,i) * y(idx_27,nspi(i,2))
               enddo
             end if
             if (nspi(i,2) == nspno) then
-              !$acc loop gang vector independent
+              !NO!$acc loop gang vector independent
               do idx_28 = jl1, jl2, 1
                 dssnum(idx_28,n_no) = dssnum(idx_28,n_no) + rk(idx_28,i) * y(idx_28,nspi(i,1))
               enddo
@@ -232,41 +232,41 @@ module asad_steady_mod
           end if
         end if
       enddo
-      !$acc loop seq
+      !NO!$acc loop seq
       do jr = 1, nssrt(ix), 1
         i = nssri(ix,jr)
         j = nssrx(ix,jr)
         if (i <= nuni) then
-          !$acc loop gang vector independent
+          !NO!$acc loop gang vector independent
           do idx_29 = jl1, jl2, 1
             ssden(idx_29) = ssden(idx_29) + rk(idx_29,i)
           enddo
         else
-          !$acc loop gang vector independent
+          !NO!$acc loop gang vector independent
           do idx_30 = jl1, jl2, 1
             ssden(idx_30) = ssden(idx_30) + rk(idx_30,i) * y(idx_30,nspi(i,j))
           enddo
           if (ix < 5) then
             if (nspi(i,j) == nspo3) then
-              !$acc loop gang vector independent
+              !NO!$acc loop gang vector independent
               do idx_31 = jl1, jl2, 1
                 dssden(idx_31,n_o3) = dssden(idx_31,n_o3) + rk(idx_31,i)
               enddo
             end if
             if (nspi(i,j) == nspoh) then
-              !$acc loop gang vector independent
+              !NO!$acc loop gang vector independent
               do idx_32 = jl1, jl2, 1
                 dssden(idx_32,n_oh) = dssden(idx_32,n_oh) + rk(idx_32,i)
               enddo
             end if
             if (nspi(i,j) == nspho2) then
-              !$acc loop gang vector independent
+              !NO!$acc loop gang vector independent
               do idx_33 = jl1, jl2, 1
                 dssden(idx_33,n_ho2) = dssden(idx_33,n_ho2) + rk(idx_33,i)
               enddo
             end if
             if (nspi(i,j) == nspno) then
-              !$acc loop gang vector independent
+              !NO!$acc loop gang vector independent
               do idx_34 = jl1, jl2, 1
                 dssden(idx_34,n_no) = dssden(idx_34,n_no) + rk(idx_34,i)
               enddo
@@ -274,12 +274,12 @@ module asad_steady_mod
           end if
         end if
       enddo
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do idx_35 = jl1, jl2, 1
         y(idx_35,nssi(ix)) = ssnum(idx_35) / ssden(idx_35)
       enddo
       if (ix < 5) then
-        !$acc loop gang vector independent collapse(2)
+        !NO!$acc loop gang vector independent collapse(2)
         do jr = 1, 4, 1
           do idx_36 = jl1, jl2, 1
             deriv(idx_36,ix,jr) = (ssden(idx_36) * dssnum(idx_36,jr) - ssnum(idx_36) * dssden(idx_36,jr)) / (ssden(idx_36) * ssden(idx_36))
@@ -287,7 +287,7 @@ module asad_steady_mod
         enddo
       end if
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     ! PSyclone CodeBlock (unsupported code) reason:
     !  - PSyclone doesn't yet support reference to imported symbols inside WHERE clauses.
     WHERE (y(jl1 : jl2, nspo1d) > peps)

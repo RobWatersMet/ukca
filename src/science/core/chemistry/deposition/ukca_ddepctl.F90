@@ -94,20 +94,20 @@ module ukca_ddepctl_mod
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
     call nvtxStartRange(ModuleName // ':' // RoutineName)
-    !$acc kernels
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent collapse(2)
     do idx = 1, rows, 1
       do idx_1 = 1, row_length, 1
         land_fraction(idx_1,idx) = 0.0
       enddo
     enddo
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc loop gang vector independent collapse(2)
     do idx_2 = 1, rows, 1
       do idx_3 = 1, row_length, 1
         smr(idx_3,idx_2) = 0.0
       enddo
     enddo
-    !$acc loop gang vector independent collapse(3)
+    !NO!$acc loop gang vector independent collapse(3)
     do idx_4 = 1, npft, 1
       do idx_5 = 1, rows, 1
         do idx_6 = 1, row_length, 1
@@ -115,7 +115,7 @@ module ukca_ddepctl_mod
         enddo
       enddo
     enddo
-    !$acc loop gang vector independent collapse(3)
+    !NO!$acc loop gang vector independent collapse(3)
     do idx_7 = 1, npft, 1
       do idx_8 = 1, rows, 1
         do idx_9 = 1, row_length, 1
@@ -123,7 +123,7 @@ module ukca_ddepctl_mod
         enddo
       enddo
     enddo
-    !$acc loop gang vector independent collapse(3)
+    !NO!$acc loop gang vector independent collapse(3)
     do idx_10 = 1, ntype, 1
       do idx_11 = 1, rows, 1
         do idx_12 = 1, row_length, 1
@@ -131,7 +131,7 @@ module ukca_ddepctl_mod
         enddo
       enddo
     enddo
-    !$acc loop gang vector independent collapse(3)
+    !NO!$acc loop gang vector independent collapse(3)
     do idx_13 = 1, ntype, 1
       do idx_14 = 1, rows, 1
         do idx_15 = 1, row_length, 1
@@ -139,7 +139,7 @@ module ukca_ddepctl_mod
         enddo
       enddo
     enddo
-    !$acc loop gang vector independent collapse(3)
+    !NO!$acc loop gang vector independent collapse(3)
     do idx_16 = 1, ntype, 1
       do idx_17 = 1, rows, 1
         do idx_18 = 1, row_length, 1
@@ -147,16 +147,16 @@ module ukca_ddepctl_mod
         enddo
       enddo
     enddo
-    !$acc loop seq
+    !NO!$acc loop seq
     do l = 1, land_points, 1
       j = (land_index(l) - 1) / row_length + 1
       i = land_index(l) - (j - 1) * row_length
       smr(i,j) = soilmc_lp(l) / (ukca_config%dzsoil_layer1 * rho_water)
       land_fraction(i,j) = fland(l)
     enddo
-    !$acc loop gang vector independent collapse(1)
+    !NO!$acc loop gang vector independent collapse(1)
     do m = 1, npft, 1
-      !$acc loop seq
+      !NO!$acc loop seq
       do n = 1, tile_pts(m), 1
         l = tile_index(n,m)
         j = (land_index(l) - 1) / row_length + 1
@@ -165,9 +165,9 @@ module ukca_ddepctl_mod
         canht_ft(i,j,m) = canhtft_lp(l,m)
       enddo
     enddo
-    !$acc loop gang vector independent collapse(1)
+    !NO!$acc loop gang vector independent collapse(1)
     do m = 1, ntype, 1
-      !$acc loop seq
+      !NO!$acc loop seq
       do n = 1, tile_pts(m), 1
         l = tile_index(n,m)
         j = (land_index(l) - 1) / row_length + 1
@@ -178,7 +178,7 @@ module ukca_ddepctl_mod
       enddo
     enddo
     lake = ukca_config%i_lake
-    !$acc end kernels
+    !NO!$acc end kernels
     do k = 1, rows, 1
       do i = 1, row_length, 1
         if (gsf(i,k,lake) == 1.0) then
@@ -217,8 +217,8 @@ module ukca_ddepctl_mod
         end if
       enddo
     enddo
-    !$acc kernels
-    !$acc loop gang vector independent collapse(3)
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent collapse(3)
     do n = 1, ntype, 1
       do k = 1, rows, 1
         do i = 1, row_length, 1
@@ -228,7 +228,7 @@ module ukca_ddepctl_mod
         enddo
       enddo
     enddo
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc loop gang vector independent collapse(2)
     do k = 1, rows, 1
       do i = 1, row_length, 1
         if (seaice_frac(i,k) > 0.0) then
@@ -236,7 +236,7 @@ module ukca_ddepctl_mod
         end if
       enddo
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     call ukca_aerod(row_length, rows, ntype, npft, lake, t_surf, p_surf, surf_hf, u_s, canht_ft, gsf, zbl, z0tile, resa, rb, so4_vd)
     call ukca_surfddr(row_length, rows, ntype, npft, sinlat, t_surf, p_surf, rh, smr, u_s, gsf, stcon, t0tile, lai_ft, so4_vd, rc, o3_stom_frac)
     call ukca_ddcalc(row_length, rows, bl_levels, ntype, npft, timestep, dzl, zbl, gsf, resa, rb, rc, nlev_with_ddep, zdryrt, len_stashwork, stashwork)

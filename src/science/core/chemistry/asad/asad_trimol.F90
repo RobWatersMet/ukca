@@ -61,25 +61,25 @@ module asad_trimol_mod
     if (first_pass) then
       if (first) then
         ALLOCATE(nf(1:jptk))
-        !$acc kernels
-        !$acc loop gang vector independent
+        !NO!$acc kernels
+        !NO!$acc loop gang vector independent
         do idx = LBOUND(nf, dim=1), UBOUND(nf, dim=1), 1
           nf(idx) = 1.0
         enddo
-        !$acc end kernels
+        !NO!$acc end kernels
         ! PSyclone CodeBlock (unsupported code) reason:
         !  - PSyclone doesn't yet support reference to imported symbols inside WHERE clauses.
         WHERE (at(:, 1) > 1E-3) nf(:) = 0.75 - 1.27 * LOG10(at(:, 1))
-        !$acc kernels
+        !NO!$acc kernels
         ih2o = 0
-        !$acc loop seq
+        !NO!$acc loop seq
         do jtr = 1, jpcspf, 1
           if (specf(jtr) == 'H2O       ') then
             ih2o = jtr
           end if
         enddo
         first = .false.
-        !$acc end kernels
+        !NO!$acc end kernels
       end if
       first_pass = .false.
     end if
@@ -106,20 +106,20 @@ module asad_trimol_mod
       end if
       call powr_v(n_points, t300, at(j,3), t_power3)
       call powr_v(n_points, t300, at(j,6), t_power6)
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do idx_1 = 1, n_points, 1
         inv_t_power4(idx_1) = -at(j,4) * inv_t(idx_1)
       enddo
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do idx_2 = 1, n_points, 1
         inv_t_power7(idx_2) = -at(j,7) * inv_t(idx_2)
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
       call exp_v(n_points, inv_t_power4, inv_t_power4_out)
       call exp_v(n_points, inv_t_power7, inv_t_power7_out)
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do jl = 1, n_points, 1
         zo = at(j,2) * t_power3(jl) * inv_t_power4_out(jl) * tnd(jl)
         zi = at(j,5) * t_power6(jl) * inv_t_power7_out(jl)
@@ -151,37 +151,37 @@ module asad_trimol_mod
           end if
         end if
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     enddo
     if (ih2o /= 0 .AND. iho2 /= 0) then
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do idx_3 = 1, n_points, 1
         tmp(idx_3) = 2200.0 * inv_t(idx_3)
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
       call exp_v(n_points, tmp, tmp_out)
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do jl = 1, n_points, 1
         rk(jl,iho2) = rk(jl,iho2) * (1.0 + 1.4e-21 * f(jl,ih2o) * tmp_out(jl))
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     else
       if (ih2o == 0 .AND. iho2 /= 0) then
-        !$acc kernels
-        !$acc loop gang vector independent
+        !NO!$acc kernels
+        !NO!$acc loop gang vector independent
         do idx_4 = 1, n_points, 1
           tmp(idx_4) = 2200.0 * inv_t(idx_4)
         enddo
-        !$acc end kernels
+        !NO!$acc end kernels
         call exp_v(n_points, tmp, tmp_out)
-        !$acc kernels
-        !$acc loop gang vector independent
+        !NO!$acc kernels
+        !NO!$acc loop gang vector independent
         do jl = 1, n_points, 1
           rk(jl,iho2) = rk(jl,iho2) * (1.0 + 1.4e-21 * wp(jl) * tnd(jl) * tmp_out(jl))
         enddo
-        !$acc end kernels
+        !NO!$acc end kernels
       end if
     end if
     if (lhook) then

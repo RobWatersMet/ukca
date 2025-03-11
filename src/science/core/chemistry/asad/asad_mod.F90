@@ -576,17 +576,17 @@ module asad_mod
     if (.NOT.ALLOCATED(ilstmin)) then
       ALLOCATE(ilstmin(1:jpspec))
     end if
-    !$acc kernels
+    !NO!$acc kernels
     method = ukca_config%ukca_int_method
     nitnr = 10
     nitfg = 10
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc loop gang vector independent collapse(2)
     do idx = LBOUND(njcoth, dim=2), UBOUND(njcoth, dim=2), 1
       do idx_1 = LBOUND(njcoth, dim=1), UBOUND(njcoth, dim=1), 1
         njcoth(idx_1,idx) = 0
       enddo
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     if (method == int_method_nr) then
       if (.NOT.ALLOCATED(nonzero_map_unordered)) then
         ALLOCATE(nonzero_map_unordered(1:jpcspf,1:jpcspf))
@@ -748,8 +748,8 @@ module asad_mod
     prod => pd(:,1:jpspec)
     slos => pd(:,jpspec + 1:2 * jpspec)
 
-    !$acc kernels
-    !$acc loop gang vector independent collapse(3)
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent collapse(3)
     do idx_2 = LBOUND(deriv, dim=3), UBOUND(deriv, dim=3), 1
       do idx_3 = LBOUND(deriv, dim=2), UBOUND(deriv, dim=2), 1
         do idx_4 = LBOUND(deriv, dim=1), UBOUND(deriv, dim=1), 1
@@ -757,7 +757,7 @@ module asad_mod
         enddo
       enddo
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
     end if
@@ -965,17 +965,17 @@ module asad_mod
       if (.NOT.ALLOCATED(spfj)) then
         ALLOCATE(spfj(1:n_points,1:spfjsize_max))
       end if
-      !$acc kernels
-      !$acc loop gang vector independent collapse(2)
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent collapse(2)
       do idx = LBOUND(spfj, dim=2), UBOUND(spfj, dim=2), 1
         do idx_1 = LBOUND(spfj, dim=1), UBOUND(spfj, dim=1), 1
           spfj(idx_1,idx) = 0.0
         enddo
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     end if
-    !$acc kernels
-    !$acc loop gang vector independent collapse(3)
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent collapse(3)
     do idx_2 = LBOUND(deriv, dim=3), UBOUND(deriv, dim=3), 1
       do idx_3 = LBOUND(deriv, dim=2), UBOUND(deriv, dim=2), 1
         do idx_4 = LBOUND(deriv, dim=1), UBOUND(deriv, dim=1), 1
@@ -983,57 +983,57 @@ module asad_mod
         enddo
       enddo
     enddo
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc loop gang vector independent collapse(2)
     do idx_5 = LBOUND(linfam, dim=2), UBOUND(linfam, dim=2), 1
       do idx_6 = LBOUND(linfam, dim=1), UBOUND(linfam, dim=1), 1
         linfam(idx_6,idx_5) = .false.
       enddo
     enddo
-    !$acc loop gang vector independent
+    !NO!$acc loop gang vector independent
     do idx_7 = LBOUND(co2, dim=1), UBOUND(co2, dim=1), 1
       co2(idx_7) = 0.0
     enddo
-    !$acc loop gang vector independent
+    !NO!$acc loop gang vector independent
     do idx_8 = LBOUND(co3, dim=1), UBOUND(co3, dim=1), 1
       co3(idx_8) = 0.0
     enddo
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc loop gang vector independent collapse(2)
     do idx_9 = LBOUND(dpd, dim=2), UBOUND(dpd, dim=2), 1
       do idx_10 = LBOUND(dpd, dim=1), UBOUND(dpd, dim=1), 1
         dpd(idx_10,idx_9) = 0.0
       enddo
     enddo
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc loop gang vector independent collapse(2)
     do idx_11 = LBOUND(dpw, dim=2), UBOUND(dpw, dim=2), 1
       do idx_12 = LBOUND(dpw, dim=1), UBOUND(dpw, dim=1), 1
         dpw(idx_12,idx_11) = 0.0
       enddo
     enddo
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc loop gang vector independent collapse(2)
     do idx_13 = LBOUND(ej, dim=2), UBOUND(ej, dim=2), 1
       do idx_14 = LBOUND(ej, dim=1), UBOUND(ej, dim=1), 1
         ej(idx_14,idx_13) = 0.0
       enddo
     enddo
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc loop gang vector independent collapse(2)
     do idx_15 = LBOUND(emr, dim=2), UBOUND(emr, dim=2), 1
       do idx_16 = LBOUND(emr, dim=1), UBOUND(emr, dim=1), 1
         emr(idx_16,idx_15) = 0.0
       enddo
     enddo
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc loop gang vector independent collapse(2)
     do idx_17 = LBOUND(f, dim=2), UBOUND(f, dim=2), 1
       do idx_18 = LBOUND(f, dim=1), UBOUND(f, dim=1), 1
         f(idx_18,idx_17) = 0.0
       enddo
     enddo
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc loop gang vector independent collapse(2)
     do idx_19 = LBOUND(fdot, dim=2), UBOUND(fdot, dim=2), 1
       do idx_20 = LBOUND(fdot, dim=1), UBOUND(fdot, dim=1), 1
         fdot(idx_20,idx_19) = 0.0
       enddo
     enddo
-    !$acc loop gang vector independent collapse(3)
+    !NO!$acc loop gang vector independent collapse(3)
     do idx_21 = LBOUND(fj, dim=3), UBOUND(fj, dim=3), 1
       do idx_22 = LBOUND(fj, dim=2), UBOUND(fj, dim=2), 1
         do idx_23 = LBOUND(fj, dim=1), UBOUND(fj, dim=1), 1
@@ -1041,117 +1041,117 @@ module asad_mod
         enddo
       enddo
     enddo
-    !$acc loop gang vector independent
+    !NO!$acc loop gang vector independent
     do idx_24 = LBOUND(fpsc1, dim=1), UBOUND(fpsc1, dim=1), 1
       fpsc1(idx_24) = 0.0
     enddo
-    !$acc loop gang vector independent
+    !NO!$acc loop gang vector independent
     do idx_25 = LBOUND(fpsc2, dim=1), UBOUND(fpsc2, dim=1), 1
       fpsc2(idx_25) = 0.0
     enddo
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc loop gang vector independent collapse(2)
     do idx_26 = LBOUND(ftilde, dim=2), UBOUND(ftilde, dim=2), 1
       do idx_27 = LBOUND(ftilde, dim=1), UBOUND(ftilde, dim=1), 1
         ftilde(idx_27,idx_26) = 0.0
       enddo
     enddo
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc loop gang vector independent collapse(2)
     do idx_28 = LBOUND(ipa, dim=2), UBOUND(ipa, dim=2), 1
       do idx_29 = LBOUND(ipa, dim=1), UBOUND(ipa, dim=1), 1
         ipa(idx_29,idx_28) = 0
       enddo
     enddo
-    !$acc loop gang vector independent
+    !NO!$acc loop gang vector independent
     do idx_30 = LBOUND(lati, dim=1), UBOUND(lati, dim=1), 1
       lati(idx_30) = 0.0
     enddo
-    !$acc loop gang vector independent
+    !NO!$acc loop gang vector independent
     do idx_31 = LBOUND(p, dim=1), UBOUND(p, dim=1), 1
       p(idx_31) = 0.0
     enddo
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc loop gang vector independent collapse(2)
     do idx_32 = LBOUND(pd, dim=2), UBOUND(pd, dim=2), 1
       do idx_33 = LBOUND(pd, dim=1), UBOUND(pd, dim=1), 1
         pd(idx_33,idx_32) = 0.0
       enddo
     enddo
-    !$acc loop gang vector independent
+    !NO!$acc loop gang vector independent
     do idx_34 = LBOUND(pmintnd, dim=1), UBOUND(pmintnd, dim=1), 1
       pmintnd(idx_34) = 0.0
     enddo
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc loop gang vector independent collapse(2)
     do idx_37 = LBOUND(qa, dim=2), UBOUND(qa, dim=2), 1
       do idx_38 = LBOUND(qa, dim=1), UBOUND(qa, dim=1), 1
         qa(idx_38,idx_37) = 0.0
       enddo
     enddo
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc loop gang vector independent collapse(2)
     do idx_39 = LBOUND(ratio, dim=2), UBOUND(ratio, dim=2), 1
       do idx_40 = LBOUND(ratio, dim=1), UBOUND(ratio, dim=1), 1
         ratio(idx_40,idx_39) = 0.0
       enddo
     enddo
-    !$acc loop gang vector independent
+    !NO!$acc loop gang vector independent
     do idx_41 = LBOUND(sh2o, dim=1), UBOUND(sh2o, dim=1), 1
       sh2o(idx_41) = 0.0
     enddo
-    !$acc loop gang vector independent
+    !NO!$acc loop gang vector independent
     do idx_42 = LBOUND(shno3, dim=1), UBOUND(shno3, dim=1), 1
       shno3(idx_42) = 0.0
     enddo
-    !$acc loop gang vector independent
+    !NO!$acc loop gang vector independent
     do idx_45 = LBOUND(sph2o, dim=1), UBOUND(sph2o, dim=1), 1
       sph2o(idx_45) = 0.0
     enddo
-    !$acc loop gang vector independent
+    !NO!$acc loop gang vector independent
     do idx_46 = LBOUND(sphno3, dim=1), UBOUND(sphno3, dim=1), 1
       sphno3(idx_46) = 0.0
     enddo
-    !$acc loop gang vector independent
+    !NO!$acc loop gang vector independent
     do idx_47 = LBOUND(t, dim=1), UBOUND(t, dim=1), 1
       t(idx_47) = 0.0
     enddo
-    !$acc loop gang vector independent
+    !NO!$acc loop gang vector independent
     do idx_48 = LBOUND(t300, dim=1), UBOUND(t300, dim=1), 1
       t300(idx_48) = 0.0
     enddo
-    !$acc loop gang vector independent
+    !NO!$acc loop gang vector independent
     do idx_49 = LBOUND(tnd, dim=1), UBOUND(tnd, dim=1), 1
       tnd(idx_49) = 0.0
     enddo
-    !$acc loop gang vector independent
+    !NO!$acc loop gang vector independent
     do idx_50 = LBOUND(wp, dim=1), UBOUND(wp, dim=1), 1
       wp(idx_50) = 0.0
     enddo
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc loop gang vector independent collapse(2)
     do idx_51 = LBOUND(y, dim=2), UBOUND(y, dim=2), 1
       do idx_52 = LBOUND(y, dim=1), UBOUND(y, dim=1), 1
         y(idx_52,idx_51) = 0.0
       enddo
     enddo
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc loop gang vector independent collapse(2)
     do idx_53 = LBOUND(ydot, dim=2), UBOUND(ydot, dim=2), 1
       do idx_54 = LBOUND(ydot, dim=1), UBOUND(ydot, dim=1), 1
         ydot(idx_54,idx_53) = 0.0
       enddo
     enddo
-    !$acc loop gang vector independent
+    !NO!$acc loop gang vector independent
     do idx_55 = LBOUND(za, dim=1), UBOUND(za, dim=1), 1
       za(idx_55) = 0.0
     enddo
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc loop gang vector independent collapse(2)
     do idx_56 = LBOUND(rk, dim=2), UBOUND(rk, dim=2), 1
       do idx_57 = LBOUND(rk, dim=1), UBOUND(rk, dim=1), 1
         rk(idx_57,idx_56) = 0.0
       enddo
     enddo
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc loop gang vector independent collapse(2)
     do idx_58 = LBOUND(prk, dim=2), UBOUND(prk, dim=2), 1
       do idx_59 = LBOUND(prk, dim=1), UBOUND(prk, dim=1), 1
         prk(idx_59,idx_58) = 0.0
       enddo
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
 
     prod => pd(:,1:jpspec)
     slos => pd(:,jpspec + 1:2 * jpspec)

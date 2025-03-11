@@ -52,12 +52,12 @@ module ukca_diurnal_oxidant
       END WHERE
     else
       if (species(1:4) == 'NO3 ') then
-        !$acc kernels
-        !$acc loop gang vector independent
+        !NO!$acc kernels
+        !NO!$acc loop gang vector independent
         do idx = 1, n_points, 1
           daylen_secs(idx) = daylength1d(idx + (LBOUND(daylength1d, dim=1) - 1)) * rsec_per_day / (2.0 * pi)
         enddo
-        !$acc end kernels
+        !NO!$acc end kernels
         ! PSyclone CodeBlock (unsupported code) reason:
         !  - PSyclone doesn't yet support reference to imported symbols inside WHERE clauses.
         !  - PSyclone doesn't yet support reference to imported symbols inside WHERE clauses.
@@ -76,45 +76,45 @@ module ukca_diurnal_oxidant
         end if
       end if
     end if
-    !$acc kernels
-    !$acc loop gang vector independent
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent
     do widx1 = 1, n_points, 1
       if (field(widx1) < 0.0) then
         field(widx1) = 0.0
       end if
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     if (species(1:4) == 'O3  ') then
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do idx_1 = LBOUND(o3_offline_diag, dim=1), UBOUND(o3_offline_diag, dim=1), 1
         o3_offline_diag(idx_1,nlev) = field(idx_1 + (LBOUND(field, dim=1) - LBOUND(o3_offline_diag, dim=1)))
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     else
       if (species(1:4) == 'OH  ') then
-        !$acc kernels
-        !$acc loop gang vector independent
+        !NO!$acc kernels
+        !NO!$acc loop gang vector independent
         do idx_2 = LBOUND(oh_offline_diag, dim=1), UBOUND(oh_offline_diag, dim=1), 1
           oh_offline_diag(idx_2,nlev) = field(idx_2 + (LBOUND(field, dim=1) - LBOUND(oh_offline_diag, dim=1)))
         enddo
-        !$acc end kernels
+        !NO!$acc end kernels
       else
         if (species(1:4) == 'NO3 ') then
-          !$acc kernels
-          !$acc loop gang vector independent
+          !NO!$acc kernels
+          !NO!$acc loop gang vector independent
           do idx_3 = LBOUND(no3_offline_diag, dim=1), UBOUND(no3_offline_diag, dim=1), 1
             no3_offline_diag(idx_3,nlev) = field(idx_3 + (LBOUND(field, dim=1) - LBOUND(no3_offline_diag, dim=1)))
           enddo
-          !$acc end kernels
+          !NO!$acc end kernels
         else
           if (species(1:4) == 'HO2 ') then
-            !$acc kernels
-            !$acc loop gang vector independent
+            !NO!$acc kernels
+            !NO!$acc loop gang vector independent
             do idx_4 = LBOUND(ho2_offline_diag, dim=1), UBOUND(ho2_offline_diag, dim=1), 1
               ho2_offline_diag(idx_4,nlev) = field(idx_4 + (LBOUND(field, dim=1) - LBOUND(ho2_offline_diag, dim=1)))
             enddo
-            !$acc end kernels
+            !NO!$acc end kernels
           end if
         end if
       end if
@@ -160,19 +160,19 @@ module ukca_diurnal_oxidant
     location = ix + (jy - 1) * ukca_config%row_length
     if (species(1:4) == 'OH  ' .OR. species(1:4) == 'HO2 ') then
       if (cosza(location) > 0.0 .AND. intcosza(location) > 1.0e-1) then
-        !$acc kernels
-        !$acc loop gang vector independent
+        !NO!$acc kernels
+        !NO!$acc loop gang vector independent
         do idx = LBOUND(field, dim=1), UBOUND(field, dim=1), 1
           field(idx) = field(idx) * rsec_per_day * (cosza(location) / intcosza(location))
         enddo
-        !$acc end kernels
+        !NO!$acc end kernels
       else
-        !$acc kernels
-        !$acc loop gang vector independent
+        !NO!$acc kernels
+        !NO!$acc loop gang vector independent
         do idx_1 = LBOUND(field, dim=1), UBOUND(field, dim=1), 1
           field(idx_1) = 0.0
         enddo
-        !$acc end kernels
+        !NO!$acc end kernels
       end if
     else
       if (species(1:4) == 'NO3 ') then
@@ -181,12 +181,12 @@ module ukca_diurnal_oxidant
           daylen_secs = rsec_per_day
         end if
         if ((cosza(location) > 0.0 .AND. intcosza(location) > 1.0e-1) .AND. daylen_secs < rsec_per_day) then
-          !$acc kernels
-          !$acc loop gang vector independent
+          !NO!$acc kernels
+          !NO!$acc loop gang vector independent
           do idx_2 = LBOUND(field, dim=1), UBOUND(field, dim=1), 1
             field(idx_2) = 0.0
           enddo
-          !$acc end kernels
+          !NO!$acc end kernels
         end if
       else
         if (species(1:4) == 'O3  ') then
@@ -197,45 +197,45 @@ module ukca_diurnal_oxidant
         end if
       end if
     end if
-    !$acc kernels
-    !$acc loop gang vector independent
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent
     do widx1 = 1, n_points, 1
       if (field(widx1) < 0.0) then
         field(widx1) = 0.0
       end if
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     if (species(1:4) == 'O3  ') then
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do idx_3 = LBOUND(o3_offline_diag, dim=2), UBOUND(o3_offline_diag, dim=2), 1
         o3_offline_diag(location,idx_3) = field(idx_3 + (LBOUND(field, dim=1) - LBOUND(o3_offline_diag, dim=2)))
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     else
       if (species(1:4) == 'OH  ') then
-        !$acc kernels
-        !$acc loop gang vector independent
+        !NO!$acc kernels
+        !NO!$acc loop gang vector independent
         do idx_4 = LBOUND(oh_offline_diag, dim=2), UBOUND(oh_offline_diag, dim=2), 1
           oh_offline_diag(location,idx_4) = field(idx_4 + (LBOUND(field, dim=1) - LBOUND(oh_offline_diag, dim=2)))
         enddo
-        !$acc end kernels
+        !NO!$acc end kernels
       else
         if (species(1:4) == 'NO3 ') then
-          !$acc kernels
-          !$acc loop gang vector independent
+          !NO!$acc kernels
+          !NO!$acc loop gang vector independent
           do idx_5 = LBOUND(no3_offline_diag, dim=2), UBOUND(no3_offline_diag, dim=2), 1
             no3_offline_diag(location,idx_5) = field(idx_5 + (LBOUND(field, dim=1) - LBOUND(no3_offline_diag, dim=2)))
           enddo
-          !$acc end kernels
+          !NO!$acc end kernels
         else
           if (species(1:4) == 'HO2 ') then
-            !$acc kernels
-            !$acc loop gang vector independent
+            !NO!$acc kernels
+            !NO!$acc loop gang vector independent
             do idx_6 = LBOUND(ho2_offline_diag, dim=2), UBOUND(ho2_offline_diag, dim=2), 1
               ho2_offline_diag(location,idx_6) = field(idx_6 + (LBOUND(field, dim=1) - LBOUND(ho2_offline_diag, dim=2)))
             enddo
-            !$acc end kernels
+            !NO!$acc end kernels
           end if
         end if
       end if
@@ -280,26 +280,26 @@ module ukca_diurnal_oxidant
     decls = ASIN(sindec)
     tan_decls = TAN(decls)
     if (ABS(tan_decls) < EPSILON(0.0)) then
-      !$acc kernels
-      !$acc loop gang vector independent collapse(2)
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent collapse(2)
       do idx = 1, rows, 1
         do idx_1 = 1, row_length, 1
           cos_hs(idx_1,idx) = 0.0
         enddo
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     else
-      !$acc kernels
-      !$acc loop gang vector independent collapse(2)
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent collapse(2)
       do idx_2 = 1, rows, 1
         do idx_3 = 1, row_length, 1
           cos_hs(idx_3,idx_2) = -tan_latitude(idx_3,idx_2) * tan_decls
         enddo
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     end if
-    !$acc kernels
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent collapse(2)
     do widx2 = 1, rows, 1
       do widx1 = 1, row_length, 1
         if (ABS(cos_hs(widx1,widx2)) > 1.0 .AND. sin_latitude(widx1,widx2) * decls > 0.0) then
@@ -307,7 +307,7 @@ module ukca_diurnal_oxidant
         end if
       enddo
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     ! PSyclone CodeBlock (unsupported code) reason:
     !  - PSyclone doesn't yet support reference to imported symbols inside WHERE clauses.
     WHERE (ABS(cos_hs) < 1.0)

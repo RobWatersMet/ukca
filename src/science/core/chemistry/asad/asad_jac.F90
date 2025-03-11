@@ -52,72 +52,72 @@ module asad_jac_mod
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
     call nvtxStartRange(ModuleName // ':' // RoutineName)
-    !$acc kernels
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent collapse(2)
     do jtr = 1, jpcspf, 1
       do jl = 1, n_points, 1
         ej(jl,jtr) = 0.0
       enddo
     enddo
-    !$acc loop seq
+    !NO!$acc loop seq
     do jc = 1, ntrf, 1
       itrcr = nltrf(jc)
       ip3 = njcgrp(itrcr,3)
       ip2 = njcgrp(itrcr,2)
       ip1 = njcgrp(itrcr,1)
-      !$acc loop seq
+      !NO!$acc loop seq
       do j3 = 1, ip3, 1
         i1 = njacx3(1,j3,itrcr)
         i2 = njacx3(2,j3,itrcr)
         i3 = njacx3(3,j3,itrcr)
-        !$acc loop gang vector independent
+        !NO!$acc loop gang vector independent
         do jl = 1, n_points, 1
           ej(jl,itrcr) = ej(jl,itrcr) - prk(jl,i1) - prk(jl,i2) - prk(jl,i3)
         enddo
       enddo
-      !$acc loop seq
+      !NO!$acc loop seq
       do j2 = 1, ip2, 1
         i1 = njacx2(1,itrcr)
         i2 = njacx2(2,itrcr)
-        !$acc loop gang vector independent
+        !NO!$acc loop gang vector independent
         do jl = 1, n_points, 1
           ej(jl,itrcr) = ej(jl,itrcr) - prk(jl,i1) - prk(jl,i2)
         enddo
       enddo
-      !$acc loop seq
+      !NO!$acc loop seq
       do j1 = 1, ip1, 1
         i1 = njacx1(itrcr)
-        !$acc loop gang vector independent
+        !NO!$acc loop gang vector independent
         do jl = 1, n_points, 1
           ej(jl,itrcr) = ej(jl,itrcr) - prk(jl,i1)
         enddo
       enddo
-      !$acc loop seq
+      !NO!$acc loop seq
       do jp = 1, nmpjac(itrcr), 1
         i1 = npjac1(jp,itrcr)
-        !$acc loop gang vector independent
+        !NO!$acc loop gang vector independent
         do jl = 1, n_points, 1
           ej(jl,itrcr) = ej(jl,itrcr) + prk(jl,i1)
         enddo
       enddo
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     if (ntr3 /= 0) then
       do jr = 1, jpnr, 1
-        !$acc kernels
+        !NO!$acc kernels
         ir1 = nspi(jr,1)
         ir2 = nspi(jr,2)
         ip1 = nspi(jr,3)
         ip2 = nspi(jr,4)
         ip3 = nspi(jr,5)
-        !$acc loop gang vector independent
+        !NO!$acc loop gang vector independent
         do j = 1, jpmsp, 1
           gif(j) = .false.
           gtype(j) = .false.
           ifam(j) = 0
           itr(j) = 0
         enddo
-        !$acc end kernels
+        !NO!$acc end kernels
         if (ir1 /= 0) then
           ifam(1) = moffam(ir1)
           itr(1) = madvtr(ir1)
@@ -126,15 +126,15 @@ module asad_jac_mod
           ifam(2) = moffam(ir2)
           itr(2) = madvtr(ir2)
         end if
-        !$acc kernels
+        !NO!$acc kernels
         gir1 = .false.
         gir2 = .false.
-        !$acc loop seq
+        !NO!$acc loop seq
         do j3 = 1, ntr3, 1
           gir1 = gir1 .OR. ifam(1) == nltr3(j3)
           gir2 = gir2 .OR. ifam(2) == nltr3(j3)
         enddo
-        !$acc end kernels
+        !NO!$acc end kernels
         if (gir1 .OR. gir2) then
           if (ir1 /= 0) then
             gtype(1) = ctype(ir1) == jpfm(:)
@@ -164,8 +164,8 @@ module asad_jac_mod
           end if
         end if
         if (gir1) then
-          !$acc kernels
-          !$acc loop gang vector independent
+          !NO!$acc kernels
+          !NO!$acc loop gang vector independent
           do jl = 1, n_points, 1
             ginclude2 = gif(2) .AND. linfam(jl,itr(2)) .OR. gtype(2)
             ginclude3 = gif(3) .AND. linfam(jl,itr(3)) .OR. gtype(3)
@@ -192,11 +192,11 @@ module asad_jac_mod
               ej(jl,ifam(1)) = ej(jl,ifam(1)) + prk(jl,jr) * ks
             end if
           enddo
-          !$acc end kernels
+          !NO!$acc end kernels
         end if
         if (gir2) then
-          !$acc kernels
-          !$acc loop gang vector independent
+          !NO!$acc kernels
+          !NO!$acc loop gang vector independent
           do jl = 1, n_points, 1
             ginclude2 = gif(2) .AND. linfam(jl,itr(2)) .OR. gtype(2)
             ginclude3 = gif(3) .AND. linfam(jl,itr(3)) .OR. gtype(3)
@@ -223,7 +223,7 @@ module asad_jac_mod
               ej(jl,ifam(2)) = ej(jl,ifam(2)) + prk(jl,jr) * ks
             end if
           enddo
-          !$acc end kernels
+          !NO!$acc end kernels
         end if
       enddo
     end if
@@ -233,27 +233,27 @@ module asad_jac_mod
         itrd = madvtr(js)
         ityped = ctype(js)
         if (ifamd /= 0) then
-          !$acc kernels
-          !$acc loop gang vector independent
+          !NO!$acc kernels
+          !NO!$acc loop gang vector independent
           do jl = 1, n_points, 1
             if (ityped == jpfm(:) .OR. ityped == jpif(:) .AND. linfam(jl,itrd)) then
               ej(jl,ifamd) = ej(jl,ifamd) - nodd(js) * (dpd(jl,js) + dpw(jl,js)) * y(jl,js)
             end if
           enddo
-          !$acc end kernels
+          !NO!$acc end kernels
         end if
         if (itrd /= 0) then
-          !$acc kernels
-          !$acc loop gang vector independent
+          !NO!$acc kernels
+          !NO!$acc loop gang vector independent
           do jl = 1, n_points, 1
             ej(jl,itrd) = ej(jl,itrd) - (dpd(jl,js) + dpw(jl,js)) * y(jl,js)
           enddo
-          !$acc end kernels
+          !NO!$acc end kernels
         end if
       enddo
     end if
-    !$acc kernels
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent collapse(2)
     do jtr = 1, jpcspf, 1
       do jl = 1, n_points, 1
         if (f(jl,jtr) > peps) then
@@ -263,7 +263,7 @@ module asad_jac_mod
         end if
       enddo
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
     end if

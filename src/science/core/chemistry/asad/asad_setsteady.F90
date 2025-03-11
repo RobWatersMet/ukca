@@ -44,44 +44,44 @@ module asad_setsteady_mod
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
     call nvtxStartRange(ModuleName // ':' // RoutineName)
-    !$acc kernels
+    !NO!$acc kernels
     nsst = 0
-    !$acc loop gang vector independent
+    !NO!$acc loop gang vector independent
     do idx = LBOUND(nssi, dim=1), UBOUND(nssi, dim=1), 1
       nssi(idx) = 0
     enddo
-    !$acc loop gang vector independent
+    !NO!$acc loop gang vector independent
     do idx_1 = 1, jpss, 1
       indss(idx_1) = 0
     enddo
-    !$acc loop gang vector independent
+    !NO!$acc loop gang vector independent
     do idx_2 = LBOUND(nssrt, dim=1), UBOUND(nssrt, dim=1), 1
       nssrt(idx_2) = 0
     enddo
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc loop gang vector independent collapse(2)
     do idx_3 = LBOUND(nssrx, dim=2), UBOUND(nssrx, dim=2), 1
       do idx_4 = LBOUND(nssrx, dim=1), UBOUND(nssrx, dim=1), 1
         nssrx(idx_4,idx_3) = 0
       enddo
     enddo
-    !$acc loop gang vector independent
+    !NO!$acc loop gang vector independent
     do idx_5 = LBOUND(nsspt, dim=1), UBOUND(nsspt, dim=1), 1
       nsspt(idx_5) = 0
     enddo
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc loop gang vector independent collapse(2)
     do idx_6 = LBOUND(nssri, dim=2), UBOUND(nssri, dim=2), 1
       do idx_7 = LBOUND(nssri, dim=1), UBOUND(nssri, dim=1), 1
         nssri(idx_7,idx_6) = 0
       enddo
     enddo
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc loop gang vector independent collapse(2)
     do idx_8 = LBOUND(nsspi, dim=2), UBOUND(nsspi, dim=2), 1
       do idx_9 = LBOUND(nsspi, dim=1), UBOUND(nsspi, dim=1), 1
         nsspi(idx_9,idx_8) = 0
       enddo
     enddo
     ix = 0
-    !$acc loop seq
+    !NO!$acc loop seq
     do js = 1, jpspec, 1
       if (speci(js) == 'O(1D)     ' .AND. o1d_in_ss) then
         indss(1) = js
@@ -108,7 +108,7 @@ module asad_setsteady_mod
         end if
       end if
     enddo
-    !$acc loop seq
+    !NO!$acc loop seq
     do i = 1, jpss, 1
       if (indss(i) /= 0) then
         if (ctype(indss(i)) == 'SS') then
@@ -117,7 +117,7 @@ module asad_setsteady_mod
         end if
       end if
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     if (nsst == 0) then
       ! PSyclone CodeBlock (unsupported code) reason:
       !  - Unsupported statement: Goto_Stmt
@@ -132,12 +132,12 @@ module asad_setsteady_mod
       call umprint(ummessage, src='asad_setsteady')
       call ereport('ASAD_SETSTEADY', errcode, cmessage)
     end if
-    !$acc kernels
-    !$acc loop seq
+    !NO!$acc kernels
+    !NO!$acc loop seq
     do jr = 1, jpnr, 1
-      !$acc loop seq
+      !NO!$acc loop seq
       do jp = 1, jpmsp, 1
-        !$acc loop gang vector independent
+        !NO!$acc loop gang vector independent
         do ix = 1, nsst, 1
           if (nspi(jr,jp) == nssi(ix)) then
             if (jp <= 2) then
@@ -152,7 +152,7 @@ module asad_setsteady_mod
         enddo
       enddo
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     do ix = 1, nsst, 1
       i = MAX(nssrt(ix), nsspt(ix))
       if (i > jpssr) then
@@ -166,13 +166,13 @@ module asad_setsteady_mod
       end if
     enddo
     do ix = 1, nsst, 1
-      !$acc kernels
+      !NO!$acc kernels
       issr = 0
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do i = 1, jpssr, 1
         issx(i) = 0
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
       do i = 1, nssrt(ix), 1
         if (nspi(nssri(ix,i),nssrx(ix,i)) == nssi(ix)) then
           if (issr == 0) then
@@ -185,12 +185,12 @@ module asad_setsteady_mod
         end if
       enddo
       if (issr /= 0) then
-        !$acc kernels
+        !NO!$acc kernels
         nssrt(ix) = nssrt(ix) - issr
-        !$acc loop seq
+        !NO!$acc loop seq
         do i = 1, nssrt(ix), 1
           k = i
-          !$acc loop seq
+          !NO!$acc loop seq
           do j = 1, issr, 1
             if (k >= issx(j)) then
               k = k + 1
@@ -199,7 +199,7 @@ module asad_setsteady_mod
           nssri(ix,i) = nssri(ix,k)
           nssrx(ix,i) = nssrx(ix,k)
         enddo
-        !$acc end kernels
+        !NO!$acc end kernels
       end if
     enddo
     do ix = 1, nsst, 1

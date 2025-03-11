@@ -22,14 +22,14 @@ module asad_totnud_mod
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
     call nvtxStartRange(ModuleName // ':' // RoutineName)
-    !$acc kernels
+    !NO!$acc kernels
     zb = boltzmann * 1.0e6
-    !$acc loop gang vector independent
+    !NO!$acc loop gang vector independent
     do jl = 1, n_points, 1
       tnd(jl) = p(jl) / (zb * t(jl))
       pmintnd(jl) = pmin * tnd(jl)
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
     end if

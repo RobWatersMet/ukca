@@ -35,12 +35,12 @@ module asad_inrats_mod
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
     call nvtxStartRange(ModuleName // ':' // RoutineName)
-    !$acc kernels
+    !NO!$acc kernels
     o1d_in_ss = .false.
     o3p_in_ss = .false.
     n_in_ss = .false.
     h_in_ss = .false.
-    !$acc loop seq
+    !NO!$acc loop seq
     do k = 1, jpspec, 1
       if (chch_defs(k)%speci == 'O(1D)     ' .AND. chch_defs(k)%ctype(1:2) == jpna(:)) then
         o1d_in_ss = .true.
@@ -55,22 +55,22 @@ module asad_inrats_mod
         h_in_ss = .true.
       end if
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     if (.NOT.o1d_in_ss .AND. (ukca_config%l_ukca_strat .OR. ukca_config%l_ukca_stratcfc .OR. ukca_config%l_ukca_strattrop .OR. ukca_config%l_ukca_cristrat)) then
       cmessage(:) = ' O(1D) is not a Steady-State species'
       errcode = 1
       call ereport(routinename, errcode, cmessage)
     end if
-    !$acc kernels
-    !$acc loop gang vector independent
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent
     do idx = LBOUND(nltrf, dim=1), UBOUND(nltrf, dim=1), 1
       nltrf(idx) = 0
     enddo
-    !$acc loop gang vector independent
+    !NO!$acc loop gang vector independent
     do idx_1 = LBOUND(nltr3, dim=1), UBOUND(nltr3, dim=1), 1
       nltr3(idx_1) = 0
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     if (SIZE(chch_defs) /= jpspec) then
       errcode = 1
       cmessage(:) = ' jpspec and chch_defs are inconsistent'
@@ -317,48 +317,48 @@ module asad_inrats_mod
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
     call nvtxStartRange(ModuleName // ':' // RoutineName)
-    !$acc kernels
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent collapse(2)
     do idx = LBOUND(ispb, dim=2), UBOUND(ispb, dim=2), 1
       do idx_1 = LBOUND(ispb, dim=1), UBOUND(ispb, dim=1), 1
         ispb(idx_1,idx) = 0
       enddo
     enddo
-    !$acc loop gang vector independent
+    !NO!$acc loop gang vector independent
     do idx_2 = LBOUND(ifrpbx, dim=1), UBOUND(ifrpbx, dim=1), 1
       ifrpbx(idx_2) = 0
     enddo
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc loop gang vector independent collapse(2)
     do idx_3 = LBOUND(ispt, dim=2), UBOUND(ispt, dim=2), 1
       do idx_4 = LBOUND(ispt, dim=1), UBOUND(ispt, dim=1), 1
         ispt(idx_4,idx_3) = 0
       enddo
     enddo
-    !$acc loop gang vector independent
+    !NO!$acc loop gang vector independent
     do idx_5 = LBOUND(ifrptx, dim=1), UBOUND(ifrptx, dim=1), 1
       ifrptx(idx_5) = 0
     enddo
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc loop gang vector independent collapse(2)
     do idx_6 = LBOUND(ispj, dim=2), UBOUND(ispj, dim=2), 1
       do idx_7 = LBOUND(ispj, dim=1), UBOUND(ispj, dim=1), 1
         ispj(idx_7,idx_6) = 0
       enddo
     enddo
-    !$acc loop gang vector independent
+    !NO!$acc loop gang vector independent
     do idx_8 = LBOUND(ifrpjx, dim=1), UBOUND(ifrpjx, dim=1), 1
       ifrpjx(idx_8) = 0
     enddo
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc loop gang vector independent collapse(2)
     do idx_9 = LBOUND(isph, dim=2), UBOUND(isph, dim=2), 1
       do idx_10 = LBOUND(isph, dim=1), UBOUND(isph, dim=1), 1
         isph(idx_10,idx_9) = 0
       enddo
     enddo
-    !$acc loop gang vector independent
+    !NO!$acc loop gang vector independent
     do idx_11 = LBOUND(ifrphx, dim=1), UBOUND(ifrphx, dim=1), 1
       ifrphx(idx_11) = 0
     enddo
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc loop gang vector independent collapse(2)
     do jcspf = 1, ntrf, 1
       do js = 1, jpspec, 1
         if (family(js) == specf(jcspf) .AND. ctype(js) /= jpif(:)) then
@@ -369,7 +369,7 @@ module asad_inrats_mod
         end if
       enddo
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     do js = 1, jpspec, 1
       moffam(js) = 0
       madvtr(js) = 0
@@ -399,11 +399,11 @@ module asad_inrats_mod
         end if
       enddo
     enddo
-    !$acc kernels
+    !NO!$acc kernels
     nlmajmin(1) = 5
     imajor = 0
     iminor = 0
-    !$acc loop seq
+    !NO!$acc loop seq
     do js = 1, jpspec, 1
       ifam = moffam(js)
       imaj = 0
@@ -421,15 +421,15 @@ module asad_inrats_mod
     nlmajmin(2) = nlmajmin(1) + imajor - 1
     nlmajmin(3) = nlmajmin(1) + imajor
     nlmajmin(4) = nlmajmin(3) + iminor - 1
-    !$acc loop seq
+    !NO!$acc loop seq
     do j = nlmajmin(1), nlmajmin(2), 1
       nlmajmin(j) = ilmaj(j - nlmajmin(1) + 1)
     enddo
-    !$acc loop seq
+    !NO!$acc loop seq
     do j = nlmajmin(3), nlmajmin(4), 1
       nlmajmin(j) = ilmin(j - nlmajmin(3) + 1)
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     if (iadv /= jpctr) then
       ! PSyclone CodeBlock (unsupported code) reason:
       !  - Unsupported statement: Write_Stmt
@@ -570,8 +570,8 @@ module asad_inrats_mod
         icount = icount + 4
       end if
     enddo
-    !$acc kernels
-    !$acc loop gang vector independent collapse(3)
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent collapse(3)
     do jb = 1, jpbk, 1
       do js = 1, jpspec, 1
         do jspb = 1, jpspb, 1
@@ -581,13 +581,13 @@ module asad_inrats_mod
         enddo
       enddo
     enddo
-    !$acc end kernels
-    !$acc kernels
-    !$acc loop gang vector independent
+    !NO!$acc end kernels
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent
     do jf = 1, jpfrpb, 1
       frpx(jf) = frpb(jf)
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     if (SIZE(ratt_defs) /= jptk) then
       errcode = 1
       cmessage(:) = 'size of ratt_defs is inconsistent with jptk'
@@ -615,8 +615,8 @@ module asad_inrats_mod
         icount = icount + 2
       end if
     enddo
-    !$acc kernels
-    !$acc loop gang vector independent collapse(3)
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent collapse(3)
     do jt = 1, jptk, 1
       do js = 1, jpspec, 1
         do jspt = 1, jpspt, 1
@@ -626,14 +626,14 @@ module asad_inrats_mod
         enddo
       enddo
     enddo
-    !$acc end kernels
-    !$acc kernels
-    !$acc loop seq
+    !NO!$acc end kernels
+    !NO!$acc kernels
+    !NO!$acc loop seq
     do jf = 1, jpfrpt, 1
       ind = jf + jpfrpb
       frpx(ind) = frpt(jf)
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     if (SIZE(ratj_defs) /= jppj) then
       errcode = 1
       cmessage(:) = 'size of ratj_defs is not equal to jppj'
@@ -662,8 +662,8 @@ module asad_inrats_mod
         icount = icount + 4
       end if
     enddo
-    !$acc kernels
-    !$acc loop gang vector independent collapse(3)
+    !NO!$acc kernels
+    !NO!$acc loop gang vector independent collapse(3)
     do jj = 1, jppj, 1
       do js = 1, jpspec, 1
         do jspj = 1, jpspj, 1
@@ -673,14 +673,14 @@ module asad_inrats_mod
         enddo
       enddo
     enddo
-    !$acc end kernels
-    !$acc kernels
-    !$acc loop seq
+    !NO!$acc end kernels
+    !NO!$acc kernels
+    !NO!$acc loop seq
     do jf = 1, jpfrpj, 1
       ind = jf + jpfrpb + jpfrpt
       frpx(ind) = frpj(jf)
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     if (jphk > 0) then
       if (SIZE(rath_defs) /= jphk) then
         errcode = 1
@@ -710,8 +710,8 @@ module asad_inrats_mod
           icount = icount + 4
         end if
       enddo
-      !$acc kernels
-      !$acc loop gang vector independent collapse(3)
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent collapse(3)
       do jh = 1, jphk, 1
         do js = 1, jpspec, 1
           do jsph = 1, jpsph, 1
@@ -721,23 +721,23 @@ module asad_inrats_mod
           enddo
         enddo
       enddo
-      !$acc end kernels
-      !$acc kernels
-      !$acc loop seq
+      !NO!$acc end kernels
+      !NO!$acc kernels
+      !NO!$acc loop seq
       do jf = 1, jpfrph, 1
         ind = jf + jpfrpb + jpfrpt + jpfrpj
         frpx(ind) = frph(jf)
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     end if
-    !$acc kernels
+    !NO!$acc kernels
     nuni = 0
-    !$acc loop seq
+    !NO!$acc loop seq
     do jr = 1, jpbk, 1
       if (ispb(jr,2) == 0) then
         nuni = nuni + 1
         nbrkx(jr) = nuni
-        !$acc loop gang vector independent
+        !NO!$acc loop gang vector independent
         do jp = 1, jpspb, 1
           nspi(nuni,jp) = ispb(jr,jp)
         enddo
@@ -746,12 +746,12 @@ module asad_inrats_mod
         end if
       end if
     enddo
-    !$acc loop seq
+    !NO!$acc loop seq
     do jr = 1, jptk, 1
       if (ispt(jr,2) == 0) then
         nuni = nuni + 1
         ntrkx(jr) = nuni
-        !$acc loop gang vector independent
+        !NO!$acc loop gang vector independent
         do jp = 1, jpspt, 1
           nspi(nuni,jp) = ispt(jr,jp)
         enddo
@@ -760,12 +760,12 @@ module asad_inrats_mod
         end if
       end if
     enddo
-    !$acc loop seq
+    !NO!$acc loop seq
     do jr = 1, jppj, 1
       if (ispj(jr,2) == 0) then
         nuni = nuni + 1
         nprkx(jr) = nuni
-        !$acc loop gang vector independent
+        !NO!$acc loop gang vector independent
         do jp = 1, jpspj, 1
           nspi(nuni,jp) = ispj(jr,jp)
         enddo
@@ -774,15 +774,15 @@ module asad_inrats_mod
         end if
       end if
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     if (jphk > 0) then
-      !$acc kernels
-      !$acc loop seq
+      !NO!$acc kernels
+      !NO!$acc loop seq
       do jr = 1, jphk, 1
         if (isph(jr,2) == 0) then
           nuni = nuni + 1
           nhrkx(jr) = nuni
-          !$acc loop gang vector independent
+          !NO!$acc loop gang vector independent
           do jp = 1, jpsph, 1
             nspi(nuni,jp) = isph(jr,jp)
           enddo
@@ -791,16 +791,16 @@ module asad_inrats_mod
           end if
         end if
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     end if
-    !$acc kernels
+    !NO!$acc kernels
     ix = nuni
-    !$acc loop seq
+    !NO!$acc loop seq
     do jr = 1, jpbk, 1
       if (ispb(jr,2) /= 0) then
         ix = ix + 1
         nbrkx(jr) = ix
-        !$acc loop gang vector independent
+        !NO!$acc loop gang vector independent
         do jp = 1, jpspb, 1
           nspi(ix,jp) = ispb(jr,jp)
         enddo
@@ -809,12 +809,12 @@ module asad_inrats_mod
         end if
       end if
     enddo
-    !$acc loop seq
+    !NO!$acc loop seq
     do jr = 1, jptk, 1
       if (ispt(jr,2) /= 0) then
         ix = ix + 1
         ntrkx(jr) = ix
-        !$acc loop gang vector independent
+        !NO!$acc loop gang vector independent
         do jp = 1, jpspt, 1
           nspi(ix,jp) = ispt(jr,jp)
         enddo
@@ -823,12 +823,12 @@ module asad_inrats_mod
         end if
       end if
     enddo
-    !$acc loop seq
+    !NO!$acc loop seq
     do jr = 1, jppj, 1
       if (ispj(jr,2) /= 0) then
         ix = ix + 1
         nprkx(jr) = ix
-        !$acc loop gang vector independent
+        !NO!$acc loop gang vector independent
         do jp = 1, jpspj, 1
           nspi(ix,jp) = ispj(jr,jp)
         enddo
@@ -837,15 +837,15 @@ module asad_inrats_mod
         end if
       end if
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     if (jphk > 0) then
-      !$acc kernels
-      !$acc loop seq
+      !NO!$acc kernels
+      !NO!$acc loop seq
       do jr = 1, jphk, 1
         if (isph(jr,2) /= 0) then
           ix = ix + 1
           nhrkx(jr) = ix
-          !$acc loop gang vector independent
+          !NO!$acc loop gang vector independent
           do jp = 1, jpsph, 1
             nspi(ix,jp) = isph(jr,jp)
           enddo
@@ -854,7 +854,7 @@ module asad_inrats_mod
           end if
         end if
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     end if
     if (ix /= jpnr) then
       ! PSyclone CodeBlock (unsupported code) reason:

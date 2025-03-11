@@ -34,31 +34,31 @@ module ukca_ch4_stratloss_mod
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
     call nvtxStartRange(ModuleName // ':' // RoutineName)
-    !$acc kernels
-    !$acc loop seq
+    !NO!$acc kernels
+    !NO!$acc loop seq
     do n = 1, n_be_calls, 1
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do idx = LBOUND(yp, dim=1), UBOUND(yp, dim=1), 1
         yp(idx) = y(idx)
       enddo
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do idx_1 = LBOUND(p, dim=1), UBOUND(p, dim=1), 1
         p(idx_1) = 0.0
       enddo
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do idx_2 = LBOUND(l, dim=1), UBOUND(l, dim=1), 1
         l(idx_2) = loss_rate
       enddo
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do idx_3 = LBOUND(y, dim=1), UBOUND(y, dim=1), 1
         y(idx_3) = (yp(idx_3) + dts * p(idx_3)) / (1.0 + dts * l(idx_3))
       enddo
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do idx_4 = LBOUND(stratloss, dim=1), UBOUND(stratloss, dim=1), 1
         stratloss(idx_4) = stratloss(idx_4) + loss_rate * y(idx_4) * dts * vol(idx_4) / avogadro
       enddo
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
     end if

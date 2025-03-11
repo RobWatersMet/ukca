@@ -58,37 +58,37 @@ module asad_inijac_mod
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
     call nvtxStartRange(ModuleName // ':' // RoutineName)
-    !$acc kernels
+    !NO!$acc kernels
     jpnjcx3 = jpnr / (3 * 3) + 3 * 3
-    !$acc loop gang vector independent
+    !NO!$acc loop gang vector independent
     do idx = LBOUND(ifn, dim=1), UBOUND(ifn, dim=1), 1
       ifn(idx) = 0
     enddo
-    !$acc loop gang vector independent
+    !NO!$acc loop gang vector independent
     do idx_1 = LBOUND(ifp, dim=1), UBOUND(ifp, dim=1), 1
       ifp(idx_1) = 0
     enddo
-    !$acc loop gang vector independent
+    !NO!$acc loop gang vector independent
     do idx_2 = LBOUND(ifz, dim=1), UBOUND(ifz, dim=1), 1
       ifz(idx_2) = 0
     enddo
-    !$acc loop gang vector independent
+    !NO!$acc loop gang vector independent
     do idx_3 = LBOUND(ifs, dim=1), UBOUND(ifs, dim=1), 1
       ifs(idx_3) = 0
     enddo
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc loop gang vector independent collapse(2)
     do idx_4 = LBOUND(ifzer, dim=2), UBOUND(ifzer, dim=2), 1
       do idx_5 = LBOUND(ifzer, dim=1), UBOUND(ifzer, dim=1), 1
         ifzer(idx_5,idx_4) = 0
       enddo
     enddo
-    !$acc loop gang vector independent collapse(2)
+    !NO!$acc loop gang vector independent collapse(2)
     do idx_6 = LBOUND(ifsss, dim=2), UBOUND(ifsss, dim=2), 1
       do idx_7 = LBOUND(ifsss, dim=1), UBOUND(ifsss, dim=1), 1
         ifsss(idx_7,idx_6) = 0
       enddo
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     do jr = 1, jpnr, 1
       ir1 = nspi(jr,1)
       ir2 = nspi(jr,2)
@@ -309,19 +309,19 @@ module asad_inijac_mod
           end if
         end if
       end if
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do j = 1, jpmsp, 1
         njcoth(jr,j) = itr(j)
       enddo
-      !$acc loop seq
+      !NO!$acc loop seq
       do j = 1, 2, 1
         if (itr(j) /= 0) then
           ifz(itr(j)) = ifz(itr(j)) + 1
           ifzer(ifz(itr(j)),itr(j)) = jr
         end if
       enddo
-      !$acc loop seq
+      !NO!$acc loop seq
       do j = 1, jpmsp, 1
         njcoss(jr,j) = 0
         if (itype(j) == jpna(:)) then
@@ -350,7 +350,7 @@ module asad_inijac_mod
           end if
         end if
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     enddo
     do jc = 1, jpcspf, 1
       njx = ifn(jc) / 3
@@ -363,10 +363,10 @@ module asad_inijac_mod
         errcode = jc
         call ereport('ASAD_INIJAC', errcode, cmessage)
       end if
-      !$acc kernels
+      !NO!$acc kernels
       i = 1
       njcgrp(jc,3) = njx
-      !$acc loop seq
+      !NO!$acc loop seq
       do jg = 1, njcgrp(jc,3), 1
         njacx3(1,jg,jc) = ifneg(i,jc)
         njacx3(2,jg,jc) = ifneg(i + 1,jc)
@@ -374,7 +374,7 @@ module asad_inijac_mod
         i = i + 3
       enddo
       irem = MOD(ifn(jc), 3)
-      !$acc end kernels
+      !NO!$acc end kernels
       if (irem == 2) then
         njcgrp(jc,2) = 1
         njacx2(1,jc) = ifneg(i,jc)
@@ -398,26 +398,26 @@ module asad_inijac_mod
         errcode = jc
         call ereport('ASAD_INIJAC', errcode, cmessage)
       end if
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc kernels
+      !NO!$acc loop gang vector independent
       do jr = 1, ifp(jc), 1
         npjac1(jr,jc) = ifpos(jr,jc)
       enddo
-      !$acc end kernels
+      !NO!$acc end kernels
     enddo
-    !$acc kernels
-    !$acc loop seq
+    !NO!$acc kernels
+    !NO!$acc loop seq
     do jc = 1, jpcspf, 1
       nmzjac(jc) = ifz(jc)
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do jr = 1, ifz(jc), 1
         nzjac1(jr,jc) = ifzer(jr,jc)
       enddo
     enddo
-    !$acc loop seq
+    !NO!$acc loop seq
     do jc = 1, nstst, 1
       nmsjac(jc) = ifs(jc)
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do jr = 1, ifs(jc), 1
         nsjac1(jr,jc) = ifsss(jr,jc)
       enddo
@@ -433,7 +433,7 @@ module asad_inijac_mod
     nspno = 0
     nspn = 0
     nsph = 0
-    !$acc loop seq
+    !NO!$acc loop seq
     do jtr = 1, jpcspf, 1
       if (specf(jtr) == 'O3        ') then
         ntro3 = jtr
@@ -448,7 +448,7 @@ module asad_inijac_mod
         ntrno = jtr
       end if
     enddo
-    !$acc loop seq
+    !NO!$acc loop seq
     do jtr = 1, jpspec, 1
       if (speci(jtr) == 'O3        ') then
         nspo3 = jtr
@@ -475,7 +475,7 @@ module asad_inijac_mod
         nsph = jtr
       end if
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
     end if
