@@ -73,26 +73,26 @@ module asad_spimpmjp_mod
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
     call nvtxStartRange(ModuleName // ':' // RoutineName)
-    !NO!$acc kernels
-    !NO!$acc loop seq
+    !$acc kernels
+    !$acc loop seq
     do jtr = 1, jpcspf, 1
       j = nlf(jtr)
-      !NO!$acc loop gang vector independent
+      !$acc loop gang vector independent
       do idx = 1, n_points, 1
         tmprc(idx,jtr) = prod(idx,j) + slos(idx,j)
       enddo
     enddo
     residual_error = 0.0
-    !NO!$acc loop seq
+    !$acc loop seq
     do jl = 1, n_points, 1
-      !NO!$acc loop seq
+      !$acc loop seq
       do jtr = 1, jpcspf, 1
         if (ABS(tmprc(jl,jtr)) > f_min) then
           residual_error = MAX(residual_error, ABS(g_f(jl,jtr) / tmprc(jl,jtr)))
         end if
       enddo
     enddo
-    !NO!$acc end kernels
+    !$acc end kernels
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
     end if
