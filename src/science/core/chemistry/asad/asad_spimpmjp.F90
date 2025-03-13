@@ -73,26 +73,26 @@ module asad_spimpmjp_mod
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
     call nvtxStartRange(ModuleName // ':' // RoutineName)
-    !$acc kernels
-    !$acc loop seq
+    !NO!$acc kernels
+    !NO!$acc loop seq
     do jtr = 1, jpcspf, 1
       j = nlf(jtr)
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do idx = 1, n_points, 1
         tmprc(idx,jtr) = prod(idx,j) + slos(idx,j)
       enddo
     enddo
     residual_error = 0.0
-    !$acc loop seq
+    !NO!$acc loop seq
     do jl = 1, n_points, 1
-      !$acc loop seq
+      !NO!$acc loop seq
       do jtr = 1, jpcspf, 1
         if (ABS(tmprc(jl,jtr)) > f_min) then
           residual_error = MAX(residual_error, ABS(g_f(jl,jtr) / tmprc(jl,jtr)))
         end if
       enddo
     enddo
-    !$acc end kernels
+    !NO!$acc end kernels
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
     end if
@@ -120,18 +120,18 @@ module asad_spimpmjp_mod
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
     call nvtxStartRange(ModuleName // ':' // RoutineName)
-    !NO!$acc kernels
+    !$acc kernels
     error_norm = 0.0
-    !NO!$acc loop seq
+    !$acc loop seq
     do jtr = 1, jpcspf, 1
-      !NO!$acc loop seq
+      !$acc loop seq
       do jl = 1, n_points, 1
         if (ABS(f_incr(jl,jtr)) > 1.0e-16) then
           error_norm = MAX(error_norm, ABS(f_incr(jl,jtr) / MAX(f(jl,jtr), f_min)))
         end if
       enddo
     enddo
-    !NO!$acc end kernels
+    !$acc end kernels
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
     end if
