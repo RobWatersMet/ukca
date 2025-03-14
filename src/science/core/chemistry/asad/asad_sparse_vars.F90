@@ -1125,7 +1125,7 @@ module asad_sparse_vars
                 enddo
 
                 ! RW - below is temp
-                !$acc kernels
+                !$acc end kernels
 
               end if
             end if
