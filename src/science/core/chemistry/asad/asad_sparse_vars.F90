@@ -1114,6 +1114,8 @@ module asad_sparse_vars
 
               else
 
+                !$acc wait
+
                 ! RW - below is temp
                 !$acc kernels
 
