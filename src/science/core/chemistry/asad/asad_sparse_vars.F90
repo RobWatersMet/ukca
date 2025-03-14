@@ -1094,9 +1094,6 @@ module asad_sparse_vars
           ! RW - below is temp
           !$acc end kernels
 
-          ! RW - below is temp
-          !$acc kernels
-
           !NO!$acc loop seq
           do j = kr + 1, jpcspf, 1
             krj = modified_map(kr,j)
