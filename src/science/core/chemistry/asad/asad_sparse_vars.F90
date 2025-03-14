@@ -1037,20 +1037,23 @@ module asad_sparse_vars
       print*, 'Checksum - xx in ', RoutineName, ' = ', checksum_result
     #endif
 
-    !NO!$acc kernels
-    !NO!$acc loop gang vector independent collapse(2)
+    !$acc kernels
+    !$acc loop gang vector independent collapse(2)
     do j = 1, total, 1
       do i = 1, n_points, 1
         spfj(i,j) = MIN(MAX(spfj(i,j), -max_val), max_val)
       enddo
     enddo
     total1 = total
-    !NO!$acc loop gang vector independent collapse(2)
+    !$acc loop gang vector independent collapse(2)
     do idx = LBOUND(modified_map, dim=2), UBOUND(modified_map, dim=2), 1
       do idx_1 = LBOUND(modified_map, dim=1), UBOUND(modified_map, dim=1), 1
         modified_map(idx_1,idx) = nonzero_map_unordered(idx_1,idx)
       enddo
     enddo
+    !$acc end kernels
+
+    !NO!$acc kernels
     !NO!$acc loop seq
     do kr = 1, jpcspf, 1
       !NO!$acc loop gang vector independent
