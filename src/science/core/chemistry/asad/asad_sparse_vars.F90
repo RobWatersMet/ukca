@@ -1056,11 +1056,13 @@ module asad_sparse_vars
     !NO!$acc kernels
     !NO!$acc loop seq
     do kr = 1, jpcspf, 1
-      !NO!$acc loop gang vector independent
+      ! RW - below is temp
+      !$acc kernels
+      !$acc loop gang vector independent
       do idx_2 = 1, n_points, 1
         pivot(idx_2) = spfj(idx_2,modified_map(kr,kr))
       enddo
-      !NO!$acc loop gang vector independent
+      !$acc loop gang vector independent
       do widx1 = 1, n_points, 1
         if (ABS(pivot(widx1)) > min_pivot) then
           pivot(widx1) = 1.0 / pivot(widx1)
@@ -1068,6 +1070,9 @@ module asad_sparse_vars
           pivot(widx1) = max_val
         end if
       enddo
+      ! RW - below is temp
+      !$acc end kernels
+
       !NO!$acc loop seq
       do i = kr + 1, jpcspf, 1
         ikr = modified_map(i,kr)
