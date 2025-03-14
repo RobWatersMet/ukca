@@ -1121,7 +1121,7 @@ module asad_sparse_vars
                 modified_map(i,j) = total1
                 !$acc loop gang vector independent
                 do idx_6 = LBOUND(spfj, dim=1), UBOUND(spfj, dim=1), 1
-                  spfj(idx_6,total1) = -kfact(idx_6) * spfj(idx_6,krj)
+                  spfj(idx_6,total1) = (-1 * kfact(idx_6)) * spfj(idx_6,krj)
                 enddo
 
                 ! RW - below is temp
