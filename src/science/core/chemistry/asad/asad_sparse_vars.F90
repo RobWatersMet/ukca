@@ -1058,6 +1058,7 @@ module asad_sparse_vars
     do kr = 1, jpcspf, 1
       ! RW - below is temp
       !$acc kernels
+
       !$acc loop gang vector independent
       do idx_2 = 1, n_points, 1
         pivot(idx_2) = spfj(idx_2,modified_map(kr,kr))
@@ -1077,14 +1078,22 @@ module asad_sparse_vars
       do i = kr + 1, jpcspf, 1
         ikr = modified_map(i,kr)
         if (ikr > 0) then
-          !NO!$acc loop gang vector independent
+
+          ! RW - below is temp
+          !$acc kernels
+
+          !$acc loop gang vector independent
           do idx_3 = 1, n_points, 1
             kfact(idx_3) = spfj(idx_3,ikr) * pivot(idx_3)
           enddo
-          !NO!$acc loop gang vector independent
+          !$acc loop gang vector independent
           do idx_4 = LBOUND(spfj, dim=1), UBOUND(spfj, dim=1), 1
             spfj(idx_4,ikr) = kfact(idx_4)
           enddo
+
+          ! RW - below is temp
+          !$acc end kernels
+
           !NO!$acc loop seq
           do j = kr + 1, jpcspf, 1
             krj = modified_map(kr,j)
