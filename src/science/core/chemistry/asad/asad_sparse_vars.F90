@@ -1037,27 +1037,27 @@ module asad_sparse_vars
       print*, 'Checksum - xx in ', RoutineName, ' = ', checksum_result
     #endif
 
-    !NO!$acc kernels
-    !NO!$acc loop gang vector independent collapse(2)
+    !$acc kernels
+    !$acc loop gang vector independent collapse(2)
     do j = 1, total, 1
       do i = 1, n_points, 1
         spfj(i,j) = MIN(MAX(spfj(i,j), -max_val), max_val)
       enddo
     enddo
     total1 = total
-    !NO!$acc loop gang vector independent collapse(2)
+    !$acc loop gang vector independent collapse(2)
     do idx = LBOUND(modified_map, dim=2), UBOUND(modified_map, dim=2), 1
       do idx_1 = LBOUND(modified_map, dim=1), UBOUND(modified_map, dim=1), 1
         modified_map(idx_1,idx) = nonzero_map_unordered(idx_1,idx)
       enddo
     enddo
-    !NO!$acc loop seq
+    !$acc loop seq
     do kr = 1, jpcspf, 1
-      !NO!$acc loop gang vector independent
+      !$acc loop gang vector independent
       do idx_2 = 1, n_points, 1
         pivot(idx_2) = spfj(idx_2,modified_map(kr,kr))
       enddo
-      !NO!$acc loop gang vector independent
+      !$acc loop gang vector independent
       do widx1 = 1, n_points, 1
         if (ABS(pivot(widx1)) > min_pivot) then
           pivot(widx1) = 1.0 / pivot(widx1)
@@ -1065,32 +1065,32 @@ module asad_sparse_vars
           pivot(widx1) = max_val
         end if
       enddo
-      !NO!$acc loop seq
+      !$acc loop seq
       do i = kr + 1, jpcspf, 1
         ikr = modified_map(i,kr)
         if (ikr > 0) then
-          !NO!$acc loop gang vector independent
+          !$acc loop gang vector independent
           do idx_3 = 1, n_points, 1
             kfact(idx_3) = spfj(idx_3,ikr) * pivot(idx_3)
           enddo
-          !NO!$acc loop gang vector independent
+          !$acc loop gang vector independent
           do idx_4 = LBOUND(spfj, dim=1), UBOUND(spfj, dim=1), 1
             spfj(idx_4,ikr) = kfact(idx_4)
           enddo
-          !NO!$acc loop seq
+          !$acc loop seq
           do j = kr + 1, jpcspf, 1
             krj = modified_map(kr,j)
             if (krj > 0) then
               ij = modified_map(i,j)
               if (ij > 0) then
-                !NO!$acc loop gang vector independent
+                !$acc loop gang vector independent
                 do idx_5 = LBOUND(spfj, dim=1), UBOUND(spfj, dim=1), 1
                   spfj(idx_5,ij) = spfj(idx_5,ij) - kfact(idx_5) * spfj(idx_5,krj)
                 enddo
               else
                 total1 = total1 + 1
                 modified_map(i,j) = total1
-                !NO!$acc loop gang vector independent
+                !$acc loop gang vector independent
                 do idx_6 = LBOUND(spfj, dim=1), UBOUND(spfj, dim=1), 1
                   spfj(idx_6,total1) = -kfact(idx_6) * spfj(idx_6,krj)
                 enddo
@@ -1100,6 +1100,9 @@ module asad_sparse_vars
         end if
       enddo
     enddo
+    !$acc end kernels
+
+    !NO!$acc kernels
     !NO!$acc loop gang vector independent collapse(2)
     do j = 1, total1, 1
       do i = 1, n_points, 1
