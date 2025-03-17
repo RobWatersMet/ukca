@@ -1114,15 +1114,12 @@ module asad_sparse_vars
 
               else
 
-                ! RW - below is temp
-                !$acc wait
+                total1 = total1 + 1
+                modified_map(i,j) = total1
 
                 ! RW - below is temp
                 !$acc kernels
 
-                !$acc atomic
-                total1 = total1 + 1
-                modified_map(i,j) = total1
                 !$acc loop gang vector independent
                 do idx_6 = LBOUND(spfj, dim=1), UBOUND(spfj, dim=1), 1
                   spfj(idx_6,total1) = (-1 * kfact(idx_6)) * spfj(idx_6,krj)
