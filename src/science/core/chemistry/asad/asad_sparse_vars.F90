@@ -1286,14 +1286,14 @@ module asad_sparse_vars
       print*, 'Checksum - xx in ', RoutineName, ' = ', checksum_result
     #endif
 
-    !NO!$acc kernels
-    !NO!$acc loop gang vector independent collapse(2)
+    !$acc kernels
+    !$acc loop gang vector independent collapse(2)
     do i = 1, jpcspf, 1
       do idx = LBOUND(bb1, dim=1), UBOUND(bb1, dim=1), 1
         bb1(idx,i) = bb(idx,reorder(i))
       enddo
     enddo
-    !NO!$acc loop seq
+    !$acc loop seq
     do kr = 1, jpcspf - 1, 1
       !$acc loop seq
       do i = kr + 1, jpcspf, 1
@@ -1306,6 +1306,9 @@ module asad_sparse_vars
         end if
       enddo
     enddo
+
+    !$acc end kernels
+
     !NO!$acc loop seq
     do kr = jpcspf, 1, -1
       !NO!$acc loop gang vector independent
@@ -1316,7 +1319,7 @@ module asad_sparse_vars
       do j = kr + 1, jpcspf, 1
         krj = modified_map(kr,j)
         if (krj > 0) then
-          !$acc loop gang vector independent
+          !NO!$acc loop gang vector independent
           do idx_3 = LBOUND(xx1, dim=1), UBOUND(xx1, dim=1), 1
             xx1(idx_3,kr) = xx1(idx_3,kr) - spfj(idx_3,krj) * xx1(idx_3,j)
           enddo
@@ -1345,7 +1348,7 @@ module asad_sparse_vars
     enddo
     !NO!$acc loop seq
     do i = 1, jpcspf, 1
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do idx_8 = LBOUND(xx, dim=1), UBOUND(xx, dim=1), 1
         xx(idx_8,reorder(i)) = xx1(idx_8,i)
       enddo
