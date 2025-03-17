@@ -1074,13 +1074,10 @@ module asad_sparse_vars
       ! RW - below is temp
       !$acc end kernels
 
-      !NO!$acc loop seq
+      !$acc loop seq
       do i = kr + 1, jpcspf, 1
         ikr = modified_map(i,kr)
         if (ikr > 0) then
-
-          ! RW - below is temp
-          !$acc kernels
 
           !$acc loop gang vector independent
           do idx_3 = 1, n_points, 1
@@ -1091,10 +1088,6 @@ module asad_sparse_vars
             spfj(idx_4,ikr) = kfact(idx_4)
           enddo
 
-          ! RW - below is temp
-          !$acc end kernels
-
-          !$acc kernels
           !$acc loop seq
           do j = kr + 1, jpcspf, 1
             krj = modified_map(kr,j)
@@ -1102,7 +1095,8 @@ module asad_sparse_vars
               ij = modified_map(i,j)
               if (ij > 0) then
 
-                !$acc loop gang vector independent
+                !NO!$acc loop gang vector independent
+                !$acc loop gang vector
                 do idx_5 = LBOUND(spfj, dim=1), UBOUND(spfj, dim=1), 1
                   spfj(idx_5,ij) = spfj(idx_5,ij) - kfact(idx_5) * spfj(idx_5,krj)
                 enddo
@@ -1114,7 +1108,8 @@ module asad_sparse_vars
 
                 modified_map(i,j) = total1
 
-                !$acc loop gang vector independent
+                !NO!$acc loop gang vector independent
+                !$acc loop gang vector
                 do idx_6 = LBOUND(spfj, dim=1), UBOUND(spfj, dim=1), 1
                   spfj(idx_6,total1) = (-1 * kfact(idx_6)) * spfj(idx_6,krj)
                 enddo
@@ -1122,12 +1117,10 @@ module asad_sparse_vars
               end if
             end if
           enddo
-
-          ! RW - below is temp
-          !$acc end kernels
-
         end if
       enddo
+      ! RW - below is temp
+      !$acc end kernels
     enddo
     !NO!$acc end kernels
 
@@ -1330,6 +1323,7 @@ module asad_sparse_vars
         end if
       enddo
 
+      ! RW - loop only gives CPU matching results without independance
       !$acc loop gang vector
       do idx_5 = LBOUND(xx1, dim=1), UBOUND(xx1, dim=1), 1
         xx1(idx_5,kr) = xx1(idx_5,kr) / pivot(idx_5)
