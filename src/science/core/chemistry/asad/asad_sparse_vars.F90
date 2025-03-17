@@ -1114,11 +1114,13 @@ module asad_sparse_vars
 
               else
 
+                ! RW - below is temp
                 !$acc wait
 
                 ! RW - below is temp
                 !$acc kernels
 
+                !$acc atomic
                 total1 = total1 + 1
                 modified_map(i,j) = total1
                 !$acc loop gang vector independent
@@ -1132,7 +1134,6 @@ module asad_sparse_vars
               end if
             end if
           enddo
-
         end if
       enddo
     enddo
