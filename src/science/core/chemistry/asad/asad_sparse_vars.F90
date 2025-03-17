@@ -1074,11 +1074,12 @@ module asad_sparse_vars
       ! RW - below is temp
       !$acc end kernels
 
-      !$acc loop seq
+      !NO!$acc loop seq
       do i = kr + 1, jpcspf, 1
         ikr = modified_map(i,kr)
         if (ikr > 0) then
 
+          !$acc kernels
           !$acc loop gang vector independent
           do idx_3 = 1, n_points, 1
             kfact(idx_3) = spfj(idx_3,ikr) * pivot(idx_3)
@@ -1087,40 +1088,39 @@ module asad_sparse_vars
           do idx_4 = LBOUND(spfj, dim=1), UBOUND(spfj, dim=1), 1
             spfj(idx_4,ikr) = kfact(idx_4)
           enddo
+          !$acc end kernels
 
-          !$acc loop seq
+          !NO!$acc loop seq
           do j = kr + 1, jpcspf, 1
             krj = modified_map(kr,j)
             if (krj > 0) then
               ij = modified_map(i,j)
               if (ij > 0) then
 
-                !NO!$acc loop gang vector independent
-                !$acc loop gang vector
+                !$acc kernels
+                !$acc loop gang vector independent
                 do idx_5 = LBOUND(spfj, dim=1), UBOUND(spfj, dim=1), 1
                   spfj(idx_5,ij) = spfj(idx_5,ij) - kfact(idx_5) * spfj(idx_5,krj)
                 enddo
-
+                !$acc end kernels
               else
 
-                !$acc atomic update
                 total1 = total1 + 1
-
                 modified_map(i,j) = total1
 
-                !NO!$acc loop gang vector independent
-                !$acc loop gang vector
+                !$acc kernels
+                !$acc loop gang vector independent
                 do idx_6 = LBOUND(spfj, dim=1), UBOUND(spfj, dim=1), 1
                   spfj(idx_6,total1) = (-1 * kfact(idx_6)) * spfj(idx_6,krj)
                 enddo
+                !$acc end kernels
 
               end if
             end if
           enddo
         end if
       enddo
-      ! RW - below is temp
-      !$acc end kernels
+
     enddo
     !NO!$acc end kernels
 
