@@ -1341,10 +1341,13 @@ module asad_sparse_vars
       enddo
       !$acc end kernels
 
+      !$acc kernels
       !NO!$acc loop gang vector independent
+      !$acc loop gang vector
       do idx_5 = LBOUND(xx1, dim=1), UBOUND(xx1, dim=1), 1
         xx1(idx_5,kr) = xx1(idx_5,kr) / pivot(idx_5)
       enddo
+      !$acc end kernels
 
     enddo
 
