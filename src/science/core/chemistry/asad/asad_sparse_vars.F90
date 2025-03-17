@@ -1332,19 +1332,20 @@ module asad_sparse_vars
 
       !$acc end kernels
 
-      !NO!$acc loop gang vector independent
+      !$acc kernels
+      !$acc loop gang vector independent
       do widx1 = 1, n_points, 1
         if (ABS(pivot(widx1)) < min_pivot) then
           pivot(widx1) = min_pivot
         end if
       enddo
+      !$acc end kernels
 
-      !$acc kernels
-      !$acc loop gang vector independent
+      !NO!$acc loop gang vector independent
       do idx_5 = LBOUND(xx1, dim=1), UBOUND(xx1, dim=1), 1
         xx1(idx_5,kr) = xx1(idx_5,kr) / pivot(idx_5)
       enddo
-      !$acc end kernels
+
     enddo
 
     !$acc kernels
