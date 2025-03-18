@@ -56,8 +56,8 @@ module asad_spimpmjp_mod
     !$acc end kernels
 
     #ifdef ARRAYCHECKSUM
-      checksum_result = array_xor_checksum(permute)
-      print*, 'Checksum - permute in ', RoutineName, ' = ', checksum_result
+      checksum_result = array_xor_checksum(f)
+      print*, 'Checksum - f in ', RoutineName, ' = ', checksum_result
     #endif
 
     if (lhook) then
@@ -603,7 +603,10 @@ module asad_spimpmjp_mod
       print*, 'Checksum - f_incr in ', RoutineName, ' = ', checksum_result
       checksum_result = array_xor_checksum(fj)
       print*, 'Checksum - fj in ', RoutineName, ' = ', checksum_result
-
+      checksum_result = array_xor_checksum(f_initial)
+      print*, 'Checksum - f_initial in ', RoutineName, ' = ', checksum_result
+      checksum_result = array_xor_checksum(zsum)
+      print*, 'Checksum - zsum in ', RoutineName, ' = ', checksum_result
     #endif
 
     return
