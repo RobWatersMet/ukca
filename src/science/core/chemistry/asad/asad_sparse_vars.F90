@@ -81,29 +81,29 @@ module asad_sparse_vars
       ALLOCATE(map(1:jpcspf,1:jpcspf))
     end if
 
-    !NO!$acc kernels
-    !NO!$acc loop gang vector independent collapse(2)
+    !$acc kernels
+    !$acc loop gang vector independent collapse(2)
     do idx = LBOUND(map, dim=2), UBOUND(map, dim=2), 1
       do idx_1 = LBOUND(map, dim=1), UBOUND(map, dim=1), 1
         map(idx_1,idx) = 0
       enddo
     enddo
-    !NO!$acc loop gang vector independent
+    !$acc loop gang vector independent
     do i = 1, jpcspf, 1
       map(i,i) = 1
     enddo
-    !NO!$acc loop seq
+    !$acc loop seq
     do jc = 1, ntrf, 1
       itrcr = nltrf(jc)
-      !NO!$acc loop seq
+      !$acc loop seq
       do j3 = 1, nmzjac(itrcr), 1
         irj = nzjac1(j3,itrcr)
-        !NO!$acc loop gang vector independent
+        !$acc loop gang vector independent
         do jn = 1, jpmsp, 1
           ij(jn) = njcoth(irj,jn)
           lj(jn) = ij(jn) /= 0
         enddo
-        !NO!$acc loop seq
+        !$acc loop seq
         do jn = 1, jpmsp, 1
           if (lj(jn)) then
             map(ij(jn),itrcr) = 1
@@ -112,7 +112,7 @@ module asad_sparse_vars
         if (npdfr(irj,1) /= 0) then
           i1 = npdfr(irj,1)
           i2 = npdfr(irj,2)
-          !NO!$acc loop seq
+          !$acc loop seq
           do jn = i1, i2, 1
             isx = ntabpd(jn,1)
             map(isx,itrcr) = 1
@@ -120,17 +120,17 @@ module asad_sparse_vars
         end if
       enddo
     enddo
-    !NO!$acc loop seq
+    !$acc loop seq
     do jc = 1, nstst, 1
-      !NO!$acc loop seq
+      !$acc loop seq
       do j3 = 1, nmsjac(jc), 1
         irj = nsjac1(j3,jc)
-        !NO!$acc loop gang vector independent
+        !$acc loop gang vector independent
         do jn = 1, jpmsp, 1
           ij(jn) = njcoth(irj,jn)
           lj(jn) = ij(jn) /= 0
         enddo
-!NO!$acc loop seq
+        !$acc loop seq
         do jn = 1, jpmsp, 1
           if (lj(jn)) then
             map(ij(jn),ntro3) = 1
@@ -138,18 +138,18 @@ module asad_sparse_vars
         enddo
       enddo
     enddo
-!NO!$acc end kernels
+    !$acc end kernels
 
     if (ndepw /= 0 .OR. ndepd /= 0) then
-!NO!$acc kernels
-!NO!$acc loop seq
+      !$acc kernels
+      !$acc loop seq
       do js = 1, jpspec, 1
         itrd = madvtr(js)
         if (itrd /= 0) then
           map(itrd,itrd) = 1
         end if
       enddo
-!NO!$acc end kernels
+      !$acc end kernels
 
     end if
     total = SUM(map)
@@ -159,17 +159,17 @@ module asad_sparse_vars
       WRITE(umMessage, '(A,I6)') 'TOTAL NUMBER OF NONZERO ENTRIES IN JACOBIAN: ', total
       call umprint(ummessage, src='asad_sparse_vars')
     end if
-!NO!$acc kernels
+    !$acc kernels
     isx = 0
-!NO!$acc loop gang vector independent collapse(2)
+    !$acc loop gang vector independent collapse(2)
     do idx_2 = LBOUND(nonzero_map, dim=2), UBOUND(nonzero_map, dim=2), 1
       do idx_3 = LBOUND(nonzero_map, dim=1), UBOUND(nonzero_map, dim=1), 1
         nonzero_map(idx_3,idx_2) = 0
       enddo
     enddo
-!NO!$acc loop seq
+    !$acc loop seq
     do i = 1, jpcspf, 1
-!NO!$acc loop seq
+      !$acc loop seq
       do j = 1, jpcspf, 1
         if (map(i,j) == 1) then
           isx = isx + 1
@@ -177,13 +177,13 @@ module asad_sparse_vars
         end if
       enddo
     enddo
-!NO!$acc loop gang vector independent
+    !$acc loop gang vector independent
     do idx_4 = LBOUND(base_tracer, dim=1), UBOUND(base_tracer, dim=1), 1
       base_tracer(idx_4) = 0
     enddo
-!NO!$acc loop seq
+    !$acc loop seq
     do i = 1, jpcspf, 1
-!NO!$acc loop seq
+      !$acc loop seq
       do j = 1, jpcspf, 1
         i1 = nonzero_map(j,i)
         if (i1 > 0) then
@@ -191,14 +191,14 @@ module asad_sparse_vars
         end if
       enddo
     enddo
-!NO!$acc loop gang vector independent
+    !$acc loop gang vector independent
     do i = 1, jpcspf, 1
       activity(i) = SUM(map(:,i)) + SUM(map(i,:))
       reorder(i) = i
     enddo
-!NO!$acc loop seq
+    !$acc loop seq
     do i = 1, jpcspf - 1, 1
-!NO!$acc loop seq
+      !$acc loop seq
       do j = i + 1, jpcspf, 1
         if (activity(i) > activity(j)) then
           itemp1 = reorder(i)
@@ -210,7 +210,7 @@ module asad_sparse_vars
         end if
       enddo
     enddo
-!NO!$acc end kernels
+    !$acc end kernels
 
     do i = 1, jpcspf, 1
       if (mype == 0 .AND. printstatus >= prstatus_oper) then
@@ -223,21 +223,21 @@ module asad_sparse_vars
     if (.NOT.ALLOCATED(permute)) then
       ALLOCATE(permute(1:jpcspf,1:jpcspf))
     end if
-!NO!$acc kernels
-!NO!$acc loop gang vector independent collapse(2)
+    !$acc kernels
+    !$acc loop gang vector independent collapse(2)
     do idx_5 = LBOUND(permute, dim=2), UBOUND(permute, dim=2), 1
       do idx_6 = LBOUND(permute, dim=1), UBOUND(permute, dim=1), 1
         permute(idx_6,idx_5) = 0
       enddo
     enddo
-!NO!$acc end kernels
+    !$acc end kernels
 
-!NO!$acc kernels
-!NO!$acc loop gang vector independent
+    !$acc kernels
+    !$acc loop gang vector independent
     do i = 1, jpcspf, 1
       permute(i,reorder(i)) = 1
     enddo
-!NO!$acc end kernels
+    !$acc end kernels
     nonzero_map_unordered(:,:) = MATMUL(MATMUL(permute, nonzero_map), TRANSPOSE(permute))
     if (ALLOCATED(permute)) then
       DEALLOCATE(permute)
@@ -245,15 +245,15 @@ module asad_sparse_vars
     if (ALLOCATED(map)) then
       DEALLOCATE(map)
     end if
-!NO!$acc kernels
+    !$acc kernels
     total1 = total
-!NO!$acc loop gang vector independent collapse(2)
+    !$acc loop gang vector independent collapse(2)
     do idx_7 = LBOUND(modified_map, dim=2), UBOUND(modified_map, dim=2), 1
       do idx_8 = LBOUND(modified_map, dim=1), UBOUND(modified_map, dim=1), 1
         modified_map(idx_8,idx_7) = nonzero_map_unordered(idx_8 + (LBOUND(nonzero_map_unordered, dim=1) - LBOUND(modified_map, dim=1)),idx_7 + (LBOUND(nonzero_map_unordered, dim=2) - LBOUND(modified_map, dim=2)))
       enddo
     enddo
-!NO!$acc end kernels
+    !$acc end kernels
 
     do kr = 1, jpcspf, 1
       do i = kr + 1, jpcspf, 1
@@ -295,56 +295,56 @@ module asad_sparse_vars
       WRITE(umMessage, '(A)') 'Reduce spfjsize_max if much greater than total1 '
       call umprint(ummessage, src='asad_sparse_vars')
     end if
-!NO!$acc kernels
-!NO!$acc loop gang vector independent
+    !$acc kernels
+    !$acc loop gang vector independent
     do idx_9 = LBOUND(nposterms, dim=1), UBOUND(nposterms, dim=1), 1
       nposterms(idx_9) = 0
     enddo
-!NO!$acc loop gang vector independent
+    !$acc loop gang vector independent
     do idx_10 = LBOUND(nnegterms, dim=1), UBOUND(nnegterms, dim=1), 1
       nnegterms(idx_10) = 0
     enddo
-!NO!$acc loop gang vector independent
+    !$acc loop gang vector independent
     do idx_11 = LBOUND(nfracterms, dim=1), UBOUND(nfracterms, dim=1), 1
       nfracterms(idx_11) = 0
     enddo
-!NO!$acc loop gang vector independent collapse(2)
+    !$acc loop gang vector independent collapse(2)
     do idx_12 = LBOUND(posterms, dim=2), UBOUND(posterms, dim=2), 1
       do idx_13 = LBOUND(posterms, dim=1), UBOUND(posterms, dim=1), 1
         posterms(idx_13,idx_12) = 0
       enddo
     enddo
-!NO!$acc loop gang vector independent collapse(2)
+    !$acc loop gang vector independent collapse(2)
     do idx_14 = LBOUND(negterms, dim=2), UBOUND(negterms, dim=2), 1
       do idx_15 = LBOUND(negterms, dim=1), UBOUND(negterms, dim=1), 1
         negterms(idx_15,idx_14) = 0
       enddo
     enddo
-!NO!$acc loop gang vector independent collapse(2)
+    !$acc loop gang vector independent collapse(2)
     do idx_16 = LBOUND(fracterms, dim=2), UBOUND(fracterms, dim=2), 1
       do idx_17 = LBOUND(fracterms, dim=1), UBOUND(fracterms, dim=1), 1
         fracterms(idx_17,idx_16) = 0
       enddo
     enddo
-!NO!$acc loop gang vector independent collapse(2)
+    !$acc loop gang vector independent collapse(2)
     do idx_18 = LBOUND(ffrac, dim=2), UBOUND(ffrac, dim=2), 1
       do idx_19 = LBOUND(ffrac, dim=1), UBOUND(ffrac, dim=1), 1
         ffrac(idx_19,idx_18) = 0.0
       enddo
     enddo
-!NO!$acc end kernels
+    !$acc end kernels
 
     do jc = 1, ntrf, 1
       itrcr = nltrf(jc)
       do j3 = 1, nmzjac(itrcr), 1
-!NO!$acc kernels
+        !$acc kernels
         irj = nzjac1(j3,itrcr)
-!NO!$acc loop gang vector independent
+        !$acc loop gang vector independent
         do jn = 1, jpmsp, 1
           ij(jn) = njcoth(irj,jn)
           lj(jn) = ij(jn) /= 0
         enddo
-!NO!$acc end kernels
+        !$acc end kernels
 
         do jn = 1, 2, 1
           if (lj(jn)) then
@@ -525,8 +525,8 @@ module asad_sparse_vars
     end if
     call nvtxStartRange(ModuleName // ':' // RoutineName)
 
-!NO!$acc kernels
-!NO!$acc loop gang vector independent collapse(2)
+    !$acc kernels
+    !$acc loop gang vector independent collapse(2)
     do jl = 1, jpcspf, 1
       do i = 1, n_points, 1
         if (f(i,jl) < min_pivot) then
@@ -535,44 +535,44 @@ module asad_sparse_vars
       enddo
     enddo
     deltt = 1.0 / cdt
-!NO!$acc loop gang vector independent collapse(2)
+    !$acc loop gang vector independent collapse(2)
     do idx = LBOUND(spfj, dim=2), UBOUND(spfj, dim=2), 1
       do idx_1 = LBOUND(spfj, dim=1), UBOUND(spfj, dim=1), 1
         spfj(idx_1,idx) = 0.0
       enddo
     enddo
-!NO!$acc loop seq
+    !$acc loop seq
     do i = 1, jpcspf, 1
-!NO!$acc loop gang vector independent
+      !$acc loop gang vector independent
       do idx_2 = LBOUND(spfj, dim=1), UBOUND(spfj, dim=1), 1
         spfj(idx_2,nonzero_map(i,i)) = -deltt * f(idx_2 + (LBOUND(f, dim=1) - LBOUND(spfj, dim=1)),i)
       enddo
     enddo
-!NO!$acc loop seq
+    !$acc loop seq
     do p = 1, total, 1
-!NO!$acc loop seq
+      !$acc loop seq
       do i = nposterms(p), 1, -1
-!NO!$acc loop gang vector independent
+        !$acc loop gang vector independent
         do idx_3 = LBOUND(spfj, dim=1), UBOUND(spfj, dim=1), 1
           spfj(idx_3,p) = spfj(idx_3,p) + prk(idx_3 + (LBOUND(prk, dim=1) - LBOUND(spfj, dim=1)),posterms(p,i))
         enddo
       enddo
-!NO!$acc loop seq
+      !$acc loop seq
       do i = nnegterms(p), 1, -1
-!NO!$acc loop gang vector independent
+        !$acc loop gang vector independent
         do idx_4 = LBOUND(spfj, dim=1), UBOUND(spfj, dim=1), 1
           spfj(idx_4,p) = spfj(idx_4,p) - prk(idx_4 + (LBOUND(prk, dim=1) - LBOUND(spfj, dim=1)),negterms(p,i))
         enddo
       enddo
-!NO!$acc loop seq
+      !$acc loop seq
       do i = nfracterms(p), 1, -1
-!NO!$acc loop gang vector independent
+        !$acc loop gang vector independent
         do idx_5 = LBOUND(spfj, dim=1), UBOUND(spfj, dim=1), 1
           spfj(idx_5,p) = spfj(idx_5,p) + ffrac(p,i) * prk(idx_5 + (LBOUND(prk, dim=1) - LBOUND(spfj, dim=1)),fracterms(p,i))
         enddo
       enddo
     enddo
-!NO!$acc end kernels
+    !$acc end kernels
 
     ! issue with kernel region cover whole section below - solution is to move kernel regions to inner loop
     do jc = 1, nstst, 1
@@ -588,30 +588,30 @@ module asad_sparse_vars
             print *, "RW: ij(jn) = ", ij(jn)
             print *, "RW: ntro3 = ", ntro3
 
-!NO!$acc kernels
+            !$acc kernels
             p = nonzero_map(ij(jn),ntro3)
-!NO!$acc loop gang vector independent
+            ! !$acc loop gang vector independent
             ! do idx_6 = LBOUND(spfj, dim=1), UBOUND(spfj, dim=1), 1
             !   spfj(idx_6,p) = spfj(idx_6,p) - prk(idx_6 + (LBOUND(prk, dim=1) - LBOUND(spfj, dim=1)),irj) * deriv(idx_6 + (LBOUND(deriv, dim=1) - LBOUND(spfj, dim=1)),jc,1)
             !   ! spfj(idx_6,p) = spfj(idx_6,p) - prk(idx_6, irj)!  * deriv(idx_6,jc,1)
             ! enddo
             spfj(:,p) = spfj(:,p) -                                                &
               prk(:,irj)*deriv(:,jc,1) ! *prkrat(jc)
-!NO!$acc end kernels
+            !$acc end kernels
 
           end if
         enddo
 
         do jn = 3, jpmsp, 1
           if (lj(jn)) then
-!NO!$acc kernels
+            !$acc kernels
             p = nonzero_map(ij(jn),ntro3)
-!NO!$acc loop gang vector independent
+            !$acc loop gang vector independent
             do idx_7 = LBOUND(spfj, dim=1), UBOUND(spfj, dim=1), 1
               spfj(idx_7,p) = spfj(idx_7,p) + prk(idx_7 + (LBOUND(prk, dim=1) - LBOUND(spfj, dim=1)),irj) * deriv(idx_7 + (LBOUND(deriv, dim=1) - LBOUND(spfj, dim=1)),jc,1)
               ! spfj(idx_7,p) = spfj(idx_7,p) + prk(idx_7,irj) ! * deriv(idx_7,jc,1)
             enddo
-!NO!$acc end kernels
+            !$acc end kernels
 
           end if
         enddo
@@ -624,37 +624,37 @@ module asad_sparse_vars
         itrd = madvtr(js)
         ityped(:) = ctype(js)
         if (ifamd /= 0) then
-!NO!$acc kernels
-!NO!$acc loop gang vector independent
+          !$acc kernels
+          !$acc loop gang vector independent
           do jl = 1, n_points, 1
             if (ityped(:) == jpfm(:) .OR. ityped(:) == jpif(:) .AND. linfam(jl,itrd)) then
               p = nonzero_map(ifamd,ifamd)
               spfj(jl,p) = spfj(jl,p) - nodd(js) * (dpd(jl,js) + dpw(jl,js)) * y(jl,js)
             end if
           enddo
-!NO!$acc end kernels
+          !$acc end kernels
 
         end if
         if (itrd /= 0) then
-!NO!$acc kernels
+          !$acc kernels
           p = nonzero_map(itrd,itrd)
-!NO!$acc loop gang vector independent
+          !$acc loop gang vector independent
           do idx_8 = LBOUND(spfj, dim=1), UBOUND(spfj, dim=1), 1
             spfj(idx_8,p) = spfj(idx_8,p) - (dpd(idx_8 + (LBOUND(dpd, dim=1) - LBOUND(spfj, dim=1)),js) + dpw(idx_8 + (LBOUND(dpw, dim=1) - LBOUND(spfj, dim=1)),js)) * y(idx_8 + (LBOUND(y, dim=1) - LBOUND(spfj, dim=1)),js)
           enddo
-!NO!$acc end kernels
+          !$acc end kernels
 
         end if
       enddo
     end if
-!NO!$acc kernels
-!NO!$acc loop gang vector independent collapse(2)
+    !$acc kernels
+    !$acc loop gang vector independent collapse(2)
     do p = 1, total, 1
       do idx_9 = LBOUND(spfj, dim=1), UBOUND(spfj, dim=1), 1
         spfj(idx_9,p) = spfj(idx_9,p) / f(idx_9 + (LBOUND(f, dim=1) - LBOUND(spfj, dim=1)),base_tracer(p))
       enddo
     enddo
-!NO!$acc end kernels
+    !$acc end kernels
 
     #ifdef ARRAYCHECKSUM
       checksum_result = array_xor_checksum(spfj)
@@ -730,33 +730,33 @@ module asad_sparse_vars
     end if
     call nvtxStartRange(ModuleName // ':' // RoutineName)
 
-!NO!$acc kernels
-!NO!$acc loop gang vector independent collapse(2)
+    !$acc kernels
+    !$acc loop gang vector independent collapse(2)
     do j = 1, total, 1
       do i = 1, n_points, 1
         spfj(i,j) = MIN(MAX(spfj(i,j), -max_val), max_val)
       enddo
     enddo
     total1 = total
-!NO!$acc loop gang vector independent collapse(2)
+    !$acc loop gang vector independent collapse(2)
     do idx = LBOUND(modified_map, dim=2), UBOUND(modified_map, dim=2), 1
       do idx_1 = LBOUND(modified_map, dim=1), UBOUND(modified_map, dim=1), 1
         modified_map(idx_1,idx) = nonzero_map_unordered(idx_1,idx)
       enddo
     enddo
-!NO!$acc end kernels
+    !$acc end kernels
 
     !NO!$acc kernels
     !NO!$acc loop seq
     do kr = 1, jpcspf, 1
       ! RW - below is temp
-!NO!$acc kernels
+      !$acc kernels
 
-!NO!$acc loop gang vector independent
+      !$acc loop gang vector independent
       do idx_2 = 1, n_points, 1
         pivot(idx_2) = spfj(idx_2,modified_map(kr,kr))
       enddo
-!NO!$acc loop gang vector independent
+      !$acc loop gang vector independent
       do widx1 = 1, n_points, 1
         if (ABS(pivot(widx1)) > min_pivot) then
           pivot(widx1) = 1.0 / pivot(widx1)
@@ -765,23 +765,23 @@ module asad_sparse_vars
         end if
       enddo
       ! RW - below is temp
-!NO!$acc end kernels
+      !$acc end kernels
 
       !NO!$acc loop seq
       do i = kr + 1, jpcspf, 1
         ikr = modified_map(i,kr)
         if (ikr > 0) then
 
-!NO!$acc kernels
-!NO!$acc loop gang vector independent
+          !$acc kernels
+          !$acc loop gang vector independent
           do idx_3 = 1, n_points, 1
             kfact(idx_3) = spfj(idx_3,ikr) * pivot(idx_3)
           enddo
-!NO!$acc loop gang vector independent
+          !$acc loop gang vector independent
           do idx_4 = LBOUND(spfj, dim=1), UBOUND(spfj, dim=1), 1
             spfj(idx_4,ikr) = kfact(idx_4)
           enddo
-!NO!$acc end kernels
+          !$acc end kernels
 
           !NO!$acc loop seq
           do j = kr + 1, jpcspf, 1
@@ -790,23 +790,23 @@ module asad_sparse_vars
               ij = modified_map(i,j)
               if (ij > 0) then
 
-!NO!$acc kernels
-!NO!$acc loop gang vector independent
+                !$acc kernels
+                !$acc loop gang vector independent
                 do idx_5 = LBOUND(spfj, dim=1), UBOUND(spfj, dim=1), 1
                   spfj(idx_5,ij) = spfj(idx_5,ij) - kfact(idx_5) * spfj(idx_5,krj)
                 enddo
-!NO!$acc end kernels
+                !$acc end kernels
               else
 
                 total1 = total1 + 1
                 modified_map(i,j) = total1
 
-!NO!$acc kernels
-!NO!$acc loop gang vector independent
+                !$acc kernels
+                !$acc loop gang vector independent
                 do idx_6 = LBOUND(spfj, dim=1), UBOUND(spfj, dim=1), 1
                   spfj(idx_6,total1) = (-1 * kfact(idx_6)) * spfj(idx_6,krj)
                 enddo
-!NO!$acc end kernels
+                !$acc end kernels
 
               end if
             end if
@@ -817,77 +817,77 @@ module asad_sparse_vars
     enddo
     !NO!$acc end kernels
 
-!NO!$acc kernels
-!NO!$acc loop gang vector independent collapse(2)
+    !$acc kernels
+    !$acc loop gang vector independent collapse(2)
     do j = 1, total1, 1
       do i = 1, n_points, 1
         spfj(i,j) = MIN(MAX(spfj(i,j), -max_val), max_val)
       enddo
     enddo
-!NO!$acc loop gang vector independent collapse(2)
+    !$acc loop gang vector independent collapse(2)
     do i = 1, jpcspf, 1
       do idx_7 = LBOUND(bb1, dim=1), UBOUND(bb1, dim=1), 1
         bb1(idx_7,i) = bb(idx_7,reorder(i))
       enddo
     enddo
-!NO!$acc loop seq
+    !$acc loop seq
     do kr = 1, jpcspf - 1, 1
-!NO!$acc loop seq
+      !$acc loop seq
       do i = kr + 1, jpcspf, 1
         ikr = modified_map(i,kr)
         if (ikr > 0) then
-!NO!$acc loop gang vector independent
+          !$acc loop gang vector independent
           do idx_8 = LBOUND(bb1, dim=1), UBOUND(bb1, dim=1), 1
             bb1(idx_8,i) = bb1(idx_8,i) - spfj(idx_8,ikr) * bb1(idx_8,kr)
           enddo
         end if
       enddo
     enddo
-!NO!$acc loop seq
+    !$acc loop seq
     do kr = jpcspf, 1, -1
-!NO!$acc loop gang vector independent
+      !$acc loop gang vector independent
       do idx_9 = LBOUND(xx1, dim=1), UBOUND(xx1, dim=1), 1
         xx1(idx_9,kr) = bb1(idx_9,kr)
       enddo
-!NO!$acc loop seq
+      !$acc loop seq
       do j = kr + 1, jpcspf, 1
         krj = modified_map(kr,j)
         if (krj > 0) then
-!NO!$acc loop gang vector independent
+          !$acc loop gang vector independent
           do idx_10 = LBOUND(xx1, dim=1), UBOUND(xx1, dim=1), 1
             xx1(idx_10,kr) = xx1(idx_10,kr) - spfj(idx_10,krj) * xx1(idx_10,j)
           enddo
         end if
       enddo
-!NO!$acc loop gang vector independent
+      !$acc loop gang vector independent
       do idx_11 = 1, n_points, 1
         pivot(idx_11) = spfj(idx_11,modified_map(kr,kr))
       enddo
-!NO!$acc loop gang vector independent
+      !$acc loop gang vector independent
       do widx1_1 = 1, n_points, 1
         if (ABS(pivot(widx1_1)) < min_pivot) then
           pivot(widx1_1) = min_pivot
         end if
       enddo
-!NO!$acc loop gang vector independent
+      !$acc loop gang vector independent
       do idx_12 = LBOUND(xx1, dim=1), UBOUND(xx1, dim=1), 1
         xx1(idx_12,kr) = MIN(MAX(xx1(idx_12,kr), -max_val), max_val) / pivot(idx_12)
       enddo
     enddo
-!NO!$acc loop gang vector independent collapse(2)
+    !$acc loop gang vector independent collapse(2)
     do idx_13 = 1, jpcspf, 1
       do idx_14 = 1, n_points, 1
         xx(idx_14,idx_13) = 0.0
       enddo
     enddo
-!NO!$acc loop seq
+    !$acc loop seq
     do j = 1, jpcspf, 1
-!NO!$acc loop gang vector independent
+      !$acc loop gang vector independent
       do idx_15 = LBOUND(xx, dim=1), UBOUND(xx, dim=1), 1
         xx(idx_15,reorder(j)) = xx1(idx_15,j)
       enddo
     enddo
-!NO!$acc end kernels
+    !$acc end kernels
 
     #ifdef ARRAYCHECKSUM
       checksum_result = array_xor_checksum(spfj)
@@ -956,20 +956,20 @@ module asad_sparse_vars
     end if
     call nvtxStartRange(ModuleName // ':' // RoutineName)
 
-!NO!$acc kernels
-!NO!$acc loop gang vector independent collapse(2)
+    !$NO!$acc kernels
+    !$NO!$acc loop gang vector independent collapse(2)
     do i = 1, jpcspf, 1
       do idx = LBOUND(bb1, dim=1), UBOUND(bb1, dim=1), 1
         bb1(idx,i) = bb(idx,reorder(i))
       enddo
     enddo
-!NO!$acc loop seq
+    !$NO!$acc loop seq
     do kr = 1, jpcspf - 1, 1
-!NO!$acc loop seq
+      !$NO!$acc loop seq
       do i = kr + 1, jpcspf, 1
         ikr = modified_map(i,kr)
         if (ikr > 0) then
-!NO!$acc loop gang vector independent
+          !$NO!$acc loop gang vector independent
           do idx_1 = LBOUND(bb1, dim=1), UBOUND(bb1, dim=1), 1
             bb1(idx_1,i) = bb1(idx_1,i) - spfj(idx_1,ikr) * bb1(idx_1,kr)
           enddo
@@ -977,28 +977,28 @@ module asad_sparse_vars
       enddo
     enddo
 
-!NO!$acc loop seq
+    !$NO!$acc loop seq
     do kr = jpcspf, 1, -1
-!NO!$acc loop gang vector independent
+      !$NO!$acc loop gang vector independent
       do idx_2 = LBOUND(xx1, dim=1), UBOUND(xx1, dim=1), 1
         xx1(idx_2,kr) = bb1(idx_2,kr)
       enddo
-!NO!$acc loop seq
+      !$NO!$acc loop seq
       do j = kr + 1, jpcspf, 1
         krj = modified_map(kr,j)
         if (krj > 0) then
-!NO!$acc loop gang vector independent
+          !$acc loop gang vector independent
           do idx_3 = LBOUND(xx1, dim=1), UBOUND(xx1, dim=1), 1
             xx1(idx_3,kr) = xx1(idx_3,kr) - spfj(idx_3,krj) * xx1(idx_3,j)
           enddo
         end if
       enddo
-!NO!$acc loop gang vector independent
+      !$NO!$acc loop gang vector independent
       do idx_4 = 1, n_points, 1
         pivot(idx_4) = spfj(idx_4,modified_map(kr,kr))
       enddo
 
-!NO!$acc loop gang vector independent
+      !$NO!$acc loop gang vector independent
       do widx1 = 1, n_points, 1
         if (ABS(pivot(widx1)) < min_pivot) then
           pivot(widx1) = min_pivot
@@ -1006,28 +1006,28 @@ module asad_sparse_vars
       enddo
 
       ! RW - loop only gives CPU matching results without independance
-!NO!$acc loop gang vector
+      !$NO!$acc loop gang vector
       do idx_5 = LBOUND(xx1, dim=1), UBOUND(xx1, dim=1), 1
         xx1(idx_5,kr) = xx1(idx_5,kr) / pivot(idx_5)
       enddo
 
     enddo
 
-!NO!$acc loop gang vector independent collapse(2)
+    !$NO!$acc loop gang vector independent collapse(2)
     do idx_6 = 1, jpcspf, 1
       do idx_7 = 1, n_points, 1
         xx(idx_7,idx_6) = 0.0
       enddo
     enddo
 
-!NO!$acc loop seq
+    !$NO!$acc loop seq
     do i = 1, jpcspf, 1
-!NO!$acc loop gang vector independent
+      !$acc loop gang vector independent
       do idx_8 = LBOUND(xx, dim=1), UBOUND(xx, dim=1), 1
         xx(idx_8,reorder(i)) = xx1(idx_8,i)
       enddo
     enddo
-!NO!$acc end kernels
+    !$NO!$acc end kernels
 
     #ifdef ARRAYCHECKSUM
       checksum_result = array_xor_checksum(bb1)
