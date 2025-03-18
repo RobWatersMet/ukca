@@ -38,11 +38,11 @@ module asad_spimpmjp_mod
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
     call nvtxStartRange(ModuleName // ':' // RoutineName)
-    !$acc kernels
-    !$acc loop seq
+!NO!$acc kernels
+!NO!$acc loop seq
     do jtr = 1, jpcspf, 1
       ip = nonzero_map(jtr,jtr)
-      !$acc loop gang vector independent
+!NO!$acc loop gang vector independent
       do jl = 1, n_points, 1
         if (spfj(jl,ip) > 0.0) then
           f(jl,jtr) = f_initial(jl,jtr) + cdt * fdot(jl,jtr)
@@ -54,7 +54,7 @@ module asad_spimpmjp_mod
         end if
       enddo
     enddo
-    !$acc end kernels
+!NO!$acc end kernels
 
     #ifdef ARRAYCHECKSUM
       checksum_result = array_xor_checksum(f)
