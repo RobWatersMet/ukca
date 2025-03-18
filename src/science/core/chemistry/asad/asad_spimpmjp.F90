@@ -10,6 +10,7 @@ module asad_spimpmjp_mod
   public
 
   contains
+
   subroutine forward_euler(n_points, f, f_initial, f_min, nonzero_map, spfj)
     use asad_mod, only : cdt, fdot, jpcspf, spfjsize_max
     use yomhook, only : dr_hook, lhook
