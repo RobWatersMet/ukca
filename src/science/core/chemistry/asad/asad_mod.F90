@@ -267,7 +267,126 @@ module asad_mod
 
   public
 
+  ! Overloaded interface for both integer and real arrays
+  interface array_xor_checksum
+    module procedure array_xor_checksum_int_2d
+    module procedure array_xor_checksum_int_1d
+    module procedure array_xor_checksum_real_2d
+    module procedure array_xor_checksum_real_1d
+    module procedure array_xor_checksum_logical_2d
+    module procedure array_xor_checksum_logical_1d
+  end interface
+
   contains
+
+  function array_xor_checksum_int_2d(arr) result(checksum)
+    implicit none
+    integer, intent(in)  :: arr(:,:)
+    integer, allocatable :: arrflat(:)
+    integer              :: checksum
+    integer              :: i
+
+    print*, 'Im in array_xor_checksum_int_2d'
+    print*, 'Sum of variable: ', sum(arr)
+
+    allocate(arrflat(size(arr)))
+
+    ! need to flatten if using arr(i)
+    arrflat = reshape(arr, [size(arr)])
+
+    checksum = 0
+    do i = 1, size(arr)
+      checksum = ieor(checksum, arrflat(i))
+    end do
+  end function array_xor_checksum_int_2d
+
+  function array_xor_checksum_int_1d(arr) result(checksum)
+    implicit none
+    integer, intent(in)  :: arr(:)
+    integer              :: checksum
+    integer              :: i
+
+    print*, 'Im in array_xor_checksum_int_1d'
+    print*, 'Sum of variable: ', sum(arr)
+
+    checksum = 0
+    do i = 1, size(arr)
+      checksum = ieor(checksum, arr(i))
+    end do
+  end function array_xor_checksum_int_1d
+
+  function array_xor_checksum_real_2d(arr) result(checksum)
+    implicit none
+    real, intent(in)     :: arr(:,:)
+    real, allocatable    :: arrflat(:)
+    integer              :: checksum
+    integer              :: i, int_value
+
+    print*, 'Im in array_xor_checksum_real_2d'
+
+    allocate(arrflat(size(arr)))
+
+    ! need to flatten if using arr(i)
+    arrflat = reshape(arr, [size(arr)])
+
+    checksum = 0
+    do i = 1, size(arr)
+        int_value = int(arrflat(i) * 1e6)  ! Convert to int with scaling
+        checksum = ieor(checksum, int_value)
+    end do
+  end function array_xor_checksum_real_2d
+
+  function array_xor_checksum_real_1d(arr) result(checksum)
+    implicit none
+    real, intent(in)     :: arr(:)
+    integer              :: checksum
+    integer              :: i, int_value
+
+    print*, 'Im in array_xor_checksum_real_1d'
+
+    checksum = 0
+    do i = 1, size(arr)
+        int_value = int(arr(i) * 1e6)  ! Convert to int with scaling
+        checksum = ieor(checksum, int_value)
+    end do
+  end function array_xor_checksum_real_1d
+
+  function array_xor_checksum_logical_2d(arr) result(checksum)
+    implicit none
+    logical, intent(in)     :: arr(:,:)
+    logical, allocatable    :: arrflat(:)
+    integer                 :: checksum
+    integer                 :: i, int_value
+
+    print*, 'Im in array_xor_checksum_logical_2d'
+
+    allocate(arrflat(size(arr)))
+
+    ! need to flatten if using arr(i)
+    arrflat = reshape(arr, [size(arr)])
+
+    checksum = 0
+    do i = 1, size(arr)
+        int_value = merge(1, 0, arrflat(i))
+        checksum = ieor(checksum, int_value)
+    end do
+  end function array_xor_checksum_logical_2d
+
+  function array_xor_checksum_logical_1d(arr) result(checksum)
+    implicit none
+    logical, intent(in)     :: arr(:)
+    integer                 :: checksum
+    integer                 :: i, int_value
+
+    print*, 'Im in array_xor_checksum_logical_1d'
+
+    checksum = 0
+    do i = 1, size(arr)
+        int_value = merge(1, 0, arr(i))
+        checksum = ieor(checksum, int_value)
+    end do
+  end function array_xor_checksum_logical_1d
+
   subroutine asad_mod_pre_setup_init()
     integer(kind=jpim), parameter :: zhook_in = 0
     integer(kind=jpim), parameter :: zhook_out = 1

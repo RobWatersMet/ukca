@@ -1,6 +1,12 @@
 module asad_spimpmjp_mod
+
+  #ifdef ARRAYCHECKSUM
+    use asad_mod, only: array_xor_checksum
+  #endif
+
   implicit none
   character(len = *), parameter, private :: ModuleName = 'ASAD_SPIMPMJP_MOD'
+
   public
 
   contains
@@ -23,6 +29,10 @@ module asad_spimpmjp_mod
     real(kind=jprb) :: zhook_handle
     CHARACTER(LEN = *), PARAMETER :: RoutineName = 'FORWARD_EULER'
 
+    #ifdef ARRAYCHECKSUM
+      integer :: checksum_result
+    #endif
+
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
@@ -44,6 +54,12 @@ module asad_spimpmjp_mod
       enddo
     enddo
     !$acc end kernels
+
+    #ifdef ARRAYCHECKSUM
+      checksum_result = array_xor_checksum(permute)
+      print*, 'Checksum - permute in ', RoutineName, ' = ', checksum_result
+    #endif
+
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
     end if
@@ -69,6 +85,10 @@ module asad_spimpmjp_mod
     CHARACTER(LEN = *), PARAMETER :: RoutineName = 'CALC_RESIDUAL_ERROR'
     integer :: idx
 
+    #ifdef ARRAYCHECKSUM
+      integer :: checksum_result
+    #endif
+
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
@@ -92,6 +112,12 @@ module asad_spimpmjp_mod
         end if
       enddo
     enddo
+
+    #ifdef ARRAYCHECKSUM
+      checksum_result = array_xor_checksum(tmprc)
+      print*, 'Checksum - tmprc in ', RoutineName, ' = ', checksum_result
+    #endif
+
     !NO!$acc end kernels
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
@@ -132,6 +158,7 @@ module asad_spimpmjp_mod
       enddo
     enddo
     !NO!$acc end kernels
+
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
     end if
@@ -220,6 +247,10 @@ module asad_spimpmjp_mod
     integer :: idx_19
     integer :: idx_20
     integer :: idx_21
+
+    #ifdef ARRAYCHECKSUM
+      integer :: checksum_result
+    #endif
 
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
@@ -558,6 +589,23 @@ module asad_spimpmjp_mod
       call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
     end if
     call nvtxEndRange()
+
+    #ifdef ARRAYCHECKSUM
+      checksum_result = array_xor_checksum(f)
+      print*, 'Checksum - f in ', RoutineName, ' = ', checksum_result
+      checksum_result = array_xor_checksum(g_ftmp)
+      print*, 'Checksum - g_ftmp in ', RoutineName, ' = ', checksum_result
+      checksum_result = array_xor_checksum(delta_g)
+      print*, 'Checksum - delta_g in ', RoutineName, ' = ', checksum_result
+      checksum_result = array_xor_checksum(g_f)
+      print*, 'Checksum - g_f in ', RoutineName, ' = ', checksum_result
+      checksum_result = array_xor_checksum(f_incr)
+      print*, 'Checksum - f_incr in ', RoutineName, ' = ', checksum_result
+      checksum_result = array_xor_checksum(fj)
+      print*, 'Checksum - fj in ', RoutineName, ' = ', checksum_result
+
+    #endif
+
     return
 
   end subroutine asad_spimpmjp

@@ -1,127 +1,14 @@
 module asad_sparse_vars
+  #ifdef ARRAYCHECKSUM
+    use asad_mod, only: array_xor_checksum
+  #endif
+
   implicit none
   character(len = *), parameter, private :: ModuleName = 'ASAD_SPARSE_VARS'
+
   public
 
-  ! Overloaded interface for both integer and real arrays
-  interface array_xor_checksum
-    module procedure array_xor_checksum_int_2d
-    module procedure array_xor_checksum_int_1d
-    module procedure array_xor_checksum_real_2d
-    module procedure array_xor_checksum_real_1d
-    module procedure array_xor_checksum_logical_2d
-    module procedure array_xor_checksum_logical_1d
-  end interface
-
   contains
-
-  function array_xor_checksum_int_2d(arr) result(checksum)
-    implicit none
-    integer, intent(in)  :: arr(:,:)
-    integer, allocatable :: arrflat(:)
-    integer              :: checksum
-    integer              :: i
-
-    print*, 'Im in array_xor_checksum_int_2d'
-    print*, 'Sum of variable: ', sum(arr)
-
-    allocate(arrflat(size(arr)))
-
-    ! need to flatten if using arr(i)
-    arrflat = reshape(arr, [size(arr)])
-
-    checksum = 0
-    do i = 1, size(arr)
-      checksum = ieor(checksum, arrflat(i))
-    end do
-  end function array_xor_checksum_int_2d
-
-  function array_xor_checksum_int_1d(arr) result(checksum)
-    implicit none
-    integer, intent(in)  :: arr(:)
-    integer              :: checksum
-    integer              :: i
-
-    print*, 'Im in array_xor_checksum_int_1d'
-    print*, 'Sum of variable: ', sum(arr)
-
-    checksum = 0
-    do i = 1, size(arr)
-      checksum = ieor(checksum, arr(i))
-    end do
-  end function array_xor_checksum_int_1d
-
-  function array_xor_checksum_real_2d(arr) result(checksum)
-    implicit none
-    real, intent(in)     :: arr(:,:)
-    real, allocatable    :: arrflat(:)
-    integer              :: checksum
-    integer              :: i, int_value
-
-    print*, 'Im in array_xor_checksum_real_2d'
-
-    allocate(arrflat(size(arr)))
-
-    ! need to flatten if using arr(i)
-    arrflat = reshape(arr, [size(arr)])
-
-    checksum = 0
-    do i = 1, size(arr)
-        int_value = int(arrflat(i) * 1e6)  ! Convert to int with scaling
-        checksum = ieor(checksum, int_value)
-    end do
-  end function array_xor_checksum_real_2d
-
-  function array_xor_checksum_real_1d(arr) result(checksum)
-    implicit none
-    real, intent(in)     :: arr(:)
-    integer              :: checksum
-    integer              :: i, int_value
-
-    print*, 'Im in array_xor_checksum_real_1d'
-
-    checksum = 0
-    do i = 1, size(arr)
-        int_value = int(arr(i) * 1e6)  ! Convert to int with scaling
-        checksum = ieor(checksum, int_value)
-    end do
-  end function array_xor_checksum_real_1d
-
-  function array_xor_checksum_logical_2d(arr) result(checksum)
-    implicit none
-    logical, intent(in)     :: arr(:,:)
-    logical, allocatable    :: arrflat(:)
-    integer                 :: checksum
-    integer                 :: i, int_value
-
-    print*, 'Im in array_xor_checksum_logical_2d'
-
-    allocate(arrflat(size(arr)))
-
-    ! need to flatten if using arr(i)
-    arrflat = reshape(arr, [size(arr)])
-
-    checksum = 0
-    do i = 1, size(arr)
-        int_value = merge(1, 0, arrflat(i))
-        checksum = ieor(checksum, int_value)
-    end do
-  end function array_xor_checksum_logical_2d
-
-  function array_xor_checksum_logical_1d(arr) result(checksum)
-    implicit none
-    logical, intent(in)     :: arr(:)
-    integer                 :: checksum
-    integer                 :: i, int_value
-
-    print*, 'Im in array_xor_checksum_logical_1d'
-
-    checksum = 0
-    do i = 1, size(arr)
-        int_value = merge(1, 0, arr(i))
-        checksum = ieor(checksum, int_value)
-    end do
-  end function array_xor_checksum_logical_1d
 
   subroutine setup_spfuljac()
     use asad_mod, only : base_tracer, ffrac, fracterms, frpx, jpcspf, jpfrpx, jpmsp, jpspec, madvtr, maxfterms, maxterms, modified_map, ndepd, ndepw, negterms, nfracterms, nfrpx, njcoth, nltrf, nmsjac, nmzjac, nnegterms, nonzero_map, nonzero_map_unordered, npdfr, nposterms, nsjac1, nstst, ntabpd, ntrf, ntro3, nzjac1, posterms, reorder, specf, spfjsize_max, total, ztabpd
@@ -194,64 +81,6 @@ module asad_sparse_vars
       ALLOCATE(map(1:jpcspf,1:jpcspf))
     end if
 
-    #ifdef ARRAYCHECKSUM
-      checksum_result = array_xor_checksum(map)
-      print*, 'Checksum - map in ', RoutineName, ' = ', checksum_result
-      checksum_result = array_xor_checksum(ij)
-      print*, 'Checksum - ij in ', RoutineName, ' = ', checksum_result
-      checksum_result = array_xor_checksum(lj)
-      print*, 'Checksum - lj in ', RoutineName, ' = ', checksum_result
-      checksum_result = array_xor_checksum(nonzero_map)
-      print*, 'Checksum - nonzero_map in ', RoutineName, ' = ', checksum_result
-      checksum_result = array_xor_checksum(base_tracer)
-      print*, 'Checksum - base_tracer in ', RoutineName, ' = ', checksum_result
-      checksum_result = array_xor_checksum(activity)
-      print*, 'Checksum - activity in ', RoutineName, ' = ', checksum_result
-      checksum_result = array_xor_checksum(reorder)
-      print*, 'Checksum - reorder in ', RoutineName, ' = ', checksum_result
-      checksum_result = array_xor_checksum(modified_map)
-      print*, 'Checksum - modified_map in ', RoutineName, ' = ', checksum_result
-      checksum_result = array_xor_checksum(nposterms)
-      print*, 'Checksum - nposterms in ', RoutineName, ' = ', checksum_result
-      checksum_result = array_xor_checksum(nnegterms)
-      print*, 'Checksum - nnegterms in ', RoutineName, ' = ', checksum_result
-      checksum_result = array_xor_checksum(nfracterms)
-      print*, 'Checksum - nfracterms in ', RoutineName, ' = ', checksum_result
-      checksum_result = array_xor_checksum(posterms)
-      print*, 'Checksum - posterms in ', RoutineName, ' = ', checksum_result
-      checksum_result = array_xor_checksum(negterms)
-      print*, 'Checksum - negterms in ', RoutineName, ' = ', checksum_result
-      checksum_result = array_xor_checksum(fracterms)
-      print*, 'Checksum - fracterms in ', RoutineName, ' = ', checksum_result
-      checksum_result = array_xor_checksum(ffrac)
-      print*, 'Checksum - ffrac in ', RoutineName, ' = ', checksum_result
-
-      checksum_result = array_xor_checksum(nmzjac)
-      print*, 'Checksum - nmzjac in ', RoutineName, ' = ', checksum_result
-      checksum_result = array_xor_checksum(nltrf)
-      print*, 'Checksum - nltrf in ', RoutineName, ' = ', checksum_result
-      checksum_result = array_xor_checksum(nmzjac)
-      print*, 'Checksum - nmzjac in ', RoutineName, ' = ', checksum_result
-      checksum_result = array_xor_checksum(nzjac1)
-      print*, 'Checksum - nzjac1 in ', RoutineName, ' = ', checksum_result
-      checksum_result = array_xor_checksum(njcoth)
-      print*, 'Checksum - njcoth in ', RoutineName, ' = ', checksum_result
-
-      checksum_result = array_xor_checksum(npdfr)
-      print*, 'Checksum - npdfr in ', RoutineName, ' = ', checksum_result
-      checksum_result = array_xor_checksum(ntabpd)
-      print*, 'Checksum - ntabpd in ', RoutineName, ' = ', checksum_result
-      checksum_result = array_xor_checksum(nmsjac)
-      print*, 'Checksum - nmsjac in ', RoutineName, ' = ', checksum_result
-      checksum_result = array_xor_checksum(nsjac1)
-      print*, 'Checksum - nsjac1 in ', RoutineName, ' = ', checksum_result
-
-    #endif
-
-    print*, 'RW - ntrf = ', ntrf
-    print*, 'RW - jpmsp = ', jpmsp
-    print*, 'RW - nstst = ', nstst
-
     !$acc kernels
     !$acc loop gang vector independent collapse(2)
     do idx = LBOUND(map, dim=2), UBOUND(map, dim=2), 1
@@ -311,35 +140,6 @@ module asad_sparse_vars
     enddo
     !$acc end kernels
 
-    #ifdef ARRAYCHECKSUM
-      checksum_result = array_xor_checksum(map)
-      print*, 'Checksum - map in ', RoutineName, ' = ', checksum_result
-      checksum_result = array_xor_checksum(ij)
-      print*, 'Checksum - ij in ', RoutineName, ' = ', checksum_result
-      checksum_result = array_xor_checksum(lj)
-      print*, 'Checksum - lj in ', RoutineName, ' = ', checksum_result
-
-      checksum_result = array_xor_checksum(nmzjac)
-      print*, 'Checksum - nmzjac in ', RoutineName, ' = ', checksum_result
-      checksum_result = array_xor_checksum(nltrf)
-      print*, 'Checksum - nltrf in ', RoutineName, ' = ', checksum_result
-      checksum_result = array_xor_checksum(nmzjac)
-      print*, 'Checksum - nmzjac in ', RoutineName, ' = ', checksum_result
-      checksum_result = array_xor_checksum(nzjac1)
-      print*, 'Checksum - nzjac1 in ', RoutineName, ' = ', checksum_result
-      checksum_result = array_xor_checksum(njcoth)
-      print*, 'Checksum - njcoth in ', RoutineName, ' = ', checksum_result
-
-      checksum_result = array_xor_checksum(npdfr)
-      print*, 'Checksum - npdfr in ', RoutineName, ' = ', checksum_result
-      checksum_result = array_xor_checksum(ntabpd)
-      print*, 'Checksum - ntabpd in ', RoutineName, ' = ', checksum_result
-      checksum_result = array_xor_checksum(nmsjac)
-      print*, 'Checksum - nmsjac in ', RoutineName, ' = ', checksum_result
-      checksum_result = array_xor_checksum(nsjac1)
-      print*, 'Checksum - nsjac1 in ', RoutineName, ' = ', checksum_result
-    #endif
-
     if (ndepw /= 0 .OR. ndepd /= 0) then
       !$acc kernels
       !$acc loop seq
@@ -350,10 +150,7 @@ module asad_sparse_vars
         end if
       enddo
       !$acc end kernels
-      #ifdef ARRAYCHECKSUM
-        checksum_result = array_xor_checksum(map)
-        print*, 'Checksum - map in ', RoutineName, ' = ', checksum_result
-      #endif
+
     end if
     total = SUM(map)
     if (mype == 0 .AND. printstatus >= prstatus_oper) then
@@ -415,23 +212,6 @@ module asad_sparse_vars
     enddo
     !$acc end kernels
 
-    #ifdef ARRAYCHECKSUM
-      checksum_result = array_xor_checksum(nonzero_map)
-      print*, 'Checksum - nonzero_map in ', RoutineName, ' = ', checksum_result
-      checksum_result = array_xor_checksum(base_tracer)
-      print*, 'Checksum - base_tracer in ', RoutineName, ' = ', checksum_result
-      checksum_result = array_xor_checksum(activity)
-      print*, 'Checksum - activity in ', RoutineName, ' = ', checksum_result
-      checksum_result = array_xor_checksum(reorder)
-      print*, 'Checksum - reorder in ', RoutineName, ' = ', checksum_result
-    #endif
-
-    print *, "RW - value of jpcspf = ", jpcspf
-    print *, "RW - part 0 - min value of nonzero_map = ", minval(nonzero_map)
-    print *, "RW - lbounds nonzero dim 2", lbound(nonzero_map, 2)
-    print *, "RW - ubounds nonzero dim 2", ubound(nonzero_map, 2)
-    print *, "RW - lbounds nonzero dim 1", lbound(nonzero_map, 1)
-    print *, "RW - ubounds nonzero dim 1", ubound(nonzero_map, 1)
     do i = 1, jpcspf, 1
       if (mype == 0 .AND. printstatus >= prstatus_oper) then
         ! PSyclone CodeBlock (unsupported code) reason:
@@ -451,11 +231,6 @@ module asad_sparse_vars
       enddo
     enddo
     !$acc end kernels
-
-    #ifdef ARRAYCHECKSUM
-      checksum_result = array_xor_checksum(permute)
-      print*, 'Checksum - permute in ', RoutineName, ' = ', checksum_result
-    #endif
 
     !$acc kernels
     !$acc loop gang vector independent
@@ -479,11 +254,6 @@ module asad_sparse_vars
       enddo
     enddo
     !$acc end kernels
-
-    #ifdef ARRAYCHECKSUM
-      checksum_result = array_xor_checksum(modified_map)
-      print*, 'Checksum - modified_map in ', RoutineName, ' = ', checksum_result
-    #endif
 
     do kr = 1, jpcspf, 1
       do i = kr + 1, jpcspf, 1
@@ -564,23 +334,6 @@ module asad_sparse_vars
     enddo
     !$acc end kernels
 
-    #ifdef ARRAYCHECKSUM
-      checksum_result = array_xor_checksum(nposterms)
-      print*, 'Checksum - nposterms in ', RoutineName, ' = ', checksum_result
-      checksum_result = array_xor_checksum(nnegterms)
-      print*, 'Checksum - nnegterms in ', RoutineName, ' = ', checksum_result
-      checksum_result = array_xor_checksum(nfracterms)
-      print*, 'Checksum - nfracterms in ', RoutineName, ' = ', checksum_result
-      checksum_result = array_xor_checksum(posterms)
-      print*, 'Checksum - posterms in ', RoutineName, ' = ', checksum_result
-      checksum_result = array_xor_checksum(negterms)
-      print*, 'Checksum - negterms in ', RoutineName, ' = ', checksum_result
-      checksum_result = array_xor_checksum(fracterms)
-      print*, 'Checksum - fracterms in ', RoutineName, ' = ', checksum_result
-      checksum_result = array_xor_checksum(ffrac)
-      print*, 'Checksum - ffrac in ', RoutineName, ' = ', checksum_result
-    #endif
-
     do jc = 1, ntrf, 1
       itrcr = nltrf(jc)
       do j3 = 1, nmzjac(itrcr), 1
@@ -592,13 +345,6 @@ module asad_sparse_vars
           lj(jn) = ij(jn) /= 0
         enddo
         !$acc end kernels
-
-        #ifdef ARRAYCHECKSUM
-          checksum_result = array_xor_checksum(ij)
-          print*, 'Checksum - ij in ', RoutineName, ' = ', checksum_result
-          checksum_result = array_xor_checksum(lj)
-          print*, 'Checksum - lj in ', RoutineName, ' = ', checksum_result
-        #endif
 
         do jn = 1, 2, 1
           if (lj(jn)) then
@@ -675,6 +421,22 @@ module asad_sparse_vars
         end if
       enddo
     enddo
+
+    #ifdef ARRAYCHECKSUM
+      checksum_result = array_xor_checksum(ffrac)
+      print*, 'Checksum - ffrac in ', RoutineName, ' = ', checksum_result
+      checksum_result = array_xor_checksum(fracterms)
+      print*, 'Checksum - fracterms in ', RoutineName, ' = ', checksum_result
+      checksum_result = array_xor_checksum(posterms)
+      print*, 'Checksum - posterms in ', RoutineName, ' = ', checksum_result
+      checksum_result = array_xor_checksum(modified_map)
+      print*, 'Checksum - modified_map in ', RoutineName, ' = ', checksum_result
+      checksum_result = array_xor_checksum(ij)
+      print*, 'Checksum - ij in ', RoutineName, ' = ', checksum_result
+      checksum_result = array_xor_checksum(lj)
+      print*, 'Checksum - lj in ', RoutineName, ' = ', checksum_result
+    #endif
+
     if (lhook) then
       call dr_hook(ModuleName // ':' // RoutineName, zhook_out, zhook_handle)
     end if
@@ -726,30 +488,6 @@ module asad_sparse_vars
       integer :: checksum_result
     #endif
 
-    print *, "RW - part 4 - min value of nonzero_map = ", minval(nonzero_map)
-
-    print *, "RW - Size of lj:", LBOUND(lj,1), UBOUND(lj,1)
-    call umprint(ummessage, src='asad_sparse_vars')
-
-    print *, "RW - jpmsp:", jpmsp
-    call umprint(ummessage, src='asad_sparse_vars')
-
-    if (ALLOCATED(deriv)) then
-      print *, 'RW - derive allocated'
-      call umprint(ummessage, src='asad_mod')
-    else
-      print *, 'RW - derive not allocated'
-      call umprint(ummessage, src='asad_mod')
-    end if
-
-    print *, "RW - lbounds prk:", LBOUND(prk, dim=1)
-    call umprint(ummessage, src='asad_sparse_vars')
-    print *, "RW - lbounds spfj:", LBOUND(spfj, dim=1)
-    call umprint(ummessage, src='asad_sparse_vars')
-    print *, "RW - lbounds deriv:", LBOUND(deriv, dim=1)
-    call umprint(ummessage, src='asad_sparse_vars')
-
-
     do jc = 1, nstst, 1
       do j3 = 1, nmsjac(jc), 1
         irj = nsjac1(j3,jc)
@@ -786,13 +524,6 @@ module asad_sparse_vars
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
     call nvtxStartRange(ModuleName // ':' // RoutineName)
-
-    #ifdef ARRAYCHECKSUM
-      checksum_result = array_xor_checksum(f)
-      print*, 'Checksum - f in ', RoutineName, ' = ', checksum_result
-      checksum_result = array_xor_checksum(spfj)
-      print*, 'Checksum - spfj in ', RoutineName, ' = ', checksum_result
-    #endif
 
     !$acc kernels
     !$acc loop gang vector independent collapse(2)
@@ -843,13 +574,6 @@ module asad_sparse_vars
     enddo
     !$acc end kernels
 
-    #ifdef ARRAYCHECKSUM
-      checksum_result = array_xor_checksum(f)
-      print*, 'Checksum - f in ', RoutineName, ' = ', checksum_result
-      checksum_result = array_xor_checksum(spfj)
-      print*, 'Checksum - spfj in ', RoutineName, ' = ', checksum_result
-    #endif
-
     ! issue with kernel region cover whole section below - solution is to move kernel regions to inner loop
     do jc = 1, nstst, 1
       do j3 = 1, nmsjac(jc), 1
@@ -875,11 +599,6 @@ module asad_sparse_vars
               prk(:,irj)*deriv(:,jc,1) ! *prkrat(jc)
             !$acc end kernels
 
-            #ifdef ARRAYCHECKSUM
-              checksum_result = array_xor_checksum(spfj)
-              print*, 'Checksum - spfj in ', RoutineName, ' = ', checksum_result
-            #endif
-
           end if
         enddo
 
@@ -893,11 +612,6 @@ module asad_sparse_vars
               ! spfj(idx_7,p) = spfj(idx_7,p) + prk(idx_7,irj) ! * deriv(idx_7,jc,1)
             enddo
             !$acc end kernels
-
-            #ifdef ARRAYCHECKSUM
-              checksum_result = array_xor_checksum(spfj)
-              print*, 'Checksum - spfj in ', RoutineName, ' = ', checksum_result
-            #endif
 
           end if
         enddo
@@ -920,11 +634,6 @@ module asad_sparse_vars
           enddo
           !$acc end kernels
 
-          #ifdef ARRAYCHECKSUM
-            checksum_result = array_xor_checksum(spfj)
-            print*, 'Checksum - spfj in ', RoutineName, ' = ', checksum_result
-          #endif
-
         end if
         if (itrd /= 0) then
           !$acc kernels
@@ -934,11 +643,6 @@ module asad_sparse_vars
             spfj(idx_8,p) = spfj(idx_8,p) - (dpd(idx_8 + (LBOUND(dpd, dim=1) - LBOUND(spfj, dim=1)),js) + dpw(idx_8 + (LBOUND(dpw, dim=1) - LBOUND(spfj, dim=1)),js)) * y(idx_8 + (LBOUND(y, dim=1) - LBOUND(spfj, dim=1)),js)
           enddo
           !$acc end kernels
-
-          #ifdef ARRAYCHECKSUM
-            checksum_result = array_xor_checksum(spfj)
-            print*, 'Checksum - spfj in ', RoutineName, ' = ', checksum_result
-          #endif
 
         end if
       enddo
@@ -955,6 +659,12 @@ module asad_sparse_vars
     #ifdef ARRAYCHECKSUM
       checksum_result = array_xor_checksum(spfj)
       print*, 'Checksum - spfj in ', RoutineName, ' = ', checksum_result
+      checksum_result = array_xor_checksum(ij)
+      print*, 'Checksum - ij in ', RoutineName, ' = ', checksum_result
+      checksum_result = array_xor_checksum(lj)
+      print*, 'Checksum - lj in ', RoutineName, ' = ', checksum_result
+      checksum_result = array_xor_checksum(f)
+      print*, 'Checksum - f in ', RoutineName, ' = ', checksum_result
     #endif
 
     if (lhook) then
@@ -1019,23 +729,6 @@ module asad_sparse_vars
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
     call nvtxStartRange(ModuleName // ':' // RoutineName)
-
-    #ifdef ARRAYCHECKSUM
-      checksum_result = array_xor_checksum(spfj)
-      print*, 'Checksum - spfj in ', RoutineName, ' = ', checksum_result
-      checksum_result = array_xor_checksum(modified_map)
-      print*, 'Checksum - modified_map in ', RoutineName, ' = ', checksum_result
-      checksum_result = array_xor_checksum(pivot)
-      print*, 'Checksum - pivot in ', RoutineName, ' = ', checksum_result
-      checksum_result = array_xor_checksum(kfact)
-      print*, 'Checksum - kfact in ', RoutineName, ' = ', checksum_result
-      checksum_result = array_xor_checksum(bb1)
-      print*, 'Checksum - bb1 in ', RoutineName, ' = ', checksum_result
-      checksum_result = array_xor_checksum(xx1)
-      print*, 'Checksum - xx1 in ', RoutineName, ' = ', checksum_result
-      checksum_result = array_xor_checksum(xx)
-      print*, 'Checksum - xx in ', RoutineName, ' = ', checksum_result
-    #endif
 
     !$acc kernels
     !$acc loop gang vector independent collapse(2)
@@ -1262,17 +955,6 @@ module asad_sparse_vars
       call dr_hook(ModuleName // ':' // RoutineName, zhook_in, zhook_handle)
     end if
     call nvtxStartRange(ModuleName // ':' // RoutineName)
-
-    #ifdef ARRAYCHECKSUM
-      checksum_result = array_xor_checksum(bb1)
-      print*, 'Checksum - bb1 in ', RoutineName, ' = ', checksum_result
-      checksum_result = array_xor_checksum(xx1)
-      print*, 'Checksum - xx1 in ', RoutineName, ' = ', checksum_result
-      checksum_result = array_xor_checksum(pivot)
-      print*, 'Checksum - pivot in ', RoutineName, ' = ', checksum_result
-      checksum_result = array_xor_checksum(xx)
-      print*, 'Checksum - xx in ', RoutineName, ' = ', checksum_result
-    #endif
 
     !$acc kernels
     !$acc loop gang vector independent collapse(2)
