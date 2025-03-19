@@ -956,26 +956,28 @@ module asad_sparse_vars
     end if
     call nvtxStartRange(ModuleName // ':' // RoutineName)
 
-    !$NO!$acc kernels
-    !$NO!$acc loop gang vector independent collapse(2)
+    !$acc kernels
+    !$acc loop gang vector independent collapse(2)
     do i = 1, jpcspf, 1
       do idx = LBOUND(bb1, dim=1), UBOUND(bb1, dim=1), 1
         bb1(idx,i) = bb(idx,reorder(i))
       enddo
     enddo
-    !$NO!$acc loop seq
+    !$acc loop seq
     do kr = 1, jpcspf - 1, 1
-      !$NO!$acc loop seq
+      !$acc loop seq
       do i = kr + 1, jpcspf, 1
         ikr = modified_map(i,kr)
         if (ikr > 0) then
-          !$NO!$acc loop gang vector independent
+          !$acc loop gang vector independent
           do idx_1 = LBOUND(bb1, dim=1), UBOUND(bb1, dim=1), 1
             bb1(idx_1,i) = bb1(idx_1,i) - spfj(idx_1,ikr) * bb1(idx_1,kr)
           enddo
         end if
       enddo
     enddo
+
+    !$acc end kernels
 
     !$NO!$acc loop seq
     do kr = jpcspf, 1, -1
