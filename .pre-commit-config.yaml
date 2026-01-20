@@ -13,3 +13,19 @@ repos:
     rev: v1.22.0
     hooks:
       - id: zizmor
+
+  - repo: https://github.com/pseewald/fprettify
+    rev: v0.3.7
+    hooks:
+      - id: fprettify
+        files: \.(f90|F90)$
+        exclude: |
+          (^|/)ukca_chem_master\.F90$
+          |(^|/)ukca_chem_raqaero_mod\.F90$
+        args:
+          - --strict-indent
+          - --case
+          - "2"
+          - "2"
+          - "2"
+          - "2"
