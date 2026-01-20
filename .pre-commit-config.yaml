@@ -8,3 +8,8 @@ repos:
       - id: check-added-large-files
       - id: check-merge-conflict
       - id: no-commit-to-branch
+
+  - repo: https://github.com/zizmorcore/zizmor-pre-commit
+    rev: v1.22.0
+    hooks:
+      - id: zizmor
