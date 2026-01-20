@@ -19,9 +19,7 @@ repos:
     hooks:
       - id: fprettify
         files: \.(f90|F90)$
-        exclude: |
-          (^|/)ukca_chem_master\.F90$
-          |(^|/)ukca_chem_raqaero_mod\.F90$
+        exclude: (^|/)(ukca_chem_master|ukca_chem_raqaero_mod)\.F90$
         args:
           - --strict-indent
           - --case
