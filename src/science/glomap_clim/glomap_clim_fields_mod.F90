@@ -17,40 +17,40 @@
 ! ---------------------------------------------------------------------
 MODULE glomap_clim_fields_mod
 
-USE um_types,           ONLY: real_umphys
+   USE um_types, ONLY: real_umphys
 
-IMPLICIT NONE
+   IMPLICIT NONE
 
-REAL(KIND=real_umphys), ALLOCATABLE, PUBLIC :: aird(:)
+   REAL(KIND=real_umphys), ALLOCATABLE, PUBLIC :: aird(:)
 ! Air density number concentration (cm^-3) (n_points)
 
-REAL(KIND=real_umphys), ALLOCATABLE, PUBLIC :: drydp(:,:)
+   REAL(KIND=real_umphys), ALLOCATABLE, PUBLIC :: drydp(:, :)
 ! Median particle dry diameter for each mode (m)      (n_points,nmodes)
 
-REAL(KIND=real_umphys), ALLOCATABLE, PUBLIC :: dvol(:,:)
+   REAL(KIND=real_umphys), ALLOCATABLE, PUBLIC :: dvol(:, :)
 ! Median particle dry volume for each mode (m^3)      (n_points,nmodes)
 
-REAL(KIND=real_umphys), ALLOCATABLE, PUBLIC :: md(:,:,:)
+   REAL(KIND=real_umphys), ALLOCATABLE, PUBLIC :: md(:, :, :)
 ! Avg cpt mass of aerosol particle in mode (particle^-1) (n_points,nmodes,ncp)
 
-REAL(KIND=real_umphys), ALLOCATABLE, PUBLIC :: mdt(:,:)
+   REAL(KIND=real_umphys), ALLOCATABLE, PUBLIC :: mdt(:, :)
 ! Avg tot mass of aerosol ptcl in mode (particle^-1)  (n_points,nmodes)
 
-REAL(KIND=real_umphys), ALLOCATABLE, PUBLIC :: mmr1d(:,:,:)
+   REAL(KIND=real_umphys), ALLOCATABLE, PUBLIC :: mmr1d(:, :, :)
 ! Avg cpt mass mixing ratio of aerosol particle in mode (particle^-1)
 !                                                       (n_points,nmodes,ncp)
 
-REAL(KIND=real_umphys), ALLOCATABLE, PUBLIC :: nd(:,:)
+   REAL(KIND=real_umphys), ALLOCATABLE, PUBLIC :: nd(:, :)
 ! Aerosol ptcl number density for mode (cm^-3) (n_points,nmodes)
 
-REAL(KIND=real_umphys), ALLOCATABLE, PUBLIC :: nmr1d(:,:)
+   REAL(KIND=real_umphys), ALLOCATABLE, PUBLIC :: nmr1d(:, :)
 ! Aerosol ptcl (number density/ air density) for mode (cm^-3)
 !                                                     (n_points,nmodes)
 
-REAL(KIND=real_umphys), ALLOCATABLE, PUBLIC :: pmid_1d(:)
+   REAL(KIND=real_umphys), ALLOCATABLE, PUBLIC :: pmid_1d(:)
 ! Pressure at mid levels (Pa)
 
-REAL(KIND=real_umphys), ALLOCATABLE, PUBLIC :: temp_1d(:)
+   REAL(KIND=real_umphys), ALLOCATABLE, PUBLIC :: temp_1d(:)
 ! Temperature 1-D
 
 END MODULE glomap_clim_fields_mod

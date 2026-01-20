@@ -42,69 +42,69 @@ MODULE photol_api_mod
 ! This is important to avoid pollution of a parent application's
 ! namespace.
 
-USE photol_calc_ozonecol_mod, ONLY: photol_calc_ozonecol
-USE photol_setup_mod, ONLY: photol_setup
+   USE photol_calc_ozonecol_mod, ONLY: photol_calc_ozonecol
+   USE photol_setup_mod, ONLY: photol_setup
 
-USE photol_config_specification_mod, ONLY:                                     &
-  photol_get_config, photol_off => i_scheme_nophot,                            &
-  photol_strat_only => i_scheme_photol_strat,                                  &
-  photol_2d => i_scheme_phot2d, photol_fastjx => i_scheme_fastjx
+   USE photol_config_specification_mod, ONLY: &
+      photol_get_config, photol_off => i_scheme_nophot, &
+      photol_strat_only => i_scheme_photol_strat, &
+      photol_2d => i_scheme_phot2d, photol_fastjx => i_scheme_fastjx
 
-USE photol_fieldname_mod,   ONLY:                                              &
-  photol_fieldname_len =>  fieldname_len, photol_jlabel_len,                   &
-  photol_fldname_aod_sulph_aitk => fldname_aod_sulph_aitk,                     &
-  photol_fldname_aod_sulph_accum => fldname_aod_sulph_accum,                   &
-  photol_fldname_area_cloud_fraction => fldname_area_cloud_fraction,           &
-  photol_fldname_conv_cloud_amount => fldname_conv_cloud_amount,               &
-  photol_fldname_conv_cloud_base => fldname_conv_cloud_base,                   &
-  photol_fldname_conv_cloud_lwp => fldname_conv_cloud_lwp,                     &
-  photol_fldname_conv_cloud_top => fldname_conv_cloud_top,                     &
-  photol_fldname_cos_latitude => fldname_cos_latitude,                         &
-  photol_fldname_equation_of_time => fldname_equation_of_time,                 &
-  photol_fldname_land_fraction => fldname_land_fraction,                       &
-  photol_fldname_longitude => fldname_longitude,                               &
-  photol_fldname_ozone_mmr => fldname_ozone_mmr,                               &
-  photol_fldname_p_layer_boundaries => fldname_p_layer_boundaries,             &
-  photol_fldname_p_theta_levels => fldname_p_theta_levels,                     &
-  photol_fldname_photol_rates_2d => fldname_photol_rates_2d,                   &
-  photol_fldname_qcf => fldname_qcf, photol_fldname_qcl => fldname_qcl,        &
-  photol_fldname_rad_ctl_jo2 => fldname_rad_ctl_jo2,                           &
-  photol_fldname_rad_ctl_jo2b => fldname_rad_ctl_jo2b,                         &
-  photol_fldname_r_rho_levels => fldname_r_rho_levels,                         &
-  photol_fldname_r_theta_levels => fldname_r_theta_levels,                     &
-  photol_fldname_sec_since_midnight => fldname_sec_since_midnight,             &
-  photol_fldname_sin_declination => fldname_sin_declination,                   &
-  photol_fldname_sin_latitude => fldname_sin_latitude,                         &
-  photol_fldname_so4_aitken => fldname_so4_aitken,                             &
-  photol_fldname_so4_accum => fldname_so4_accum,                               &
-  photol_fldname_surf_albedo => fldname_surf_albedo,                           &
-  photol_fldname_t_theta_levels => fldname_t_theta_levels,                     &
-  photol_fldname_tan_latitude => fldname_tan_latitude,                         &
-  photol_fldname_z_top_of_model => fldname_z_top_of_model
+   USE photol_fieldname_mod, ONLY: &
+      photol_fieldname_len => fieldname_len, photol_jlabel_len, &
+      photol_fldname_aod_sulph_aitk => fldname_aod_sulph_aitk, &
+      photol_fldname_aod_sulph_accum => fldname_aod_sulph_accum, &
+      photol_fldname_area_cloud_fraction => fldname_area_cloud_fraction, &
+      photol_fldname_conv_cloud_amount => fldname_conv_cloud_amount, &
+      photol_fldname_conv_cloud_base => fldname_conv_cloud_base, &
+      photol_fldname_conv_cloud_lwp => fldname_conv_cloud_lwp, &
+      photol_fldname_conv_cloud_top => fldname_conv_cloud_top, &
+      photol_fldname_cos_latitude => fldname_cos_latitude, &
+      photol_fldname_equation_of_time => fldname_equation_of_time, &
+      photol_fldname_land_fraction => fldname_land_fraction, &
+      photol_fldname_longitude => fldname_longitude, &
+      photol_fldname_ozone_mmr => fldname_ozone_mmr, &
+      photol_fldname_p_layer_boundaries => fldname_p_layer_boundaries, &
+      photol_fldname_p_theta_levels => fldname_p_theta_levels, &
+      photol_fldname_photol_rates_2d => fldname_photol_rates_2d, &
+      photol_fldname_qcf => fldname_qcf, photol_fldname_qcl => fldname_qcl, &
+      photol_fldname_rad_ctl_jo2 => fldname_rad_ctl_jo2, &
+      photol_fldname_rad_ctl_jo2b => fldname_rad_ctl_jo2b, &
+      photol_fldname_r_rho_levels => fldname_r_rho_levels, &
+      photol_fldname_r_theta_levels => fldname_r_theta_levels, &
+      photol_fldname_sec_since_midnight => fldname_sec_since_midnight, &
+      photol_fldname_sin_declination => fldname_sin_declination, &
+      photol_fldname_sin_latitude => fldname_sin_latitude, &
+      photol_fldname_so4_aitken => fldname_so4_aitken, &
+      photol_fldname_so4_accum => fldname_so4_accum, &
+      photol_fldname_surf_albedo => fldname_surf_albedo, &
+      photol_fldname_t_theta_levels => fldname_t_theta_levels, &
+      photol_fldname_tan_latitude => fldname_tan_latitude, &
+      photol_fldname_z_top_of_model => fldname_z_top_of_model
 
-USE ukca_error_mod, ONLY: photol_error_method_abort => i_error_method_abort,   &
-  photol_error_method_return => i_error_method_return,                         &
-  photol_error_method_warn_and_return => i_error_method_warn_and_return
+   USE ukca_error_mod, ONLY: photol_error_method_abort => i_error_method_abort, &
+                             photol_error_method_return => i_error_method_return, &
+                             photol_error_method_warn_and_return => i_error_method_warn_and_return
 
 ! Helper routines to process 2-D photolysis data
-USE ukca_phot2d,        ONLY: ukca_photin
-USE photol_curve_mod,   ONLY: photol_curve
+   USE ukca_phot2d, ONLY: ukca_photin
+   USE photol_curve_mod, ONLY: photol_curve
 
-USE photol_environment_mod, ONLY: photol_get_environ_varlist
-USE photol_step_control_mod, ONLY: photol_step_control
+   USE photol_environment_mod, ONLY: photol_get_environ_varlist
+   USE photol_step_control_mod, ONLY: photol_step_control
 
 ! Fastjx data parameters needed to read spectral files
-USE fastjx_data,   ONLY:  photol_max_miesets => a_,                            &
-   photol_n_solcyc_av => n_solcyc_av, photol_sw_band_aer => sw_band_aer,       &
-   photol_sw_phases => sw_phases, photol_max_wvl => wx_,                       &
-   photol_max_crossec => x_
-USE ukca_parpho_mod, ONLY: photol_wvl_intervals => jpwav,                      &
-   photol_num_tvals => jptem
+   USE fastjx_data, ONLY: photol_max_miesets => a_, &
+                          photol_n_solcyc_av => n_solcyc_av, photol_sw_band_aer => sw_band_aer, &
+                          photol_sw_phases => sw_phases, photol_max_wvl => wx_, &
+                          photol_max_crossec => x_
+   USE ukca_parpho_mod, ONLY: photol_wvl_intervals => jpwav, &
+                              photol_num_tvals => jptem
 ! Routines reading the ASCII spectral/ solar data
-USE fastjx_read_ascii_mod, ONLY: photol_fjx_rd_mie_file => fastjx_rd_mie_file, &
-    photol_fjx_rd_xxx_file => fastjx_rd_xxx_file,                              &
-    photol_fjx_rd_sol_file => fastjx_rd_sol_file
+   USE fastjx_read_ascii_mod, ONLY: photol_fjx_rd_mie_file => fastjx_rd_mie_file, &
+                                    photol_fjx_rd_xxx_file => fastjx_rd_xxx_file, &
+                                    photol_fjx_rd_sol_file => fastjx_rd_sol_file
 
-IMPLICIT NONE
+   IMPLICIT NONE
 
 END MODULE photol_api_mod

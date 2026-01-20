@@ -31,43 +31,43 @@
 !
 MODULE ukca_photol_mod
 
-IMPLICIT NONE
+   IMPLICIT NONE
 
-CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName = 'UKCA_PHOTOL_MOD'
+   CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName = 'UKCA_PHOTOL_MOD'
 
 CONTAINS
 
-SUBROUTINE ukca_photol(prt,n_points)
+   SUBROUTINE ukca_photol(prt, n_points)
 
-USE asad_mod,        ONLY:  rk, nprkx, jppj
-USE parkind1, ONLY: jprb, jpim
-USE yomhook, ONLY: lhook, dr_hook
-IMPLICIT NONE
+      USE asad_mod, ONLY: rk, nprkx, jppj
+      USE parkind1, ONLY: jprb, jpim
+      USE yomhook, ONLY: lhook, dr_hook
+      IMPLICIT NONE
 
-INTEGER, INTENT(IN) :: n_points         ! No of spatial points
+      INTEGER, INTENT(IN) :: n_points         ! No of spatial points
 
-REAL, INTENT(IN) :: prt(n_points,jppj)  ! Photolysis rates
+      REAL, INTENT(IN) :: prt(n_points, jppj)  ! Photolysis rates
 
 ! Local variables
 
-INTEGER :: jl                           ! Loop variable
-INTEGER :: jr                           ! Loop variable
+      INTEGER :: jl                           ! Loop variable
+      INTEGER :: jr                           ! Loop variable
 
-INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
-INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
-REAL(KIND=jprb)               :: zhook_handle
+      INTEGER(KIND=jpim), PARAMETER :: zhook_in = 0
+      INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+      REAL(KIND=jprb)               :: zhook_handle
 
-CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_PHOTOL'
+      CHARACTER(LEN=*), PARAMETER :: RoutineName = 'UKCA_PHOTOL'
 
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+      IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_in, zhook_handle)
 
-DO jl = 1, n_points
-  DO jr = 1, jppj
-    rk(jl,nprkx(jr)) = prt(jl,jr)
-  END DO
-END DO
+      DO jl = 1, n_points
+         DO jr = 1, jppj
+            rk(jl, nprkx(jr)) = prt(jl, jr)
+         END DO
+      END DO
 
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
-RETURN
-END SUBROUTINE ukca_photol
+      IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_out, zhook_handle)
+      RETURN
+   END SUBROUTINE ukca_photol
 END MODULE ukca_photol_mod

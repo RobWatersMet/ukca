@@ -29,36 +29,36 @@
 
 MODULE ereport_mod
 
-IMPLICIT NONE
+   IMPLICIT NONE
 
-PUBLIC ereport
+   PUBLIC ereport
 
 CONTAINS
 
-SUBROUTINE ereport(routine_name, error_status, message)
+   SUBROUTINE ereport(routine_name, error_status, message)
 
-IMPLICIT NONE
+      IMPLICIT NONE
 
-CHARACTER(LEN=*), INTENT(IN) :: routine_name
-INTEGER, INTENT(IN OUT) :: error_status
-CHARACTER(LEN=*), INTENT(IN) :: message
+      CHARACTER(LEN=*), INTENT(IN) :: routine_name
+      INTEGER, INTENT(IN OUT) :: error_status
+      CHARACTER(LEN=*), INTENT(IN) :: message
 
 ! Take action depending on UM error status convention
-IF (error_status > 0) THEN
-  WRITE(*,'(A,A,A,A)') 'UKCA ERROR in ',                                       &
-                       TRIM(routine_name), ': ', TRIM(message)
-  STOP
-ELSE IF (error_status < 0) THEN
-  WRITE(*,'(A,A,A,A)') 'UKCA WARNING in ',                                     &
-                       TRIM(routine_name), ': ', TRIM(message)
-ELSE IF (error_status == 0) THEN
-  WRITE(*,'(A,A,A,A)') 'UKCA INFO in ',                                        &
-                       TRIM(routine_name), ': ', TRIM(message)
-END IF
+      IF (error_status > 0) THEN
+         WRITE (*, '(A,A,A,A)') 'UKCA ERROR in ', &
+            TRIM(routine_name), ': ', TRIM(message)
+         STOP
+      ELSE IF (error_status < 0) THEN
+         WRITE (*, '(A,A,A,A)') 'UKCA WARNING in ', &
+            TRIM(routine_name), ': ', TRIM(message)
+      ELSE IF (error_status == 0) THEN
+         WRITE (*, '(A,A,A,A)') 'UKCA INFO in ', &
+            TRIM(routine_name), ': ', TRIM(message)
+      END IF
 
 ! Reset error_status
-error_status = 0
+      error_status = 0
 
-END SUBROUTINE ereport
+   END SUBROUTINE ereport
 
 END MODULE ereport_mod

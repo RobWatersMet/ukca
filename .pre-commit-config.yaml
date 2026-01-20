@@ -9,11 +9,6 @@ repos:
       - id: check-merge-conflict
       - id: no-commit-to-branch
 
-  - repo: https://github.com/zizmorcore/zizmor-pre-commit
-    rev: v1.22.0
-    hooks:
-      - id: zizmor
-
   - repo: https://github.com/pseewald/fprettify
     rev: v0.3.7
     hooks:

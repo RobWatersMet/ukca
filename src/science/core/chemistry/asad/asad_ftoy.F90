@@ -127,424 +127,419 @@
 !
 MODULE asad_ftoy_mod
 
-IMPLICIT NONE
+   IMPLICIT NONE
 
-CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName = 'ASAD_FTOY_MOD'
+   CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName = 'ASAD_FTOY_MOD'
 
 CONTAINS
 
-SUBROUTINE asad_ftoy(ofirst,iter, num_iter, n_points, ix, jy, nlev)
+   SUBROUTINE asad_ftoy(ofirst, iter, num_iter, n_points, ix, jy, nlev)
 
-USE asad_mod,            ONLY: f, y, prod, slos, ratio, qa,                    &
-                               peps, cdt, pmintnd, nstst,                      &
-                               jpfm, jpif, jpna, moffam,                       &
-                               majors, ilstmin, ilft, nodd,                    &
-                               nlmajmin, madvtr, linfam,                       &
-                               nlstst, ctype, ftol,                            &
-                               jsro2, nlfro2, jpspec, jpro2
-USE ukca_config_specification_mod, ONLY: ukca_config
-USE parkind1, ONLY: jprb, jpim
-USE yomhook, ONLY: lhook, dr_hook
-USE ereport_mod, ONLY: ereport
+      USE asad_mod, ONLY: f, y, prod, slos, ratio, qa, &
+                          peps, cdt, pmintnd, nstst, &
+                          jpfm, jpif, jpna, moffam, &
+                          majors, ilstmin, ilft, nodd, &
+                          nlmajmin, madvtr, linfam, &
+                          nlstst, ctype, ftol, &
+                          jsro2, nlfro2, jpspec, jpro2
+      USE ukca_config_specification_mod, ONLY: ukca_config
+      USE parkind1, ONLY: jprb, jpim
+      USE yomhook, ONLY: lhook, dr_hook
+      USE ereport_mod, ONLY: ereport
 
-USE umPrintMgr, ONLY: umPrint
+      USE umPrintMgr, ONLY: umPrint
 
-USE errormessagelength_mod, ONLY: errormessagelength
+      USE errormessagelength_mod, ONLY: errormessagelength
 
-USE asad_fyfixr_mod, ONLY: asad_fyfixr
-USE asad_fyinit_mod, ONLY: asad_fyinit
-USE asad_prls_mod, ONLY: asad_prls
-USE asad_fyself_mod, ONLY: asad_fyself
+      USE asad_fyfixr_mod, ONLY: asad_fyfixr
+      USE asad_fyinit_mod, ONLY: asad_fyinit
+      USE asad_prls_mod, ONLY: asad_prls
+      USE asad_fyself_mod, ONLY: asad_fyself
 
-IMPLICIT NONE
+      IMPLICIT NONE
 
+      INTEGER, INTENT(IN)    :: n_points  ! No of spatial points
+      INTEGER, INTENT(IN)    :: ix        ! i counter
+      INTEGER, INTENT(IN)    :: jy        ! j counter
+      INTEGER, INTENT(IN)    :: nlev      ! Model level
+      INTEGER, INTENT(IN OUT) :: iter      ! Max no of iterations
+      INTEGER, INTENT(IN)    :: num_iter  ! Current iteration number
 
-
-INTEGER, INTENT(IN)    :: n_points  ! No of spatial points
-INTEGER, INTENT(IN)    :: ix        ! i counter
-INTEGER, INTENT(IN)    :: jy        ! j counter
-INTEGER, INTENT(IN)    :: nlev      ! Model level
-INTEGER, INTENT(IN OUT) :: iter      ! Max no of iterations
-INTEGER, INTENT(IN)    :: num_iter  ! Current iteration number
-
-LOGICAL, INTENT(IN) :: ofirst
+      LOGICAL, INTENT(IN) :: ofirst
 
 !       Local variables
 
 ! Variables for when using RO2-permutation chemistry
-REAL          :: fro2(n_points)     ! Total RO2 concentration (molecules/cm3)
-REAL          :: fro2_old(n_points) ! Total RO2 concentration previous iteration
-REAL          :: damp_ro2           ! Dampening factor for RO2 calculation
+      REAL          :: fro2(n_points)     ! Total RO2 concentration (molecules/cm3)
+      REAL          :: fro2_old(n_points) ! Total RO2 concentration previous iteration
+      REAL          :: damp_ro2           ! Dampening factor for RO2 calculation
 
-INTEGER       :: j           ! Loop variable
-INTEGER       :: jit         ! Loop variable
-INTEGER       :: jl          ! Loop variable
-INTEGER       :: js          ! Loop variable
-INTEGER       :: ifam
-INTEGER       :: imaj
-INTEGER       :: istart
-INTEGER       :: iend
-INTEGER       :: iodd
-INTEGER       :: itr
-INTEGER       :: icode       ! Error code
-INTEGER       :: iro2        ! Counter for RO2 species
+      INTEGER       :: j           ! Loop variable
+      INTEGER       :: jit         ! Loop variable
+      INTEGER       :: jl          ! Loop variable
+      INTEGER       :: js          ! Loop variable
+      INTEGER       :: ifam
+      INTEGER       :: imaj
+      INTEGER       :: istart
+      INTEGER       :: iend
+      INTEGER       :: iodd
+      INTEGER       :: itr
+      INTEGER       :: icode       ! Error code
+      INTEGER       :: iro2        ! Counter for RO2 species
 
-INTEGER, SAVE :: istmin
-INTEGER, SAVE :: ift
+      INTEGER, SAVE :: istmin
+      INTEGER, SAVE :: ift
 
-CHARACTER (LEN=errormessagelength) :: cmessage     ! Error message
-INTEGER :: errcode          ! Variable passed to ereport
-INTEGER :: errcodes(nstst)  ! Array for recording error codes
+      CHARACTER(LEN=errormessagelength) :: cmessage     ! Error message
+      INTEGER :: errcode          ! Variable passed to ereport
+      INTEGER :: errcodes(nstst)  ! Array for recording error codes
 
-REAL          :: zthresh
-REAL          :: sl
-REAL          :: zy(n_points,jpspec)
-REAL          :: zb(n_points)
-REAL          :: zc(n_points)
-REAL          :: zd(n_points)
+      REAL          :: zthresh
+      REAL          :: sl
+      REAL          :: zy(n_points, jpspec)
+      REAL          :: zb(n_points)
+      REAL          :: zc(n_points)
+      REAL          :: zd(n_points)
 
-LOGICAL       :: gconv
-LOGICAL, SAVE :: gonce  = .TRUE.
-LOGICAL, SAVE :: first_pass = .TRUE.
-LOGICAL, SAVE :: gdepem = .FALSE.
+      LOGICAL       :: gconv
+      LOGICAL, SAVE :: gonce = .TRUE.
+      LOGICAL, SAVE :: first_pass = .TRUE.
+      LOGICAL, SAVE :: gdepem = .FALSE.
 
-INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
-INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
-REAL(KIND=jprb)               :: zhook_handle
+      INTEGER(KIND=jpim), PARAMETER :: zhook_in = 0
+      INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+      REAL(KIND=jprb)               :: zhook_handle
 
-CHARACTER(LEN=*), PARAMETER :: RoutineName='ASAD_FTOY'
-
+      CHARACTER(LEN=*), PARAMETER :: RoutineName = 'ASAD_FTOY'
 
 !       1.  Initialise.
 !           -----------
 
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-
+      IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_in, zhook_handle)
 
 ! initalise ints
-ifam = 0
-imaj = 0
+      ifam = 0
+      imaj = 0
 
 ! initalise reals
-sl = 0.0
-zthresh = 2.0 / cdt
+      sl = 0.0
+      zthresh = 2.0/cdt
 
 ! initialise arrays
-zy = 0.0
-zb = 0.0
-zc = 0.0
-zd = 0.0
+      zy = 0.0
+      zb = 0.0
+      zc = 0.0
+      zd = 0.0
 
 ! OMP CRITICAL will only allow one thread through this code at a time,
 ! while the other threads are held until completion.
 !$OMP CRITICAL (asad_ftoy_init)
-errcodes(:) = 0
-IF ( first_pass ) THEN
-  IF ( gonce ) THEN
-    gonce  = .FALSE.
-    istmin = 0
-    ift    = 0
-    DO j = 1, jpspec
-      ilstmin(j) = 0
-      ilft(j) = 0
-    END DO
+      errcodes(:) = 0
+      IF (first_pass) THEN
+         IF (gonce) THEN
+            gonce = .FALSE.
+            istmin = 0
+            ift = 0
+            DO j = 1, jpspec
+               ilstmin(j) = 0
+               ilft(j) = 0
+            END DO
 
-    DO j = 1, nstst
-      js = nlstst(j)
-      IF ( ctype(js) == jpfm ) THEN
-        ifam = moffam(js)
-        imaj = majors(ifam)
-        IF ( imaj /= js ) THEN
-          istmin          = istmin + 1
-          ilstmin(istmin) = js
-        END IF
-      ELSE IF ( ctype(js) == jpif ) THEN
-        istmin          = istmin + 1
-        ilstmin(istmin) = js
-        ift             = ift + 1
-        ilft(ift)       = js
-      ELSE IF ( ctype(js) == jpna ) THEN
-        istmin          = istmin + 1
-        ilstmin(istmin) = js
-      ELSE
-        errcodes(j) = js
-      END IF
-    END DO
+            DO j = 1, nstst
+               js = nlstst(j)
+               IF (ctype(js) == jpfm) THEN
+                  ifam = moffam(js)
+                  imaj = majors(ifam)
+                  IF (imaj /= js) THEN
+                     istmin = istmin + 1
+                     ilstmin(istmin) = js
+                  END IF
+               ELSE IF (ctype(js) == jpif) THEN
+                  istmin = istmin + 1
+                  ilstmin(istmin) = js
+                  ift = ift + 1
+                  ilft(ift) = js
+               ELSE IF (ctype(js) == jpna) THEN
+                  istmin = istmin + 1
+                  ilstmin(istmin) = js
+               ELSE
+                  errcodes(j) = js
+               END IF
+            END DO
 
-  END IF   ! End of IF (gonce) statement
-  first_pass = .FALSE.
-END IF     ! End of IF (first_pass) statement
+         END IF   ! End of IF (gonce) statement
+         first_pass = .FALSE.
+      END IF     ! End of IF (first_pass) statement
 !$OMP END CRITICAL (asad_ftoy_init)
 
 ! Perform error check outside of the loop to better suit GPU runs
-IF (ANY(errcodes(:) /= 0)) THEN
-  errcode = MINVAL(errcodes,mask=(errcodes(:) /= 0))
-  CALL umPrint( '**** ASAD ERROR in ASAD_FTOY!! ',src='asad_ftoy')
-  CALL umPrint( 'ASAD_FTOY found an unexpected species type',src='asad_ftoy')
-  CALL umPrint( 'in the species list nlstst ',src='asad_ftoy')
-  CALL ereport('ASAD_FTOY',errcode,'Found unexpected species type')
-END IF
+      IF (ANY(errcodes(:) /= 0)) THEN
+         errcode = MINVAL(errcodes, mask=(errcodes(:) /= 0))
+         CALL umPrint('**** ASAD ERROR in ASAD_FTOY!! ', src='asad_ftoy')
+         CALL umPrint('ASAD_FTOY found an unexpected species type', src='asad_ftoy')
+         CALL umPrint('in the species list nlstst ', src='asad_ftoy')
+         CALL ereport('ASAD_FTOY', errcode, 'Found unexpected species type')
+      END IF
 
 !       1.1 Set concentrations/initialise species
 
-CALL asad_fyinit(ofirst,n_points, ix, jy, nlev)
+      CALL asad_fyinit(ofirst, n_points, ix, jy, nlev)
 
 ! If computing RO2-permutation reactions, update total RO2 concentration
-IF ( ukca_config%l_ukca_ro2_perm ) THEN
+      IF (ukca_config%l_ukca_ro2_perm) THEN
 
+         ! Save previous calculation of total RO2
+         fro2_old(1:n_points) = y(1:n_points, jsro2)
 
-  ! Save previous calculation of total RO2
-  fro2_old(1:n_points) = y(1:n_points, jsro2)
+         ! Calculate sum of all RO2 species on current iteration
+         fro2(1:n_points) = 0.0
 
-  ! Calculate sum of all RO2 species on current iteration
-  fro2(1:n_points)     = 0.0
+         DO j = 1, jpro2
 
-  DO j = 1, jpro2
+            ! Get index location of each RO2 species and sum
+            iro2 = nlfro2(j)
+            fro2(1:n_points) = fro2(1:n_points) + f(1:n_points, iro2)
 
-    ! Get index location of each RO2 species and sum
-    iro2       = nlfro2(j)
-    fro2(1:n_points) = fro2(1:n_points) + f(1:n_points, iro2)
+         END DO   ! End iteration over RO2 species
 
-  END DO   ! End iteration over RO2 species
+         ! Apply a dampening factor on the first couple of iterations
+         ! to prevent problem solution oscillations. Note the values below
+         ! have been found to perform well in tests, but there may be room
+         ! for further optimisation.
+         IF (num_iter <= 0) THEN
+            damp_ro2 = 1.0    ! Don't use a dampening factor if initialising RO2
+         ELSE IF (num_iter == 1) THEN
+            damp_ro2 = 0.5   ! Midway between previous and new value on 1st iteration
+         ELSE IF (num_iter == 2) THEN
+            damp_ro2 = 0.9   ! 90% towards new value on 2nd iteration
+         ELSE
+            damp_ro2 = 0.99  ! Thereafter set to (almost) the new value
+         END IF
 
-  ! Apply a dampening factor on the first couple of iterations
-  ! to prevent problem solution oscillations. Note the values below
-  ! have been found to perform well in tests, but there may be room
-  ! for further optimisation.
-  IF (num_iter <= 0) THEN
-    damp_ro2 = 1.0    ! Don't use a dampening factor if initialising RO2
-  ELSE IF (num_iter == 1) THEN
-    damp_ro2 = 0.5   ! Midway between previous and new value on 1st iteration
-  ELSE IF (num_iter == 2) THEN
-    damp_ro2 = 0.9   ! 90% towards new value on 2nd iteration
-  ELSE
-    damp_ro2 = 0.99  ! Thereafter set to (almost) the new value
-  END IF
+         ! Calculate the new concentration of RO2
+         y(1:n_points, jsro2) = fro2_old(1:n_points) + damp_ro2*(fro2(1:n_points) - fro2_old(1:n_points))
 
-  ! Calculate the new concentration of RO2
-  y(1:n_points, jsro2) = fro2_old(1:n_points) + damp_ro2*(fro2(1:n_points) - fro2_old(1:n_points))
-
-END IF
+      END IF
 
 !       1.2 If there are no family or steady species then exit
 
-IF ( nstst == 0) THEN
-  IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
-  RETURN
-END IF
+      IF (nstst == 0) THEN
+         IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_out, zhook_handle)
+         RETURN
+      END IF
 
 !       1.3 Initialise local variables and do sanity checks.
 
-IF (ofirst .AND. iter < 5) THEN
-  iter = 5
-  icode = -1
-  cmessage = 'iter too low on first call, resetting to 5'
-  CALL ereport('ASAD_FTOY',icode,cmessage)
-END IF
+      IF (ofirst .AND. iter < 5) THEN
+         iter = 5
+         icode = -1
+         cmessage = 'iter too low on first call, resetting to 5'
+         CALL ereport('ASAD_FTOY', icode, cmessage)
+      END IF
 
 !       2.  Calculate self-reacting terms
 !           --------- ------------- -----
 
-IF ( ofirst ) CALL asad_fyself(n_points)
+      IF (ofirst) CALL asad_fyself(n_points)
 
 !       3.  Calculate family members using previous ratios
 !           --------- ------ ------- ----- -------- ------
 
-IF (iter == 0) THEN
-  CALL asad_fyfixr(n_points)
-  IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
-  RETURN
-END IF
+      IF (iter == 0) THEN
+         CALL asad_fyfixr(n_points)
+         IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_out, zhook_handle)
+         RETURN
+      END IF
 
 !       4.  Iterate family members (including in/out species)
 !           ------- ------ ------- --------------------------
 !           and non-model steady-state species
 !           --- --------- ------------ -------
 
-DO jit = 1, iter
+      DO jit = 1, iter
 
-  !         check to see if a species has gone zero with a nonzero
-  !         production.
+         !         check to see if a species has gone zero with a nonzero
+         !         production.
 
-  IF ( jit > 1 ) THEN
-    DO j = 1, nstst
-      js = nlstst(j)
-      DO jl = 1, n_points
-        IF (ABS(y(jl,js)) < peps .AND. prod(jl,js) > peps ) y(jl,js) = peps
-      END DO
-    END DO
-  END IF
+         IF (jit > 1) THEN
+            DO j = 1, nstst
+               js = nlstst(j)
+               DO jl = 1, n_points
+                  IF (ABS(y(jl, js)) < peps .AND. prod(jl, js) > peps) y(jl, js) = peps
+               END DO
+            END DO
+         END IF
 
-  !         4.1 Calculate production and loss terms.
-  !             Note that the effect of deposition (wet & dry) and
-  !             emissions are not included in the ratios calculation.
-  !             Regardless of whether the user has them turned on or not.
-  !             See method above.
+         !         4.1 Calculate production and loss terms.
+         !             Note that the effect of deposition (wet & dry) and
+         !             emissions are not included in the ratios calculation.
+         !             Regardless of whether the user has them turned on or not.
+         !             See method above.
 
-  CALL asad_prls( n_points, istmin, ilstmin, gdepem )
+         CALL asad_prls(n_points, istmin, ilstmin, gdepem)
 
-  !         4.2 Initialise ratios
+         !         4.2 Initialise ratios
 
-  DO j = 1, nstst
-    js = nlstst(j)
-    DO jl = 1, n_points
-      ratio(jl,js) = 0.0
-    END DO
-  END DO
+         DO j = 1, nstst
+            js = nlstst(j)
+            DO jl = 1, n_points
+               ratio(jl, js) = 0.0
+            END DO
+         END DO
 
-  !         4.3  Compute species values for species in steady state
-  !              (minor members of family, 'SS' and 'FT' species)
-  !              N.B. because of the way asad computes slos, the y
-  !              value can go slightly negative during the quadratic
-  !              due to loss of precision. We forcibly fix it here.
-  !              Also note that we cannot permit y=0.0 during the ftoy
-  !              iteration because of the need to get 'sl'.
+         !         4.3  Compute species values for species in steady state
+         !              (minor members of family, 'SS' and 'FT' species)
+         !              N.B. because of the way asad computes slos, the y
+         !              value can go slightly negative during the quadratic
+         !              due to loss of precision. We forcibly fix it here.
+         !              Also note that we cannot permit y=0.0 during the ftoy
+         !              iteration because of the need to get 'sl'.
 
-  DO j = 1, istmin
-    js = ilstmin(j)
-    DO jl = 1, n_points
-      IF ( y(jl,js) < peps ) THEN
-        sl = 0.0
-      ELSE
-        sl = slos(jl,js) / y(jl,js)
-      END IF
-      IF ( qa(jl,js) > peps ) THEN
-        zb(jl) = sl - qa(jl,js) * y(jl,js)
-        zc(jl) = prod(jl,js)
-        zd(jl) = zb(jl)*zb(jl) + 4.0*qa(jl,js)*zc(jl)
-        IF ( zd(jl) > 0.0 ) THEN
-          y(jl,js) = (zb(jl) - SQRT(zd(jl)))/(-2.0*qa(jl,js))
-          IF ( y(jl,js)  <   0.0 ) y(jl,js) = 10.0*peps
-        ELSE
-          y(jl,js) = zb(jl) / ( -2.0 * qa(jl,js) )
-        END IF
-      ELSE IF (qa(jl,js) <= peps .AND. sl > peps ) THEN
-        y(jl,js) = prod(jl,js) / sl
-      ELSE
-        y(jl,js) = 0.0
-      END IF
-    END DO
-  END DO
+         DO j = 1, istmin
+            js = ilstmin(j)
+            DO jl = 1, n_points
+               IF (y(jl, js) < peps) THEN
+                  sl = 0.0
+               ELSE
+                  sl = slos(jl, js)/y(jl, js)
+               END IF
+               IF (qa(jl, js) > peps) THEN
+                  zb(jl) = sl - qa(jl, js)*y(jl, js)
+                  zc(jl) = prod(jl, js)
+                  zd(jl) = zb(jl)*zb(jl) + 4.0*qa(jl, js)*zc(jl)
+                  IF (zd(jl) > 0.0) THEN
+                     y(jl, js) = (zb(jl) - SQRT(zd(jl)))/(-2.0*qa(jl, js))
+                     IF (y(jl, js) < 0.0) y(jl, js) = 10.0*peps
+                  ELSE
+                     y(jl, js) = zb(jl)/(-2.0*qa(jl, js))
+                  END IF
+               ELSE IF (qa(jl, js) <= peps .AND. sl > peps) THEN
+                  y(jl, js) = prod(jl, js)/sl
+               ELSE
+                  y(jl, js) = 0.0
+               END IF
+            END DO
+         END DO
 
-  !         4.4  Now compute ratios for minor species members.
-  !              ** could possibly take out 1/y(imaj) and convert to '*'
+         !         4.4  Now compute ratios for minor species members.
+         !              ** could possibly take out 1/y(imaj) and convert to '*'
 
-  istart = nlmajmin(3)
-  iend   = nlmajmin(4)
-  DO j = nlmajmin(3), nlmajmin(4)
-    js = nlmajmin(j)
-    iodd = nodd(js)
-    ifam = moffam(js)
-    imaj = 0
-    IF ( ifam /= 0 ) imaj = majors(ifam)
-    DO jl = 1, n_points
-      IF ( y(jl,imaj) > peps ) THEN
-        ratio(jl,js)   = y(jl,js) / y(jl,imaj)
-        ratio(jl,imaj) = ratio(jl,imaj) + iodd * ratio(jl,js)
-      ELSE
-        ratio(jl,js) = 0.0
-      END IF
-    END DO
-  END DO
+         istart = nlmajmin(3)
+         iend = nlmajmin(4)
+         DO j = nlmajmin(3), nlmajmin(4)
+            js = nlmajmin(j)
+            iodd = nodd(js)
+            ifam = moffam(js)
+            imaj = 0
+            IF (ifam /= 0) imaj = majors(ifam)
+            DO jl = 1, n_points
+               IF (y(jl, imaj) > peps) THEN
+                  ratio(jl, js) = y(jl, js)/y(jl, imaj)
+                  ratio(jl, imaj) = ratio(jl, imaj) + iodd*ratio(jl, js)
+               ELSE
+                  ratio(jl, js) = 0.0
+               END IF
+            END DO
+         END DO
 
-  !         4.5  Now compute ratios from species of type 'FT' if
-  !              applicable. If this is the first call, we also set
-  !              whether the species is in or out of the family.
+         !         4.5  Now compute ratios from species of type 'FT' if
+         !              applicable. If this is the first call, we also set
+         !              whether the species is in or out of the family.
 
-  DO j = 1, ift
-    js = ilft(j)
-    iodd = nodd(js)
-    ifam = moffam(js)
-    itr  = madvtr(js)
-    imaj = majors(ifam)
-    IF ( ofirst .AND. jit == 1 ) THEN
-      DO jl = 1, n_points
-        IF ( y(jl,js) > peps ) THEN
-          sl = slos(jl,js) / y(jl,js)
-        ELSE
-          sl = 0.0
-        END IF
-        linfam(jl,itr) = sl > zthresh
-        IF ( linfam(jl,itr) ) f(jl,ifam) = f(jl,ifam) + iodd*f(jl,itr)
-      END DO
-    END IF
+         DO j = 1, ift
+            js = ilft(j)
+            iodd = nodd(js)
+            ifam = moffam(js)
+            itr = madvtr(js)
+            imaj = majors(ifam)
+            IF (ofirst .AND. jit == 1) THEN
+               DO jl = 1, n_points
+                  IF (y(jl, js) > peps) THEN
+                     sl = slos(jl, js)/y(jl, js)
+                  ELSE
+                     sl = 0.0
+                  END IF
+                  linfam(jl, itr) = sl > zthresh
+                  IF (linfam(jl, itr)) f(jl, ifam) = f(jl, ifam) + iodd*f(jl, itr)
+               END DO
+            END IF
 
-    DO jl = 1, n_points
-      IF ( linfam(jl,itr) ) THEN
-        IF ( y(jl,imaj)  >   peps ) THEN
-          ratio(jl,js)   = y(jl,js) / y(jl,imaj)
-          ratio(jl,imaj) = ratio(jl,imaj) + iodd * ratio(jl,js)
-        ELSE
-          ratio(jl,js) = 0.0
-        END IF
-      ELSE
-        y(jl,js) = f(jl,itr)
-      END IF
-    END DO
-  END DO
+            DO jl = 1, n_points
+               IF (linfam(jl, itr)) THEN
+                  IF (y(jl, imaj) > peps) THEN
+                     ratio(jl, js) = y(jl, js)/y(jl, imaj)
+                     ratio(jl, imaj) = ratio(jl, imaj) + iodd*ratio(jl, js)
+                  ELSE
+                     ratio(jl, js) = 0.0
+                  END IF
+               ELSE
+                  y(jl, js) = f(jl, itr)
+               END IF
+            END DO
+         END DO
 
-  !         4.6  Finally compute ratio of major species to family and
-  !              hence set the minor family members.
+         !         4.6  Finally compute ratio of major species to family and
+         !              hence set the minor family members.
 
-  istart = nlmajmin(1)
-  iend   = nlmajmin(2)
-  DO j = istart, iend
-    js = nlmajmin(j)
-    iodd = nodd(js)
-    ifam = moffam(js)
-    DO jl = 1, n_points
-      ratio(jl,js) = 1.0 / (iodd + ratio(jl,js))
-      y(jl,js)     = f(jl,ifam) * ratio(jl,js)
-    END DO
-  END DO
+         istart = nlmajmin(1)
+         iend = nlmajmin(2)
+         DO j = istart, iend
+            js = nlmajmin(j)
+            iodd = nodd(js)
+            ifam = moffam(js)
+            DO jl = 1, n_points
+               ratio(jl, js) = 1.0/(iodd + ratio(jl, js))
+               y(jl, js) = f(jl, ifam)*ratio(jl, js)
+            END DO
+         END DO
 
-  istart = nlmajmin(3)
-  iend   = nlmajmin(4)
-  DO j = istart, iend
-    js = nlmajmin(j)
-    ifam = moffam(js)
-    imaj = majors(ifam)
-    IF ( ctype(js) /= jpif ) THEN
-      DO jl = 1, n_points
-        y(jl,js) = y(jl,imaj) * ratio(jl,js)
-      END DO
-    ELSE
-      itr = madvtr(js)
-      DO jl = 1, n_points
-        IF ( linfam(jl,itr) ) y(jl,js) = y(jl,imaj) * ratio(jl,js)
-      END DO
-    END IF
-  END DO
+         istart = nlmajmin(3)
+         iend = nlmajmin(4)
+         DO j = istart, iend
+            js = nlmajmin(j)
+            ifam = moffam(js)
+            imaj = majors(ifam)
+            IF (ctype(js) /= jpif) THEN
+               DO jl = 1, n_points
+                  y(jl, js) = y(jl, imaj)*ratio(jl, js)
+               END DO
+            ELSE
+               itr = madvtr(js)
+               DO jl = 1, n_points
+                  IF (linfam(jl, itr)) y(jl, js) = y(jl, imaj)*ratio(jl, js)
+               END DO
+            END IF
+         END DO
 
-  !         4.7 Test for convergence.
+         !         4.7 Test for convergence.
 
-  gconv = .TRUE.
-  DO j = 1,nstst
-    js = nlstst(j)
-    DO jl = 1, n_points
-      IF ( ABS(y(jl,js)-zy(jl,js)) >  ftol*y(jl,js)                            &
-      .AND. y(jl,js) >  pmintnd(jl) ) gconv=.FALSE.
-    END DO
-    IF ( .NOT. gconv ) EXIT
-  END DO
-  IF (gconv) THEN
-    IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
-    RETURN
-  END IF
+         gconv = .TRUE.
+         DO j = 1, nstst
+            js = nlstst(j)
+            DO jl = 1, n_points
+               IF (ABS(y(jl, js) - zy(jl, js)) > ftol*y(jl, js) &
+                   .AND. y(jl, js) > pmintnd(jl)) gconv = .FALSE.
+            END DO
+            IF (.NOT. gconv) EXIT
+         END DO
+         IF (gconv) THEN
+            IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_out, zhook_handle)
+            RETURN
+         END IF
 
-  DO j = 1, nstst
-    js = nlstst(j)
-    DO jl = 1, n_points
-      zy(jl,js) = y(jl,js)
-    END DO
-  END DO
+         DO j = 1, nstst
+            js = nlstst(j)
+            DO jl = 1, n_points
+               zy(jl, js) = y(jl, js)
+            END DO
+         END DO
 
-END DO    ! End of iterations
+      END DO    ! End of iterations
 
 !       9. Convergence achieved or max. iterations reached.
 
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
-RETURN
-END SUBROUTINE asad_ftoy
+      IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_out, zhook_handle)
+      RETURN
+   END SUBROUTINE asad_ftoy
 
 END MODULE asad_ftoy_mod

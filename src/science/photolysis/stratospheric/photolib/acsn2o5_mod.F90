@@ -9,10 +9,9 @@
 ! *****************************COPYRIGHT*******************************
 MODULE acsn2o5_mod
 
-USE parkind1, ONLY: jprb, jpim
-USE yomhook, ONLY: lhook, dr_hook
-IMPLICIT NONE
-
+   USE parkind1, ONLY: jprb, jpim
+   USE yomhook, ONLY: lhook, dr_hook
+   IMPLICIT NONE
 
 ! Description:
 !      Calculate the temperature dependent N2O5 cross section
@@ -39,60 +38,58 @@ IMPLICIT NONE
 !    Language:  Fortran 95
 !    This code is written to UMDP3 standards.
 
-
-CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName='ACSN2O5_MOD'
+   CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName = 'ACSN2O5_MOD'
 
 CONTAINS
-SUBROUTINE acsn2o5(t,jpwav,wavenm,an2o5)
-USE parkind1, ONLY: jprb, jpim
-USE yomhook, ONLY: lhook, dr_hook
-IMPLICIT NONE
+   SUBROUTINE acsn2o5(t, jpwav, wavenm, an2o5)
+      USE parkind1, ONLY: jprb, jpim
+      USE yomhook, ONLY: lhook, dr_hook
+      IMPLICIT NONE
 
 ! Subroutine interface
-INTEGER, INTENT(IN) :: jpwav
-REAL, INTENT(IN)    :: t              ! Temperature in kelvin
-REAL, INTENT(IN)    :: wavenm(jpwav)  ! Wavelength of each interval in nm
+      INTEGER, INTENT(IN) :: jpwav
+      REAL, INTENT(IN)    :: t              ! Temperature in kelvin
+      REAL, INTENT(IN)    :: wavenm(jpwav)  ! Wavelength of each interval in nm
 ! Absorption cross-section of N2O5 in cm^2 for temperature T for each
 ! interval wavelength.
-REAL, INTENT(IN OUT) :: an2o5(jpwav)
+      REAL, INTENT(IN OUT) :: an2o5(jpwav)
 
 ! Local variables
-INTEGER :: jw
-REAL :: lam
+      INTEGER :: jw
+      REAL :: lam
 
 !     Temperature in kelvin.
-REAL :: tc
-REAL :: arg
+      REAL :: tc
+      REAL :: arg
 
-INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
-INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
-REAL(KIND=jprb)               :: zhook_handle
+      INTEGER(KIND=jpim), PARAMETER :: zhook_in = 0
+      INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+      REAL(KIND=jprb)               :: zhook_handle
 
-CHARACTER(LEN=*), PARAMETER :: RoutineName='ACSN2O5'
+      CHARACTER(LEN=*), PARAMETER :: RoutineName = 'ACSN2O5'
 
-
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+      IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_in, zhook_handle)
 
 !     Check is not out of parameterisation range.
-tc = t
-IF ( tc < 225.0 ) tc = 225.0
-IF ( tc > 300.0 ) tc = 300.0
+      tc = t
+      IF (tc < 225.0) tc = 225.0
+      IF (tc > 300.0) tc = 300.0
 
 !     Wavelengths between 285 nm & 380 nm.
-DO jw = 89 , 109
+      DO jw = 89, 109
 
-  !        Wavelength in nm.
-  lam = wavenm(jw)
+         !        Wavelength in nm.
+         lam = wavenm(jw)
 
-  !        Evaluate the parameterisation expression.
-  arg = 2.735 + ((4728.5-17.127*lam)/tc)
+         !        Evaluate the parameterisation expression.
+         arg = 2.735 + ((4728.5 - 17.127*lam)/tc)
 
-  !        Calculate the cross section.
-  an2o5(jw) = 1.0e-20*EXP(arg)
+         !        Calculate the cross section.
+         an2o5(jw) = 1.0E-20*EXP(arg)
 
-END DO
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
-RETURN
+      END DO
+      IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_out, zhook_handle)
+      RETURN
 
-END SUBROUTINE acsn2o5
+   END SUBROUTINE acsn2o5
 END MODULE acsn2o5_mod

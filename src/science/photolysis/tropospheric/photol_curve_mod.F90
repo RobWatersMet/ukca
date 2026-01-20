@@ -26,14 +26,14 @@
 !
 MODULE photol_curve_mod
 
-IMPLICIT NONE
+   IMPLICIT NONE
 
-CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName='PHOTOL_CURVE_MOD'
+   CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName = 'PHOTOL_CURVE_MOD'
 
 CONTAINS
 
-SUBROUTINE photol_curve(pjinda, tloc, dayl, tot_p_rows, row_length, jppj,      &
-                        errcode, wks, error_message, error_routine)
+   SUBROUTINE photol_curve(pjinda, tloc, dayl, tot_p_rows, row_length, jppj, &
+                           errcode, wks, error_message, error_routine)
 !
 ! Purpose: Subroutine to interpolate tropospheric photolysis rates
 !          in time. Based on curve.F from Cambridge TOMCAT model.
@@ -42,183 +42,183 @@ SUBROUTINE photol_curve(pjinda, tloc, dayl, tot_p_rows, row_length, jppj,      &
 !
 ! ---------------------------------------------------------------------
 !
-USE photol_config_specification_mod,  ONLY: photol_config
-USE ukca_error_mod,                   ONLY: error_report, maxlen_message,      &
-                                            maxlen_procname
+      USE photol_config_specification_mod, ONLY: photol_config
+      USE ukca_error_mod, ONLY: error_report, maxlen_message, &
+                                maxlen_procname
 
-USE yomhook,     ONLY: lhook, dr_hook
-USE parkind1,    ONLY: jprb, jpim
-USE umPrintMgr,  ONLY: umPrint, umMessage
+      USE yomhook, ONLY: lhook, dr_hook
+      USE parkind1, ONLY: jprb, jpim
+      USE umPrintMgr, ONLY: umPrint, umMessage
 
-IMPLICIT NONE
+      IMPLICIT NONE
 
-INTEGER, INTENT(IN) :: tot_p_rows                ! no of rows
-INTEGER, INTENT(IN) :: row_length                ! no of cols
-INTEGER, INTENT(IN) :: jppj                      ! number of chemical species
+      INTEGER, INTENT(IN) :: tot_p_rows                ! no of rows
+      INTEGER, INTENT(IN) :: row_length                ! no of cols
+      INTEGER, INTENT(IN) :: jppj                      ! number of chemical species
 
-REAL, INTENT(IN) :: dayl(:)                      ! day length
-REAL, INTENT(IN) :: tloc(:)                      ! local time
-REAL, INTENT(IN) :: pjinda(:,:,:,:)              ! 2D photolys
+      REAL, INTENT(IN) :: dayl(:)                      ! day length
+      REAL, INTENT(IN) :: tloc(:)                      ! local time
+      REAL, INTENT(IN) :: pjinda(:, :, :, :)              ! 2D photolys
 
-INTEGER, TARGET, INTENT(OUT) :: errcode
+      INTEGER, TARGET, INTENT(OUT) :: errcode
 
-REAL, INTENT(OUT) :: wks(:,:)                    ! interpolated
+      REAL, INTENT(OUT) :: wks(:, :)                    ! interpolated
 
 ! error handling arguments
-CHARACTER(LEN=maxlen_message), OPTIONAL, INTENT(OUT) :: error_message
-                                                       ! Error return message
-CHARACTER(LEN=maxlen_procname), OPTIONAL, INTENT(OUT) :: error_routine
-                                         ! Routine in which error was trapped
+      CHARACTER(LEN=maxlen_message), OPTIONAL, INTENT(OUT) :: error_message
+      ! Error return message
+      CHARACTER(LEN=maxlen_procname), OPTIONAL, INTENT(OUT) :: error_routine
+      ! Routine in which error was trapped
 ! Local variables
 
-INTEGER :: i                                     ! loop variab
-INTEGER :: j                                     ! loop variables
-INTEGER :: k                                     ! loop variables
-INTEGER :: jr                                    ! loop variables
-CHARACTER(LEN=maxlen_message) :: cmessage        ! Variable passed to ereport
+      INTEGER :: i                                     ! loop variab
+      INTEGER :: j                                     ! loop variables
+      INTEGER :: k                                     ! loop variables
+      INTEGER :: jr                                    ! loop variables
+      CHARACTER(LEN=maxlen_message) :: cmessage        ! Variable passed to ereport
 
-REAL, PARAMETER :: tfrac1 = 0.04691008           ! determines
-REAL, PARAMETER :: tfrac2 = 0.23076534           ! 2D photolys
+      REAL, PARAMETER :: tfrac1 = 0.04691008           ! determines
+      REAL, PARAMETER :: tfrac2 = 0.23076534           ! 2D photolys
 
-REAL :: dawn                ! time of dawn
-REAL :: dusk                ! time of dusk
-REAL :: timel               ! local time
-REAL :: slope               ! slope used in linear interpolation
-REAL :: const               ! intercept used in linear interpola
-REAL :: fgmt(7)             ! times at which photol rates are va
+      REAL :: dawn                ! time of dawn
+      REAL :: dusk                ! time of dusk
+      REAL :: timel               ! local time
+      REAL :: slope               ! slope used in linear interpolation
+      REAL :: const               ! intercept used in linear interpola
+      REAL :: fgmt(7)             ! times at which photol rates are va
 
-INTEGER, POINTER :: error_code_ptr
+      INTEGER, POINTER :: error_code_ptr
 
-INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
-INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
-REAL(KIND=jprb)               :: zhook_handle
+      INTEGER(KIND=jpim), PARAMETER :: zhook_in = 0
+      INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+      REAL(KIND=jprb)               :: zhook_handle
 
-CHARACTER(LEN=*), PARAMETER :: RoutineName='PHOTOL_CURVE'
+      CHARACTER(LEN=*), PARAMETER :: RoutineName = 'PHOTOL_CURVE'
 
 ! Initialise wks
 
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+      IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_in, zhook_handle)
 
-error_code_ptr => errcode
-error_code_ptr = 0
-cmessage = ''
-IF (PRESENT(error_message)) error_message = ''
-IF (PRESENT(error_routine)) error_routine = ''
+      error_code_ptr => errcode
+      error_code_ptr = 0
+      cmessage = ''
+      IF (PRESENT(error_message)) error_message = ''
+      IF (PRESENT(error_routine)) error_routine = ''
 
-wks = 0.0
+      wks = 0.0
 
 ! Calculate rates using a simple linear interpolation.
 
-DO j = 1,tot_p_rows
-  DO i = 1,row_length
-    k = i+(j-1)*row_length
+      DO j = 1, tot_p_rows
+         DO i = 1, row_length
+            k = i + (j - 1)*row_length
 
-    ! Non-Polar night
+            ! Non-Polar night
 
-    IF (dayl(k) > 0.0) THEN
-      dawn = 12.00 - (dayl(k)/2.0)
-      dusk = 12.00 + (dayl(k)/2.0)
+            IF (dayl(k) > 0.0) THEN
+               dawn = 12.00 - (dayl(k)/2.0)
+               dusk = 12.00 + (dayl(k)/2.0)
 
-      fgmt(1) = dawn
-      fgmt(2) = dawn + tfrac1*dayl(k)
-      fgmt(3) = dawn + tfrac2*dayl(k)
-      fgmt(4) = 12.00
-      fgmt(5) = dawn + (1.0-tfrac2)*dayl(k)
-      fgmt(6) = dawn + (1.0-tfrac1)*dayl(k)
-      fgmt(7) = dusk
+               fgmt(1) = dawn
+               fgmt(2) = dawn + tfrac1*dayl(k)
+               fgmt(3) = dawn + tfrac2*dayl(k)
+               fgmt(4) = 12.00
+               fgmt(5) = dawn + (1.0 - tfrac2)*dayl(k)
+               fgmt(6) = dawn + (1.0 - tfrac1)*dayl(k)
+               fgmt(7) = dusk
 
-      timel = tloc(k)
+               timel = tloc(k)
 
-      IF (timel > 24.0) timel = timel-24.0
+               IF (timel > 24.0) timel = timel - 24.0
 
-      timel = MIN(timel,24.0)
-      timel = MAX(timel, 0.0)
+               timel = MIN(timel, 24.0)
+               timel = MAX(timel, 0.0)
 
-      ! Local Night-time
+               ! Local Night-time
 
-      IF (timel < dawn .OR. timel > dusk) THEN
+               IF (timel < dawn .OR. timel > dusk) THEN
 
-        wks(k,1:jppj) = 0.0
+                  wks(k, 1:jppj) = 0.0
 
-        ! For the time between dawn and PJIN(1) or PJIN(5) and dusk
+                  ! For the time between dawn and PJIN(1) or PJIN(5) and dusk
 
-      ELSE IF ((timel >= dawn   .AND. timel < fgmt(2))                         &
-           .OR. (timel > fgmt(6) .AND. timel <= dusk)) THEN
+               ELSE IF ((timel >= dawn .AND. timel < fgmt(2)) &
+                        .OR. (timel > fgmt(6) .AND. timel <= dusk)) THEN
 
-        IF (timel > fgmt(6)) timel = 24.00 - timel
+                  IF (timel > fgmt(6)) timel = 24.00 - timel
 
-        ! trap for -ve (timel-fgmt(1))
-        IF ((fgmt(1) - timel) < 1.0e-6) timel = fgmt(1)
+                  ! trap for -ve (timel-fgmt(1))
+                  IF ((fgmt(1) - timel) < 1.0E-6) timel = fgmt(1)
 
-        DO jr = 1, jppj
-          slope = pjinda(i,j,1,jr)/(fgmt(2) - fgmt(1))
-          wks(k,jr) = slope*(timel - fgmt(1))
+                  DO jr = 1, jppj
+                     slope = pjinda(i, j, 1, jr)/(fgmt(2) - fgmt(1))
+                     wks(k, jr) = slope*(timel - fgmt(1))
 
-          IF (wks(k,jr) < 0.0) THEN
-            WRITE(umMessage,'(A,F12.6)')                                       &
-            'negative wks in photol_curve 1',wks(k,jr)
-            CALL umPrint(umMessage,src='ukca_phot2d')
-            WRITE(umMessage,'(I6,I6,I6,I6,F12.6,F12.6,F12.6,F12.6)')           &
-            i,j,k,jr,slope,fgmt(1),fgmt(2),timel
-            CALL umPrint(umMessage,src='ukca_phot2d')
-            WRITE(umMessage,'(F12.6,F12.6)') pjinda(i,j,1,jr),fgmt(1)-timel
-            CALL umPrint(umMessage,src='ukca_phot2d')
-            WRITE(umMessage,'(F12.6,F12.6,F12.6)') fgmt,dawn,dusk
-            CALL umPrint(umMessage,src='ukca_phot2d')
-            error_code_ptr = jr
-            cmessage = ' Negative photolysis, see log output'
-            CALL error_report(photol_config%i_error_method, error_code_ptr,    &
-                    cmessage, RoutineName, msg_out=error_message,              &
-                    locn_out=error_routine)
+                     IF (wks(k, jr) < 0.0) THEN
+                        WRITE (umMessage, '(A,F12.6)') &
+                           'negative wks in photol_curve 1', wks(k, jr)
+                        CALL umPrint(umMessage, src='ukca_phot2d')
+                        WRITE (umMessage, '(I6,I6,I6,I6,F12.6,F12.6,F12.6,F12.6)') &
+                           i, j, k, jr, slope, fgmt(1), fgmt(2), timel
+                        CALL umPrint(umMessage, src='ukca_phot2d')
+                        WRITE (umMessage, '(F12.6,F12.6)') pjinda(i, j, 1, jr), fgmt(1) - timel
+                        CALL umPrint(umMessage, src='ukca_phot2d')
+                        WRITE (umMessage, '(F12.6,F12.6,F12.6)') fgmt, dawn, dusk
+                        CALL umPrint(umMessage, src='ukca_phot2d')
+                        error_code_ptr = jr
+                        cmessage = ' Negative photolysis, see log output'
+                        CALL error_report(photol_config%i_error_method, error_code_ptr, &
+                                          cmessage, RoutineName, msg_out=error_message, &
+                                          locn_out=error_routine)
 
-            IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_out,   &
-                                    zhook_handle)
-            RETURN
-          END IF
-        END DO
+                        IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_out, &
+                                                zhook_handle)
+                        RETURN
+                     END IF
+                  END DO
 
-        ! For the time between PJIN(1) and PJIN(2) or PJIN(4) and PJIN(5)
+                  ! For the time between PJIN(1) and PJIN(2) or PJIN(4) and PJIN(5)
 
-      ELSE IF ((timel >= fgmt(2) .AND. timel < fgmt(3))                        &
-           .OR. (timel >  fgmt(5) .AND. timel <= fgmt(6))) THEN
+               ELSE IF ((timel >= fgmt(2) .AND. timel < fgmt(3)) &
+                        .OR. (timel > fgmt(5) .AND. timel <= fgmt(6))) THEN
 
-        IF (timel > fgmt(5)) timel = 24.00 - timel
+                  IF (timel > fgmt(5)) timel = 24.00 - timel
 
-        DO jr = 1, jppj
-          slope = (pjinda(i,j,2,jr)-pjinda(i,j,1,jr))/                         &
-               (fgmt(3) - fgmt(2))
-          const = pjinda(i,j,1,jr)- slope* fgmt(2)
-          wks(k,jr)= slope*timel + const
-        END DO
+                  DO jr = 1, jppj
+                     slope = (pjinda(i, j, 2, jr) - pjinda(i, j, 1, jr))/ &
+                             (fgmt(3) - fgmt(2))
+                     const = pjinda(i, j, 1, jr) - slope*fgmt(2)
+                     wks(k, jr) = slope*timel + const
+                  END DO
 
-        ! For the time between PJIN(2), PJIN(3) and PJIN(4)
+                  ! For the time between PJIN(2), PJIN(3) and PJIN(4)
 
-      ELSE IF (timel >= fgmt(3) .AND. timel <= fgmt(5)) THEN
+               ELSE IF (timel >= fgmt(3) .AND. timel <= fgmt(5)) THEN
 
-        IF (timel > fgmt(4)) timel = 24.00 - timel
+                  IF (timel > fgmt(4)) timel = 24.00 - timel
 
-        DO jr = 1, jppj
-          slope = (pjinda(i,j,3,jr)-pjinda(i,j,2,jr))/                         &
-              (fgmt(4) - fgmt(3))
-          const = pjinda(i,j,2,jr)- slope* fgmt(3)
-          wks(k,jr)= slope*timel + const
-        END DO
+                  DO jr = 1, jppj
+                     slope = (pjinda(i, j, 3, jr) - pjinda(i, j, 2, jr))/ &
+                             (fgmt(4) - fgmt(3))
+                     const = pjinda(i, j, 2, jr) - slope*fgmt(3)
+                     wks(k, jr) = slope*timel + const
+                  END DO
 
-      END IF    ! end of IF (timel < dawn .OR. timel > dusk)
+               END IF    ! end of IF (timel < dawn .OR. timel > dusk)
 
-      ! End of the condition on the non polar night
+               ! End of the condition on the non polar night
 
-    ELSE
+            ELSE
 
-      wks(k,1:jppj) = 0.0
+               wks(k, 1:jppj) = 0.0
 
-    END IF     ! end of IF (dayl(k) > 0.0)
+            END IF     ! end of IF (dayl(k) > 0.0)
 
-  END DO       ! end of looping over row length
-END DO         ! end of looping over rows
+         END DO       ! end of looping over row length
+      END DO         ! end of looping over rows
 
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
-RETURN
-END SUBROUTINE photol_curve
+      IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_out, zhook_handle)
+      RETURN
+   END SUBROUTINE photol_curve
 
 END MODULE photol_curve_mod

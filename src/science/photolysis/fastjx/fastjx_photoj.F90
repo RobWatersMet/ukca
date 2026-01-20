@@ -59,141 +59,140 @@
 ! ######################################################################
 !
 MODULE fastjx_photoj_mod
-IMPLICIT NONE
-CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName='FASTJX_PHOTOJ_MOD'
+   IMPLICIT NONE
+   CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName = 'FASTJX_PHOTOJ_MOD'
 
 CONTAINS
-SUBROUTINE fastjx_photoj(zpj)
+   SUBROUTINE fastjx_photoj(zpj)
 
-USE fastjx_data, ONLY: amf2, atau, atau0, dm_3d, dm_block,                     &
-                       fl, fl_cyc, flint, jfacta, jind, jpcl, jppj, jtaumx,    &
-                       kpcx, lpar, miedx, mx, n_, njval, nsl,                  &
-                       o3_3d, o3_block, od_block, od600,                       &
-                       odi_3d, odi_block, ods_3d, ods_block,                   &
-                       odw_3d, odw_block,                                      &
-                       paa, pz_all, pz_block, qaa, qo2, qo3, qrayl,            &
-                       rz_all, rz_block, sa_block, saa,                        &
-                       sw_band_aer, sw_phases, szafac,                         &
-                       tqq, tz_3d, tz_block, u0, w_, wl
+      USE fastjx_data, ONLY: amf2, atau, atau0, dm_3d, dm_block, &
+                             fl, fl_cyc, flint, jfacta, jind, jpcl, jppj, jtaumx, &
+                             kpcx, lpar, miedx, mx, n_, njval, nsl, &
+                             o3_3d, o3_block, od_block, od600, &
+                             odi_3d, odi_block, ods_3d, ods_block, &
+                             odw_3d, odw_block, &
+                             paa, pz_all, pz_block, qaa, qo2, qo3, qrayl, &
+                             rz_all, rz_block, sa_block, saa, &
+                             sw_band_aer, sw_phases, szafac, &
+                             tqq, tz_3d, tz_block, u0, w_, wl
 
-USE yomhook,  ONLY: lhook, dr_hook
-USE parkind1, ONLY: jprb, jpim
-USE fastjx_extral_mod, ONLY: fastjx_extral
-USE fastjx_jratet_mod, ONLY: fastjx_jratet
-USE fastjx_opmie_mod, ONLY: fastjx_opmie
-USE fastjx_sphere_mod, ONLY: fastjx_sphere
-IMPLICIT NONE
+      USE yomhook, ONLY: lhook, dr_hook
+      USE parkind1, ONLY: jprb, jpim
+      USE fastjx_extral_mod, ONLY: fastjx_extral
+      USE fastjx_jratet_mod, ONLY: fastjx_jratet
+      USE fastjx_opmie_mod, ONLY: fastjx_opmie
+      USE fastjx_sphere_mod, ONLY: fastjx_sphere
+      IMPLICIT NONE
 
-REAL, INTENT(IN OUT)     :: zpj(:,:,:,:)      ! photolysis rates
+      REAL, INTENT(IN OUT)     :: zpj(:, :, :, :)      ! photolysis rates
 
 ! Local variables
-INTEGER :: jxtra(lpar*2+3)                   ! Array containing extra levels
+      INTEGER :: jxtra(lpar*2 + 3)                   ! Array containing extra levels
 
 ! Temporary variables
-REAL :: wave                                 ! wavelength
-REAL :: ttt                                  ! temperature
-REAL :: xqo2                                 ! O2 cross section
-REAL :: xqo3                                 ! O3 cross section
+      REAL :: wave                                 ! wavelength
+      REAL :: ttt                                  ! temperature
+      REAL :: xqo2                                 ! O2 cross section
+      REAL :: xqo3                                 ! O3 cross section
 
 ! Optical depths from o2/o3 and rayleigh scattering
-REAL :: odabs, odray
+      REAL :: odabs, odray
 
 ! Optical density of each layer
-REAL :: dtaux((lpar+1),w_)
+      REAL :: dtaux((lpar + 1), w_)
 
 ! Solar flux deposited in layer L
-REAL :: flxd((lpar+1),w_)
+      REAL :: flxd((lpar + 1), w_)
 
 ! Scattering phase function
-REAL :: pomegax(sw_phases,(lpar+1),w_)
+      REAL :: pomegax(sw_phases, (lpar + 1), w_)
 
 ! Single scattering albedo
-REAL :: ssa(sw_band_aer, (lpar+1))
+      REAL :: ssa(sw_band_aer, (lpar + 1))
 
 !
-REAL :: sleg(sw_phases,  sw_band_aer, (lpar+1))
+      REAL :: sleg(sw_phases, sw_band_aer, (lpar + 1))
 
 ! mean actinic flux(diff+direct) at model mid-layer
-REAL :: fjact(lpar,w_)
+      REAL :: fjact(lpar, w_)
 
 ! diffuse flux out top-of-atmosphere (TAU=0 above top model lyr)
-REAL :: fjtop(w_)
+      REAL :: fjtop(w_)
 
 ! diffuse flux onto surface (<0 by definition)
-REAL :: fjbot(w_)
+      REAL :: fjbot(w_)
 
 ! direct/solar flux onto surface  (<0 by definition)
-REAL :: fsbot(w_)
+      REAL :: fsbot(w_)
 
 ! diffuse flux across top of model layer L
-REAL :: fjflx(lpar,w_)
+      REAL :: fjflx(lpar, w_)
 
 ! sum of solar flux deposited in atmos
-REAL :: flxd0(w_)
+      REAL :: flxd0(w_)
 
 ! Mean actinic flux
-REAL :: fff(w_, jpcl)
+      REAL :: fff(w_, jpcl)
 
 ! Solar distance factor. Initially set to 1.
-REAL :: solf=1.0
+      REAL :: solf = 1.0
 
 ! Photolysis rates (before mapping onto ASAD arrays)
-REAL :: valjl(jpcl,njval)
+      REAL :: valjl(jpcl, njval)
 
-REAL :: qxmie(sw_band_aer,mx)
+      REAL :: qxmie(sw_band_aer, mx)
 
-REAL :: rfl(w_)
+      REAL :: rfl(w_)
 
 ! Photolysis rates (blocked)
-REAL :: zj(jpcl,jppj)
+      REAL :: zj(jpcl, jppj)
 
 ! Loop variables variables
-INTEGER :: i, j, k, l, ix, kmie
+      INTEGER :: i, j, k, l, ix, kmie
 
 !-------------------------------------
 ! Shortcuts to speed up code
-REAL :: o3_ix(lpar+1)
-REAL :: dm_ix(lpar+1)
-REAL :: tz_ix(lpar+1)
-INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
-INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
-REAL(KIND=jprb)               :: zhook_handle
+      REAL :: o3_ix(lpar + 1)
+      REAL :: dm_ix(lpar + 1)
+      REAL :: tz_ix(lpar + 1)
+      INTEGER(KIND=jpim), PARAMETER :: zhook_in = 0
+      INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+      REAL(KIND=jprb)               :: zhook_handle
 
-CHARACTER(LEN=*), PARAMETER :: RoutineName='FASTJX_PHOTOJ'
-
+      CHARACTER(LEN=*), PARAMETER :: RoutineName = 'FASTJX_PHOTOJ'
 
 ! ************************************
 ! End of Header
 
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+      IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_in, zhook_handle)
 
 ! Initialise to 0.
-zj(:,:) = 0.0
+      zj(:, :) = 0.0
 
 ! Skip calculation if all in dark
 !IF (ALL(szafac(1:kpcx) <= 0.001E0)) RETURN
 
 ! Convert GCM arrays to blocked arrays
-DO i = 1, (lpar+1)
-  DO ix = 1,kpcx
+      DO i = 1, (lpar + 1)
+         DO ix = 1, kpcx
 
-    dm_block(ix, i) = dm_3d(nsl(1,ix),nsl(2,ix),i)
-    o3_block(ix,i) = o3_3d(nsl(1,ix),nsl(2,ix),i)
-    tz_block(ix,i) = tz_3d(nsl(1,ix),nsl(2,ix),i)
+            dm_block(ix, i) = dm_3d(nsl(1, ix), nsl(2, ix), i)
+            o3_block(ix, i) = o3_3d(nsl(1, ix), nsl(2, ix), i)
+            tz_block(ix, i) = tz_3d(nsl(1, ix), nsl(2, ix), i)
 
-    odi_block(ix,i) = odi_3d(nsl(1,ix),nsl(2,ix),i)
-    odw_block(ix,i) = odw_3d(nsl(1,ix),nsl(2,ix),i)
-    ods_block(ix,i) = ods_3d(nsl(1,ix),nsl(2,ix),i)
+            odi_block(ix, i) = odi_3d(nsl(1, ix), nsl(2, ix), i)
+            odw_block(ix, i) = odw_3d(nsl(1, ix), nsl(2, ix), i)
+            ods_block(ix, i) = ods_3d(nsl(1, ix), nsl(2, ix), i)
 
-    pz_block(ix,i) = pz_all(nsl(1,ix),nsl(2,ix),i)
-    rz_block(ix,i) = rz_all(nsl(1,ix),nsl(2,ix),i)
+            pz_block(ix, i) = pz_all(nsl(1, ix), nsl(2, ix), i)
+            rz_block(ix, i) = rz_all(nsl(1, ix), nsl(2, ix), i)
 
-    IF (i == (lpar+1)) THEN
-      pz_block(ix,(lpar+2)) = pz_all(nsl(1,ix),nsl(2,ix),(lpar+2))
-      rz_block(ix,(lpar+2)) = rz_all(nsl(1,ix),nsl(2,ix),(lpar+2))
-    END IF
-  END DO
-END DO
+            IF (i == (lpar + 1)) THEN
+               pz_block(ix, (lpar + 2)) = pz_all(nsl(1, ix), nsl(2, ix), (lpar + 2))
+               rz_block(ix, (lpar + 2)) = rz_all(nsl(1, ix), nsl(2, ix), (lpar + 2))
+            END IF
+         END DO
+      END DO
 
 !------------------------------------------------
 ! Calculate amf weighting fractions
@@ -213,181 +212,181 @@ END DO
 !$OMP        qaa, qo2, qo3, qrayl, rz_block,                                   &
 !$OMP        sa_block, saa, solf, szafac,                                      &
 !$OMP        tqq, tz_block, u0, w_, wl, zpj)
-DO ix = 1, kpcx
+      DO ix = 1, kpcx
 
-  o3_ix(:) = o3_block(ix,:)
-  dm_ix(:) = dm_block(ix,:)
-  tz_ix(:) = tz_block(ix,:)
+         o3_ix(:) = o3_block(ix, :)
+         dm_ix(:) = dm_block(ix, :)
+         tz_ix(:) = tz_block(ix, :)
 
-  ! Calculate spherical mass weighting factors
-  CALL fastjx_sphere(u0(ix), rz_block(ix,:), amf2(:,:,ix), (lpar+1))
+         ! Calculate spherical mass weighting factors
+         CALL fastjx_sphere(u0(ix), rz_block(ix, :), amf2(:, :, ix), (lpar + 1))
 
-  ! Calculate the optical properties (opt-depth, single-scat-alb, phase-fn(1:8)
-  ! at the 5 std wavelengths 200-300-400-600-999 nm for cloud+aerosols
+         ! Calculate the optical properties (opt-depth, single-scat-alb, phase-fn(1:8)
+         ! at the 5 std wavelengths 200-300-400-600-999 nm for cloud+aerosols
 
-  !Initialise to 0.
-  pomegax(:,:,:)   = 0.0
-  ssa(:,:)         = 0.0
-  sleg(:,:,:)      = 0.0
-  od_block(ix,:,:) = 0.0
-  od600(ix,:)      = 0.0
+         !Initialise to 0.
+         pomegax(:, :, :) = 0.0
+         ssa(:, :) = 0.0
+         sleg(:, :, :) = 0.0
+         od_block(ix, :, :) = 0.0
+         od600(ix, :) = 0.0
 
-  DO j=1, sw_band_aer
+         DO j = 1, sw_band_aer
 
-    ! Sum water and ice optical depths. Rescale to appropriate wavelengths
-    ! Original calculation is valid for 200-690nm.
-    ! Take this (fairly arbitrarily) to be true at 400nm
-    ! (closest to middle of band)
-    ! Effect is small as wavelength dependence is small
+            ! Sum water and ice optical depths. Rescale to appropriate wavelengths
+            ! Original calculation is valid for 200-690nm.
+            ! Take this (fairly arbitrarily) to be true at 400nm
+            ! (closest to middle of band)
+            ! Effect is small as wavelength dependence is small
 
-    qxmie(j,1) =  (qaa(j,miedx(1))/qaa(4,miedx(1)))
-    qxmie(j,2) =  (qaa(j,miedx(2))/qaa(4,miedx(2)))
-    qxmie(j,3) =  (qaa(j,miedx(3))/qaa(4,miedx(3)))
+            qxmie(j, 1) = (qaa(j, miedx(1))/qaa(4, miedx(1)))
+            qxmie(j, 2) = (qaa(j, miedx(2))/qaa(4, miedx(2)))
+            qxmie(j, 3) = (qaa(j, miedx(3))/qaa(4, miedx(3)))
 
-    od_block(ix,j,:) = odw_block(ix,:)*qxmie(j,1)                              &
-                     + odi_block(ix,:)*qxmie(j,2)
+            od_block(ix, j, :) = odw_block(ix, :)*qxmie(j, 1) &
+                                 + odi_block(ix, :)*qxmie(j, 2)
 
-    ! Calculate ssa (more elegant way of doing this?)
-    ssa( j, :)    = odw_block(ix,:)*qxmie(j,1)*saa(j,miedx(1))                 &
-                  + odi_block(ix,:)*qxmie(j,2)*saa(j,miedx(2))
+            ! Calculate ssa (more elegant way of doing this?)
+            ssa(j, :) = odw_block(ix, :)*qxmie(j, 1)*saa(j, miedx(1)) &
+                        + odi_block(ix, :)*qxmie(j, 2)*saa(j, miedx(2))
 
-    ! Calculate sleg (more elegant way of doing this?)
-    DO k=1, sw_phases
-      DO l=1, (lpar+1)
-        sleg(k, j,l) = odw_block(ix,l)*qxmie(j,1)*saa(j,miedx(1))              &
-                       * paa(k,j,miedx(1))                                     &
-                       + odi_block(ix,l)*qxmie(j,2)*saa(j,miedx(2))            &
-                       * paa(k,j,miedx(2))
-      END DO
-    END DO
+            ! Calculate sleg (more elegant way of doing this?)
+            DO k = 1, sw_phases
+               DO l = 1, (lpar + 1)
+                  sleg(k, j, l) = odw_block(ix, l)*qxmie(j, 1)*saa(j, miedx(1)) &
+                                  *paa(k, j, miedx(1)) &
+                                  + odi_block(ix, l)*qxmie(j, 2)*saa(j, miedx(2)) &
+                                  *paa(k, j, miedx(2))
+               END DO
+            END DO
 
-  END DO
+         END DO
 
-  ! Set 600 od to calculate extra layers
-  od600(ix,:) = od_block(ix,4,:)
+         ! Set 600 od to calculate extra layers
+         od600(ix, :) = od_block(ix, 4, :)
 
-  ! Calculate where need extra layers due to thick clouds
-  ! In principal could add aerosols to this calculation, but don't
-  CALL fastjx_extral(od600(ix,:),(lpar+1),(2*lpar +2),n_,jtaumx,               &
-                     atau, atau0, jxtra)
+         ! Calculate where need extra layers due to thick clouds
+         ! In principal could add aerosols to this calculation, but don't
+         CALL fastjx_extral(od600(ix, :), (lpar + 1), (2*lpar + 2), n_, jtaumx, &
+                            atau, atau0, jxtra)
 
-  !---------------------------------------------------------------------------
-  ! Add aerosols to optical depth, ssa & sleg
-  DO j=1, sw_band_aer
+         !---------------------------------------------------------------------------
+         ! Add aerosols to optical depth, ssa & sleg
+         DO j = 1, sw_band_aer
 
-    od_block(ix,j,:) = od_block(ix,j,:) + ods_block(ix,:)*qxmie(j,3)
+            od_block(ix, j, :) = od_block(ix, j, :) + ods_block(ix, :)*qxmie(j, 3)
 
-    ssa(j, :)    = ssa(j, :)    + ods_block(ix,:)*qxmie(j,3)                   &
-                     * saa(j,miedx(3))
+            ssa(j, :) = ssa(j, :) + ods_block(ix, :)*qxmie(j, 3) &
+                        *saa(j, miedx(3))
 
-    ! Calculate sleg (more elegant way of doing this?)
-    DO k=1, sw_phases
-      DO l=1, (lpar+1)
-        sleg( k, j,l) = sleg(k, j,l) +  ods_block(ix,l)*qxmie(j,3)             &
-                      * saa(j,miedx(3)) * paa(k,j,miedx(3))
-      END DO
-    END DO
+            ! Calculate sleg (more elegant way of doing this?)
+            DO k = 1, sw_phases
+               DO l = 1, (lpar + 1)
+                  sleg(k, j, l) = sleg(k, j, l) + ods_block(ix, l)*qxmie(j, 3) &
+                                  *saa(j, miedx(3))*paa(k, j, miedx(3))
+               END DO
+            END DO
 
-    ! Convert from absolute to relative OD
-    DO l=1, (lpar+1)
+            ! Convert from absolute to relative OD
+            DO l = 1, (lpar + 1)
 
-      IF (od_block(ix,j,l) > 0.0) THEN
-        ssa(j,l) = ssa(j,l)/ od_block(ix,j,l)
+               IF (od_block(ix, j, l) > 0.0) THEN
+                  ssa(j, l) = ssa(j, l)/od_block(ix, j, l)
 
-        DO k=1, sw_phases
-          sleg(k, j,l) = sleg(k, j,l)/ od_block(ix,j,l)
-        END DO
-      END IF
-    END DO
+                  DO k = 1, sw_phases
+                     sleg(k, j, l) = sleg(k, j, l)/od_block(ix, j, l)
+                  END DO
+               END IF
+            END DO
 
-  END DO
+         END DO
 
-  !----------------------------------------------------------------------------
-  ! Loop over wavelength bins
-  DO k=1, w_
+         !----------------------------------------------------------------------------
+         ! Loop over wavelength bins
+         DO k = 1, w_
 
-    wave = wl(k)
-    !---Pick nearest Mie wavelength to get scattering properites------------
-    kmie=1   ! use 200 nm prop for <255 nm
-    IF ( wave > 255.0e0 ) kmie=2   ! use 300 nm prop for 255-355 nm
-    IF ( wave > 355.0e0 ) kmie=3   ! use 400 nm prop for 355-500 nm
-    IF ( wave > 500.0e0 ) kmie=4
-    IF ( wave > 800.0e0 ) kmie=5
+            wave = wl(k)
+            !---Pick nearest Mie wavelength to get scattering properites------------
+            kmie = 1   ! use 200 nm prop for <255 nm
+            IF (wave > 255.0E0) kmie = 2   ! use 300 nm prop for 255-355 nm
+            IF (wave > 355.0E0) kmie = 3   ! use 400 nm prop for 355-500 nm
+            IF (wave > 500.0E0) kmie = 4
+            IF (wave > 800.0E0) kmie = 5
 
-    !---Combine: Rayleigh scatters & O2 & O3 absorbers to get optical properties
-    !---values at L1_=L_+1 are a pseudo/climatol layer above the top CTM
-    !---layer (L_)
-    DO l = 1,(lpar+1)
+            !---Combine: Rayleigh scatters & O2 & O3 absorbers to get optical properties
+            !---values at L1_=L_+1 are a pseudo/climatol layer above the top CTM
+            !---layer (L_)
+            DO l = 1, (lpar + 1)
 
-      ! Set temperature value for temp variable
-      ttt     = tz_ix(l)
+               ! Set temperature value for temp variable
+               ttt = tz_ix(l)
 
-      ! interpolate o2 and o3 cross sections in temperature using flint function
-      xqo2 = flint(ttt,tqq(1,1),tqq(2,1),tqq(3,1), qo2(k,1),qo2(k,2),qo2(k,3))
-      xqo3 = flint(ttt,tqq(1,2),tqq(2,2),tqq(3,2), qo3(k,1),qo3(k,2),qo3(k,3))
+               ! interpolate o2 and o3 cross sections in temperature using flint function
+               xqo2 = flint(ttt, tqq(1, 1), tqq(2, 1), tqq(3, 1), qo2(k, 1), qo2(k, 2), qo2(k, 3))
+               xqo3 = flint(ttt, tqq(1, 2), tqq(2, 2), tqq(3, 2), qo3(k, 1), qo3(k, 2), qo3(k, 3))
 
-      ! Calculate optical depth from sum of ozone and o2
-      odabs = xqo3*o3_ix(l) +  xqo2*dm_ix(l)*0.20948e0
-      ! Calculate rayleigh scattering optical depth
-      odray = dm_ix(l)*qrayl(k)
+               ! Calculate optical depth from sum of ozone and o2
+               odabs = xqo3*o3_ix(l) + xqo2*dm_ix(l)*0.20948E0
+               ! Calculate rayleigh scattering optical depth
+               odray = dm_ix(l)*qrayl(k)
 
-      ! sum cloud/aerosol, o2/o3 and rayleigh optical depths
-      dtaux(l,k) = od_block(ix,kmie,l) + odabs + odray
+               ! sum cloud/aerosol, o2/o3 and rayleigh optical depths
+               dtaux(l, k) = od_block(ix, kmie, l) + odabs + odray
 
-      ! Loop over phase factors calculating scattering phase fn from clouds
-      DO i=1,sw_phases
-        pomegax(i,l,k) = sleg(i,kmie,l) *od_block(ix,kmie,l)
-      END DO
+               ! Loop over phase factors calculating scattering phase fn from clouds
+               DO i = 1, sw_phases
+                  pomegax(i, l, k) = sleg(i, kmie, l)*od_block(ix, kmie, l)
+               END DO
 
-      ! Add in rayleigh scattering into phase functions
-      pomegax(1,l,k) = pomegax(1,l,k) + 1.0e0*odray
-      pomegax(3,l,k) = pomegax(3,l,k) + 0.5e0*odray
+               ! Add in rayleigh scattering into phase functions
+               pomegax(1, l, k) = pomegax(1, l, k) + 1.0E0*odray
+               pomegax(3, l, k) = pomegax(3, l, k) + 0.5E0*odray
 
-      ! Loop over phase factors dividing by  optical depth of layers
-      DO i=1,sw_phases
-        pomegax(i,l,k) = pomegax(i,l,k)/dtaux(l,k)
+               ! Loop over phase factors dividing by  optical depth of layers
+               DO i = 1, sw_phases
+                  pomegax(i, l, k) = pomegax(i, l, k)/dtaux(l, k)
 
-      END DO
+               END DO
 
-    END DO ! z
+            END DO ! z
 
-  END DO ! wavelengths
+         END DO ! wavelengths
 
-  ! Set surface albedo to be constant across wavelengths
-  rfl(:) = sa_block(ix)
+         ! Set surface albedo to be constant across wavelengths
+         rfl(:) = sa_block(ix)
 
-  ! Call Mie scattering routine
-  CALL fastjx_opmie (dtaux, pomegax,u0(ix),rfl, amf2(:,:,ix), jxtra,           &
-         fjact, fjtop, fjbot, fsbot, fjflx, flxd, flxd0)
+         ! Call Mie scattering routine
+         CALL fastjx_opmie(dtaux, pomegax, u0(ix), rfl, amf2(:, :, ix), jxtra, &
+                           fjact, fjtop, fjbot, fsbot, fjflx, flxd, flxd0)
 
-  ! Loop over wavelengths and model levels calculating mean actininc flux
-  DO k = 1,w_
-    DO l = 1,jpcl
-      fff(k,l) = solf*(fl(k)+fl_cyc(k))*fjact(l,k)
-    END DO
-  END DO
+         ! Loop over wavelengths and model levels calculating mean actininc flux
+         DO k = 1, w_
+            DO l = 1, jpcl
+               fff(k, l) = solf*(fl(k) + fl_cyc(k))*fjact(l, k)
+            END DO
+         END DO
 
-  CALL fastjx_jratet(pz_block(ix,:) ,tz_block(ix,:),fff, valjl)
+         CALL fastjx_jratet(pz_block(ix, :), tz_block(ix, :), fff, valjl)
 
-  !---map the J-values from fast-JX onto ASAD ones (use JIND & JFACTA)
-  DO l = 1,jpcl
-    DO j = 1, jppj
-      IF (jind(j) > 0) THEN
-        zj(l,j) = valjl(l,jind(j))*jfacta(j)
-      ELSE
-        zj(l,j) = 0.0e0
-      END IF
+         !---map the J-values from fast-JX onto ASAD ones (use JIND & JFACTA)
+         DO l = 1, jpcl
+            DO j = 1, jppj
+               IF (jind(j) > 0) THEN
+                  zj(l, j) = valjl(l, jind(j))*jfacta(j)
+               ELSE
+                  zj(l, j) = 0.0E0
+               END IF
 
-      ! Convert to 4D array expected by ASAD
-      zpj(nsl(1,ix),nsl(2,ix),l,j)= zj(l,j)*szafac(ix)
+               ! Convert to 4D array expected by ASAD
+               zpj(nsl(1, ix), nsl(2, ix), l, j) = zj(l, j)*szafac(ix)
 
-    END DO
-  END DO
+            END DO
+         END DO
 
-END DO ! xy
+      END DO ! xy
 !$OMP END PARALLEL DO
 
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
-RETURN
-END SUBROUTINE fastjx_photoj
+      IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_out, zhook_handle)
+      RETURN
+   END SUBROUTINE fastjx_photoj
 END MODULE fastjx_photoj_mod

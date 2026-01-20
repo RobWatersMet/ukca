@@ -25,10 +25,10 @@
 
 MODULE errormessagelength_mod
 
-IMPLICIT NONE
+   IMPLICIT NONE
 
-PUBLIC errormessagelength
+   PUBLIC errormessagelength
 
-INTEGER, PARAMETER :: errormessagelength = 256
+   INTEGER, PARAMETER :: errormessagelength = 256
 
 END MODULE errormessagelength_mod

@@ -31,62 +31,62 @@
 !
 MODULE ukca_drydep_mod
 
-IMPLICIT NONE
+   IMPLICIT NONE
 
-CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName = 'UKCA_DRYDEP_MOD'
+   CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName = 'UKCA_DRYDEP_MOD'
 
 CONTAINS
 
-SUBROUTINE ukca_drydep(nlev, dryrt, n_points)
+   SUBROUTINE ukca_drydep(nlev, dryrt, n_points)
 
-USE asad_mod,       ONLY: ndepd, nldepd, dpd, jpdd
-USE ukca_config_specification_mod,ONLY: ukca_config
-USE parkind1, ONLY: jprb, jpim
-USE yomhook, ONLY: lhook, dr_hook
-IMPLICIT NONE
+      USE asad_mod, ONLY: ndepd, nldepd, dpd, jpdd
+      USE ukca_config_specification_mod, ONLY: ukca_config
+      USE parkind1, ONLY: jprb, jpim
+      USE yomhook, ONLY: lhook, dr_hook
+      IMPLICIT NONE
 
-INTEGER, INTENT(IN) :: nlev                 ! Level number
-INTEGER, INTENT(IN) :: n_points             ! No of spatial poin
+      INTEGER, INTENT(IN) :: nlev                 ! Level number
+      INTEGER, INTENT(IN) :: n_points             ! No of spatial poin
 
-REAL, INTENT(IN) :: dryrt(n_points,jpdd)    ! Dry deposition rat
+      REAL, INTENT(IN) :: dryrt(n_points, jpdd)    ! Dry deposition rat
 
 !       Local variables
 
-INTEGER :: i                                ! Loop variable
-INTEGER :: js                               ! Loop variable
-INTEGER :: nspec                            ! Pointer for specie
+      INTEGER :: i                                ! Loop variable
+      INTEGER :: js                               ! Loop variable
+      INTEGER :: nspec                            ! Pointer for specie
 
-INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
-INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
-REAL(KIND=jprb)               :: zhook_handle
+      INTEGER(KIND=jpim), PARAMETER :: zhook_in = 0
+      INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+      REAL(KIND=jprb)               :: zhook_handle
 
-CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_DRYDEP'
+      CHARACTER(LEN=*), PARAMETER :: RoutineName = 'UKCA_DRYDEP'
 
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+      IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_in, zhook_handle)
 
-IF (nlev == 1 .OR. ukca_config%l_ukca_intdd) THEN
-  ! Bottom level or interactive dry deposition
+      IF (nlev == 1 .OR. ukca_config%l_ukca_intdd) THEN
+         ! Bottom level or interactive dry deposition
 
-  DO js = 1,ndepd
-    nspec = nldepd(js)
-    DO i = 1,n_points
-      dpd(i,nspec) = dryrt(i,js)
-    END DO
-  END DO
+         DO js = 1, ndepd
+            nspec = nldepd(js)
+            DO i = 1, n_points
+               dpd(i, nspec) = dryrt(i, js)
+            END DO
+         END DO
 
-ELSE
-  ! All other levels when not interactive
+      ELSE
+         ! All other levels when not interactive
 
-  DO js = 1,ndepd
-    nspec = nldepd(js)
-    DO i = 1,n_points
-      dpd(i,nspec) = 0.0
-    END DO
-  END DO
+         DO js = 1, ndepd
+            nspec = nldepd(js)
+            DO i = 1, n_points
+               dpd(i, nspec) = 0.0
+            END DO
+         END DO
 
-END IF
+      END IF
 
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
-RETURN
-END SUBROUTINE ukca_drydep
+      IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_out, zhook_handle)
+      RETURN
+   END SUBROUTINE ukca_drydep
 END MODULE ukca_drydep_mod

@@ -7,11 +7,11 @@
 ! This file belongs in section: UKCA_UM
 MODULE spcrg3a_mod
 
-IMPLICIT NONE
+   IMPLICIT NONE
 ! SPCRG3A defines flags for different portions of the spectrum in
 ! two-stream radiation code.
-INTEGER,PARAMETER:: ip_solar=1
-INTEGER,PARAMETER:: ip_infra_red=2
+   INTEGER, PARAMETER:: ip_solar = 1
+   INTEGER, PARAMETER:: ip_infra_red = 2
 ! SPCRG3A end
 
 END MODULE spcrg3a_mod

@@ -83,77 +83,74 @@
 !
 MODULE asad_impact_mod
 
-IMPLICIT NONE
+   IMPLICIT NONE
 
-CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName = 'ASAD_IMPACT_MOD'
+   CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName = 'ASAD_IMPACT_MOD'
 
 CONTAINS
 
-SUBROUTINE asad_impact(n_points, ix, jy, nlev)
+   SUBROUTINE asad_impact(n_points, ix, jy, nlev)
 
-USE asad_mod,        ONLY: cdt, ctype, ej, f, fdot, jpif,                      &
-                           linfam, ljacx, madvtr, majors, moffam,              &
-                           nlpdv, nltrim, nitnr, nprkx,                        &
-                           nspi, peps, pmintnd, ptol, rk, y, jpcspf
-USE ukca_config_specification_mod, ONLY: ukca_config
-USE parkind1, ONLY: jprb, jpim
-USE yomhook, ONLY: lhook, dr_hook
+      USE asad_mod, ONLY: cdt, ctype, ej, f, fdot, jpif, &
+                          linfam, ljacx, madvtr, majors, moffam, &
+                          nlpdv, nltrim, nitnr, nprkx, &
+                          nspi, peps, pmintnd, ptol, rk, y, jpcspf
+      USE ukca_config_specification_mod, ONLY: ukca_config
+      USE parkind1, ONLY: jprb, jpim
+      USE yomhook, ONLY: lhook, dr_hook
 
+      USE asad_diffun_mod, ONLY: asad_diffun
+      USE asad_inimpct_mod, ONLY: asad_inimpct
+      USE asad_jac_mod, ONLY: asad_jac
+      USE asad_ftoy_mod, ONLY: asad_ftoy
+      IMPLICIT NONE
 
-USE asad_diffun_mod, ONLY: asad_diffun
-USE asad_inimpct_mod, ONLY: asad_inimpct
-USE asad_jac_mod, ONLY: asad_jac
-USE asad_ftoy_mod, ONLY: asad_ftoy
-IMPLICIT NONE
-
-
-INTEGER, INTENT(IN) :: n_points   ! No of spatial points
-INTEGER, INTENT(IN) :: ix         ! i counter
-INTEGER, INTENT(IN) :: jy         ! j counter
-INTEGER, INTENT(IN) :: nlev       ! Model level
+      INTEGER, INTENT(IN) :: n_points   ! No of spatial points
+      INTEGER, INTENT(IN) :: ix         ! i counter
+      INTEGER, INTENT(IN) :: jy         ! j counter
+      INTEGER, INTENT(IN) :: nlev       ! Model level
 
 !       Local variables
 
-INTEGER :: lphot(n_points)
-INTEGER :: inl
-INTEGER :: nl
-INTEGER :: j                        ! Loop variable
-INTEGER :: jit                      ! Loop variable
-INTEGER :: jl                       ! Loop variable
-INTEGER :: jr                       ! Loop variable
-INTEGER :: jtr                      ! Loop variable
-INTEGER :: jt1                      ! Loop variable
-INTEGER :: isp                      ! Index
-INTEGER :: ifi
-INTEGER :: ntr1
-INTEGER :: ntr2
-INTEGER :: ipos0
-INTEGER :: ipos
-INTEGER :: ir
-INTEGER :: irk
-INTEGER :: njr
-INTEGER :: ireac
-INTEGER :: iprod
+      INTEGER :: lphot(n_points)
+      INTEGER :: inl
+      INTEGER :: nl
+      INTEGER :: j                        ! Loop variable
+      INTEGER :: jit                      ! Loop variable
+      INTEGER :: jl                       ! Loop variable
+      INTEGER :: jr                       ! Loop variable
+      INTEGER :: jtr                      ! Loop variable
+      INTEGER :: jt1                      ! Loop variable
+      INTEGER :: isp                      ! Index
+      INTEGER :: ifi
+      INTEGER :: ntr1
+      INTEGER :: ntr2
+      INTEGER :: ipos0
+      INTEGER :: ipos
+      INTEGER :: ir
+      INTEGER :: irk
+      INTEGER :: njr
+      INTEGER :: ireac
+      INTEGER :: iprod
 
-REAL :: zf(n_points,jpcspf)
-REAL :: zprf(n_points,jpcspf)
-REAL :: binv(n_points,jpcspf)
-REAL :: dely(n_points,jpcspf)
-REAL :: dd(n_points)
-REAL :: corrn(n_points)
+      REAL :: zf(n_points, jpcspf)
+      REAL :: zprf(n_points, jpcspf)
+      REAL :: binv(n_points, jpcspf)
+      REAL :: dely(n_points, jpcspf)
+      REAL :: dd(n_points)
+      REAL :: corrn(n_points)
 
-LOGICAL :: gconv
-LOGICAL :: gfam
-LOGICAL, SAVE :: gfirst = .TRUE.
-LOGICAL, SAVE :: first_pass = .TRUE.
-LOGICAL :: not_first_call = .FALSE.
+      LOGICAL :: gconv
+      LOGICAL :: gfam
+      LOGICAL, SAVE :: gfirst = .TRUE.
+      LOGICAL, SAVE :: first_pass = .TRUE.
+      LOGICAL :: not_first_call = .FALSE.
 
-INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
-INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
-REAL(KIND=jprb)               :: zhook_handle
+      INTEGER(KIND=jpim), PARAMETER :: zhook_in = 0
+      INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+      REAL(KIND=jprb)               :: zhook_handle
 
-CHARACTER(LEN=*), PARAMETER :: RoutineName='ASAD_IMPACT'
-
+      CHARACTER(LEN=*), PARAMETER :: RoutineName = 'ASAD_IMPACT'
 
 !       1.  Predictor step (first guess)
 !           --------- ---- ------ ------
@@ -161,218 +158,218 @@ CHARACTER(LEN=*), PARAMETER :: RoutineName='ASAD_IMPACT'
 !       Crude way of determining if photolysis is on or not.
 !       Needs improving.
 
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-inl = 0
-DO jl = 1, n_points
-  IF ( rk(jl,nprkx(1)) > peps ) THEN
-    inl = inl + 1
-    lphot(inl) = jl
-  END IF
-END DO
+      IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_in, zhook_handle)
+      inl = 0
+      DO jl = 1, n_points
+         IF (rk(jl, nprkx(1)) > peps) THEN
+            inl = inl + 1
+            lphot(inl) = jl
+         END IF
+      END DO
 
 ! OMP CRITICAL will only allow one thread through this code at a time,
 ! while the other threads are held until completion.
 !$OMP CRITICAL (asad_impact_init)
-IF ( first_pass ) THEN
-  IF ( gfirst ) THEN
-    gfirst = .FALSE.
-    CALL asad_inimpct
-  END IF
-  first_pass = .FALSE.
-END IF
+      IF (first_pass) THEN
+         IF (gfirst) THEN
+            gfirst = .FALSE.
+            CALL asad_inimpct
+         END IF
+         first_pass = .FALSE.
+      END IF
 !$OMP END CRITICAL (asad_impact_init)
 
 !       1.1  Do the linearised first guess to give first approx.
 !            solution at y(n+1).
 
-nl = n_points
-DO jtr = 1, jpcspf
-  isp = majors(jtr)
-  DO jl = 1, n_points
-    zf(jl,jtr) = f(jl,jtr)
+      nl = n_points
+      DO jtr = 1, jpcspf
+         isp = majors(jtr)
+         DO jl = 1, n_points
+            zf(jl, jtr) = f(jl, jtr)
 
-    !           1.2  Test Jacobian has not gone positive. Possible since
-    !                we only use approximate form. If it has, use
-    !                an explicit step.
+            !           1.2  Test Jacobian has not gone positive. Possible since
+            !                we only use approximate form. If it has, use
+            !                an explicit step.
 
-    IF ( ej(jl,jtr) > 0.0 ) THEN
-      f(jl,jtr) = zf(jl,jtr) + cdt*fdot(jl,jtr)
-    ELSE
-      f(jl,jtr) = zf(jl,jtr) + ( cdt*fdot(jl,jtr) )                            &
-                       / ( 1.0 - cdt*ej(jl,jtr) )
-    END IF
-    IF ( linfam(jl,jtr) ) f(jl,jtr) = y(jl,isp)
+            IF (ej(jl, jtr) > 0.0) THEN
+               f(jl, jtr) = zf(jl, jtr) + cdt*fdot(jl, jtr)
+            ELSE
+               f(jl, jtr) = zf(jl, jtr) + (cdt*fdot(jl, jtr)) &
+                            /(1.0 - cdt*ej(jl, jtr))
+            END IF
+            IF (linfam(jl, jtr)) f(jl, jtr) = y(jl, isp)
 
-  END DO
-END DO
+         END DO
+      END DO
 
 !       2.  Newton-Rhapson iteration (corrector step).
 !           -------------- --------- ---------- ------
 
-DO jit = 1, ukca_config%nrsteps
+      DO jit = 1, ukca_config%nrsteps
 
-  !         2.1  Decide if we are recomputing ratios or not.
+         !         2.1  Decide if we are recomputing ratios or not.
 
-  IF ( jit < 4 ) THEN
-    ifi = 0
-  ELSE
-    ifi = nitnr
-  END IF
+         IF (jit < 4) THEN
+            ifi = 0
+         ELSE
+            ifi = nitnr
+         END IF
 
-  !         2.2  Work out rates of change and main diagonal of J.
+         !         2.2  Work out rates of change and main diagonal of J.
 
-  ! Call to asad_ftoy includes iteration count
-  CALL asad_ftoy(not_first_call, ifi, jit, n_points, ix, jy, nlev)
-  CALL asad_diffun( nl )
-  CALL asad_jac(n_points)
+         ! Call to asad_ftoy includes iteration count
+         CALL asad_ftoy(not_first_call, ifi, jit, n_points, ix, jy, nlev)
+         CALL asad_diffun(nl)
+         CALL asad_jac(n_points)
 
-  !         2.3  Do the normal Newton-Raphson iteration with
-  !              Jacobian approximated to main diagonal.
+         !         2.3  Do the normal Newton-Raphson iteration with
+         !              Jacobian approximated to main diagonal.
 
-  DO jtr = 1, jpcspf
-    isp = majors(jtr)
-    DO jl = 1, n_points
-      zprf(jl,jtr) = f(jl,jtr)
-      binv(jl,jtr) = 1.0 / ( 1.0 - cdt*ej(jl,jtr) )
-      dely(jl,jtr) = binv(jl,jtr) *                                            &
-             ( (zf(jl,jtr) - f(jl,jtr)) + cdt*fdot(jl,jtr) )
-      f(jl,jtr) = f(jl,jtr) + dely(jl,jtr)
+         DO jtr = 1, jpcspf
+            isp = majors(jtr)
+            DO jl = 1, n_points
+               zprf(jl, jtr) = f(jl, jtr)
+               binv(jl, jtr) = 1.0/(1.0 - cdt*ej(jl, jtr))
+               dely(jl, jtr) = binv(jl, jtr)* &
+                               ((zf(jl, jtr) - f(jl, jtr)) + cdt*fdot(jl, jtr))
+               f(jl, jtr) = f(jl, jtr) + dely(jl, jtr)
 
-      IF ( linfam(jl,jtr) ) f(jl,jtr) = y(jl,isp)
-    END DO
-  END DO
-
-  !         2.4  If requested for all points where photolysis is
-  !              occurring, include the terms in the Jacobian
-  !              arising from just the photolysis terms. Note
-  !              that we only do this for points where photolysis
-  !              is actually turned on.
-
-  IF ( ljacx .AND. inl > 0 ) THEN
-    ntr1 = nltrim(0,1)
-
-    !           2.4.1  For each tracer that needs correcting (ie.
-    !                  loop over the rows in the Jacobian matrix).
-
-    DO jt1 = 1, ntr1
-
-      !             2.4.2  Compute the contribution from non-zero
-      !                    elements in the Jacobian due to photolysis.
-      !                    ie. work our way along the columns. We first
-      !                    compute the contribution from ordinary tracers
-      !                    'TR' and then from families.
-
-      ntr2  = nltrim(jt1,2)
-      ipos0 = nltrim(jt1,3)
-      ipos  = ipos0
-      DO jl = 1, n_points
-        corrn(jl) = 0.0
-      END DO
-
-      DO
-
-        ir   = nlpdv(ipos,1)
-        irk  = nprkx(ir)
-        isp  = nspi(irk,1)
-        njr  = nlpdv(ipos,2)
-        ireac = madvtr(isp)
-        gfam = ireac  ==  0
-        DO j = 1, inl
-          dd(j) = 0.0
-        END DO
-
-        IF ( gfam ) THEN
-          ireac = moffam(isp)
-          DO jr = 1, njr
-            ir  = nlpdv(ipos,1)
-            irk = nprkx(ir)
-            isp = nspi(irk,1)
-            DO j = 1, inl
-              jl    = lphot(j)
-              dd(j) = dd(j) + rk(jl,irk)*y(jl,isp)
+               IF (linfam(jl, jtr)) f(jl, jtr) = y(jl, isp)
             END DO
-            ipos = ipos + 1
-          END DO
-          DO j = 1, inl
-            jl    = lphot(j)
-            dd(j) = dd(j) / zprf(jl,ireac)
-          END DO
+         END DO
 
-        ELSE
+         !         2.4  If requested for all points where photolysis is
+         !              occurring, include the terms in the Jacobian
+         !              arising from just the photolysis terms. Note
+         !              that we only do this for points where photolysis
+         !              is actually turned on.
 
-          !             2.4.3.  Species of type 'FT' will come here.
-          !                     Check, at each point, whether it's gone
-          !                     into the family or not.
+         IF (ljacx .AND. inl > 0) THEN
+            ntr1 = nltrim(0, 1)
 
-          DO jr = 1, njr
-            ir  = nlpdv(ipos,1)
-            irk = nprkx(ir)
-            isp = nspi(irk,1)
-            DO j = 1, inl
-              jl = lphot(j)
-              IF ( linfam(jl,ireac) ) THEN
-                dd(j) = dd(j)+rk(jl,irk)*y(jl,isp)/zprf(jl,ireac)
-              ELSE
-                dd(j) = dd(j)+rk(jl,irk)
-              END IF
+            !           2.4.1  For each tracer that needs correcting (ie.
+            !                  loop over the rows in the Jacobian matrix).
+
+            DO jt1 = 1, ntr1
+
+               !             2.4.2  Compute the contribution from non-zero
+               !                    elements in the Jacobian due to photolysis.
+               !                    ie. work our way along the columns. We first
+               !                    compute the contribution from ordinary tracers
+               !                    'TR' and then from families.
+
+               ntr2 = nltrim(jt1, 2)
+               ipos0 = nltrim(jt1, 3)
+               ipos = ipos0
+               DO jl = 1, n_points
+                  corrn(jl) = 0.0
+               END DO
+
+               DO
+
+                  ir = nlpdv(ipos, 1)
+                  irk = nprkx(ir)
+                  isp = nspi(irk, 1)
+                  njr = nlpdv(ipos, 2)
+                  ireac = madvtr(isp)
+                  gfam = ireac == 0
+                  DO j = 1, inl
+                     dd(j) = 0.0
+                  END DO
+
+                  IF (gfam) THEN
+                     ireac = moffam(isp)
+                     DO jr = 1, njr
+                        ir = nlpdv(ipos, 1)
+                        irk = nprkx(ir)
+                        isp = nspi(irk, 1)
+                        DO j = 1, inl
+                           jl = lphot(j)
+                           dd(j) = dd(j) + rk(jl, irk)*y(jl, isp)
+                        END DO
+                        ipos = ipos + 1
+                     END DO
+                     DO j = 1, inl
+                        jl = lphot(j)
+                        dd(j) = dd(j)/zprf(jl, ireac)
+                     END DO
+
+                  ELSE
+
+                     !             2.4.3.  Species of type 'FT' will come here.
+                     !                     Check, at each point, whether it's gone
+                     !                     into the family or not.
+
+                     DO jr = 1, njr
+                        ir = nlpdv(ipos, 1)
+                        irk = nprkx(ir)
+                        isp = nspi(irk, 1)
+                        DO j = 1, inl
+                           jl = lphot(j)
+                           IF (linfam(jl, ireac)) THEN
+                              dd(j) = dd(j) + rk(jl, irk)*y(jl, isp)/zprf(jl, ireac)
+                           ELSE
+                              dd(j) = dd(j) + rk(jl, irk)
+                           END IF
+                        END DO
+                        ipos = ipos + 1
+                     END DO
+                  END IF
+
+                  DO j = 1, inl
+                     jl = lphot(j)
+                     corrn(j) = corrn(j) + dd(j)*dely(jl, ireac)
+                  END DO
+
+                  IF (ipos - ipos0 >= ntr2) EXIT
+               END DO
+
+               !             2.4.3  Now add correction to the tracer (rows). If the
+               !                    tracer is of type 'FT', then for each pt, we must
+               !                    check whether the tracer has been put into the f
+               !                    or not. If it has, we add the correction to the
+               !                    family and not to the tracer.
+
+               iprod = nltrim(jt1, 1)
+               isp = majors(iprod)
+               IF (ctype(isp) == jpif) THEN
+                  DO j = 1, inl
+                     jl = lphot(j)
+                     iprod = nltrim(jt1, 1)
+                     IF (linfam(jl, iprod)) iprod = moffam(isp)
+                     f(jl, iprod) = f(jl, iprod) + cdt*binv(jl, iprod)*corrn(j)
+                  END DO
+               ELSE
+                  DO j = 1, inl
+                     jl = lphot(j)
+                     f(jl, iprod) = f(jl, iprod) + cdt*binv(jl, iprod)*corrn(j)
+                  END DO
+               END IF
+
             END DO
-            ipos = ipos + 1
-          END DO
-        END IF
+         END IF      ! End of IF ( ljacx .AND. inl > 0 ) statement
 
-        DO j = 1, inl
-          jl = lphot(j)
-          corrn(j) = corrn(j) + dd(j)*dely(jl,ireac)
-        END DO
+         !         9. Check for convergence
+         !            ----- --- -----------
 
-        IF ( ipos - ipos0 >= ntr2 ) EXIT
-      END DO
-
-      !             2.4.3  Now add correction to the tracer (rows). If the
-      !                    tracer is of type 'FT', then for each pt, we must
-      !                    check whether the tracer has been put into the f
-      !                    or not. If it has, we add the correction to the
-      !                    family and not to the tracer.
-
-      iprod = nltrim(jt1,1)
-      isp   = majors(iprod)
-      IF ( ctype(isp) == jpif ) THEN
-        DO j = 1, inl
-          jl    = lphot(j)
-          iprod = nltrim(jt1,1)
-          IF ( linfam(jl,iprod) ) iprod = moffam(isp)
-          f(jl,iprod) = f(jl,iprod)+cdt*binv(jl,iprod)*corrn(j)
-        END DO
-      ELSE
-        DO j = 1, inl
-          jl = lphot(j)
-          f(jl,iprod) = f(jl,iprod)+cdt*binv(jl,iprod)*corrn(j)
-        END DO
-      END IF
-
-    END DO
-  END IF      ! End of IF ( ljacx .AND. inl > 0 ) statement
-
-  !         9. Check for convergence
-  !            ----- --- -----------
-
-  gconv = .TRUE.
-  DO jtr = 1,jpcspf
-    DO jl = 1, n_points
-      IF ( ABS(f(jl,jtr)-zprf(jl,jtr)) >  ptol*f(jl,jtr)                       &
-      .AND. f(jl,jtr) >  pmintnd(jl) ) gconv=.FALSE.
-    END DO
-    IF ( .NOT. gconv ) EXIT
-  END DO
-  IF (gconv) THEN
-    IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
-    RETURN
-  END IF
-END DO           ! End of NR (jit) loop
+         gconv = .TRUE.
+         DO jtr = 1, jpcspf
+            DO jl = 1, n_points
+               IF (ABS(f(jl, jtr) - zprf(jl, jtr)) > ptol*f(jl, jtr) &
+                   .AND. f(jl, jtr) > pmintnd(jl)) gconv = .FALSE.
+            END DO
+            IF (.NOT. gconv) EXIT
+         END DO
+         IF (gconv) THEN
+            IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_out, zhook_handle)
+            RETURN
+         END IF
+      END DO           ! End of NR (jit) loop
 
 !       9.1  Convergence achieved or max. no. of iterations reached
 
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
-RETURN
-END SUBROUTINE asad_impact
+      IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_out, zhook_handle)
+      RETURN
+   END SUBROUTINE asad_impact
 END MODULE asad_impact_mod

@@ -29,13 +29,13 @@
 ! Subroutine Interface:
 MODULE ukca_calcminmaxndmdt_mod
 
-IMPLICIT NONE
+   IMPLICIT NONE
 
-CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName = 'UKCA_CALCMINMAXNDMDT_MOD'
+   CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName = 'UKCA_CALCMINMAXNDMDT_MOD'
 
 CONTAINS
 
-SUBROUTINE ukca_calcminmaxndmdt(nbox, nd, mdt, verbose)
+   SUBROUTINE ukca_calcminmaxndmdt(nbox, nd, mdt, verbose)
 !----------------------------------------------------------------------
 !
 !     Purpose
@@ -61,74 +61,72 @@ SUBROUTINE ukca_calcminmaxndmdt(nbox, nd, mdt, verbose)
 !     XMINM,XMAXM,XMEANM : min,max,mean of avg total mass per particle
 !
 !--------------------------------------------------------------------
-USE ukca_config_specification_mod, ONLY: glomap_variables
-USE ukca_mode_setup,   ONLY: nmodes
-USE parkind1,          ONLY: jprb, jpim
-USE yomhook,           ONLY: lhook, dr_hook
-USE umPrintMgr, ONLY:                                                          &
-    umPrint,                                                                   &
-    umMessage
-IMPLICIT NONE
+      USE ukca_config_specification_mod, ONLY: glomap_variables
+      USE ukca_mode_setup, ONLY: nmodes
+      USE parkind1, ONLY: jprb, jpim
+      USE yomhook, ONLY: lhook, dr_hook
+      USE umPrintMgr, ONLY: &
+         umPrint, &
+         umMessage
+      IMPLICIT NONE
 
-
-INTEGER, INTENT(IN) :: nbox
-INTEGER, INTENT(IN) :: verbose               ! Verbose level
-REAL, INTENT(IN)    :: nd(nbox,nmodes)
-REAL, INTENT(IN)    :: mdt(nbox,nmodes)
+      INTEGER, INTENT(IN) :: nbox
+      INTEGER, INTENT(IN) :: verbose               ! Verbose level
+      REAL, INTENT(IN)    :: nd(nbox, nmodes)
+      REAL, INTENT(IN)    :: mdt(nbox, nmodes)
 
 ! Local variables
 
-INTEGER :: imode
-INTEGER :: jl
-REAL    :: xminn
-REAL    :: xmaxn
-REAL    :: xmeann
-REAL    :: xminm
-REAL    :: xmaxm
-REAL    :: xmeanm
+      INTEGER :: imode
+      INTEGER :: jl
+      REAL    :: xminn
+      REAL    :: xmaxn
+      REAL    :: xmeann
+      REAL    :: xminm
+      REAL    :: xmaxm
+      REAL    :: xmeanm
 
-INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
-INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
-REAL(KIND=jprb)               :: zhook_handle
+      INTEGER(KIND=jpim), PARAMETER :: zhook_in = 0
+      INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+      REAL(KIND=jprb)               :: zhook_handle
 
-CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_CALCMINMAXNDMDT'
+      CHARACTER(LEN=*), PARAMETER :: RoutineName = 'UKCA_CALCMINMAXNDMDT'
 
+      IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_in, zhook_handle)
 
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+      IF (verbose > 0) THEN
+         !  Write header
+         WRITE (umMessage, '(A25,A65)') 'UKCA_CALCMINMAXNDMDT:', &
+            'imode min(nd) max(nd) mean(nd) min(mdt) max(mdt) mean(mdt)'
+         CALL umPrint(umMessage, src='ukca_calcminmaxndmdt')
+      END IF
 
-IF (verbose > 0) THEN
-  !  Write header
-  WRITE(umMessage,'(A25,A65)') 'UKCA_CALCMINMAXNDMDT:',                        &
-         'imode min(nd) max(nd) mean(nd) min(mdt) max(mdt) mean(mdt)'
-  CALL umPrint(umMessage,src='ukca_calcminmaxndmdt')
-END IF
+      DO imode = 1, nmodes
+         IF (glomap_variables%mode(imode)) THEN
+            xminn = 1.0E16
+            xmaxn = -1.0E16
+            xmeann = 0.0E0
+            xminm = 1.0E16
+            xmaxm = -1.0E16
+            xmeanm = 0.0
+            DO jl = 1, nbox
+               xminn = MIN(nd(jl, imode), xminn)
+               xmaxn = MAX(nd(jl, imode), xmaxn)
+               xmeann = xmeann + nd(jl, imode)/REAL(nbox)
+               xminm = MIN(mdt(jl, imode), xminm)
+               xmaxm = MAX(mdt(jl, imode), xmaxm)
+               xmeanm = xmeanm + mdt(jl, imode)/REAL(nbox)
+            END DO
 
-DO imode=1,nmodes
-  IF (glomap_variables%mode(imode)) THEN
-    xminn=1.0e16
-    xmaxn=-1.0e16
-    xmeann=0.0e0
-    xminm=1.0e16
-    xmaxm=-1.0e16
-    xmeanm=0.0
-    DO jl=1,nbox
-      xminn=MIN(nd(jl,imode),xminn)
-      xmaxn=MAX(nd(jl,imode),xmaxn)
-      xmeann=xmeann+nd(jl,imode)/REAL(nbox)
-      xminm=MIN(mdt(jl,imode),xminm)
-      xmaxm=MAX(mdt(jl,imode),xmaxm)
-      xmeanm=xmeanm+mdt(jl,imode)/REAL(nbox)
-    END DO
+            IF (verbose > 0) THEN
+               WRITE (umMessage, '(1i4,6e15.6)') imode, xminn, xmaxn, xmeann, xminm, &
+                  xmaxm, xmeanm
+               CALL umPrint(umMessage, src='ukca_calcminmaxndmdt')
+            END IF
+         END IF
+      END DO
 
-    IF (verbose > 0) THEN
-      WRITE(umMessage,'(1i4,6e15.6)') imode,xminn,xmaxn,xmeann,xminm,          &
-                                      xmaxm,xmeanm
-      CALL umPrint(umMessage,src='ukca_calcminmaxndmdt')
-    END IF
-  END IF
-END DO
-
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
-RETURN
-END SUBROUTINE ukca_calcminmaxndmdt
+      IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_out, zhook_handle)
+      RETURN
+   END SUBROUTINE ukca_calcminmaxndmdt
 END MODULE ukca_calcminmaxndmdt_mod

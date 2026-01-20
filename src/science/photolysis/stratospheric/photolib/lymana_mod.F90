@@ -9,10 +9,9 @@
 ! *****************************COPYRIGHT*******************************
 MODULE lymana_mod
 
-USE parkind1, ONLY: jprb, jpim
-USE yomhook, ONLY: lhook, dr_hook
-IMPLICIT NONE
-
+   USE parkind1, ONLY: jprb, jpim
+   USE yomhook, ONLY: lhook, dr_hook
+   IMPLICIT NONE
 
 ! Description:
 !     Photodissociation due to Lyman alpha for O2, H2O, CH4.
@@ -32,66 +31,64 @@ IMPLICIT NONE
 !    Language:  Fortran 95
 !    This code is written to UMDP3 standards.
 
-
-CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName='LYMANA_MOD'
+   CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName = 'LYMANA_MOD'
 
 CONTAINS
-SUBROUTINE lymana(tspo2,tabj2,tabjh2o,tabjch4,quanta,jo)
-USE ukca_parpho_mod, ONLY: jplev, jpchi, jpchin,                               &
-                           jpwav, jptem, jpo3p
+   SUBROUTINE lymana(tspo2, tabj2, tabjh2o, tabjch4, quanta, jo)
+      USE ukca_parpho_mod, ONLY: jplev, jpchi, jpchin, &
+                                 jpwav, jptem, jpo3p
 
-USE parkind1, ONLY: jprb, jpim
-USE yomhook, ONLY: lhook, dr_hook
-IMPLICIT NONE
+      USE parkind1, ONLY: jprb, jpim
+      USE yomhook, ONLY: lhook, dr_hook
+      IMPLICIT NONE
 
 ! Subroutine interface
-INTEGER, INTENT(IN) :: jo
-REAL, INTENT(IN) :: tspo2  (jplev,jpchi)
-REAL, INTENT(IN) :: quanta(jpwav)
-REAL, INTENT(IN OUT) :: tabj2  (jplev,jpchi,jptem,jpo3p)
-REAL, INTENT(IN OUT) :: tabjh2o(jplev,jpchi,jptem,jpo3p)
-REAL, INTENT(IN OUT) :: tabjch4(jplev,jpchi,jptem,jpo3p)
+      INTEGER, INTENT(IN) :: jo
+      REAL, INTENT(IN) :: tspo2(jplev, jpchi)
+      REAL, INTENT(IN) :: quanta(jpwav)
+      REAL, INTENT(IN OUT) :: tabj2(jplev, jpchi, jptem, jpo3p)
+      REAL, INTENT(IN OUT) :: tabjh2o(jplev, jpchi, jptem, jpo3p)
+      REAL, INTENT(IN OUT) :: tabjch4(jplev, jpchi, jptem, jpo3p)
 
 ! Local variables
-REAL :: expfac
-REAL :: quly
-REAL :: siglya
-REAL :: ply
+      REAL :: expfac
+      REAL :: quly
+      REAL :: siglya
+      REAL :: ply
 
-INTEGER :: jc
-INTEGER :: jl
-INTEGER :: jt
+      INTEGER :: jc
+      INTEGER :: jl
+      INTEGER :: jt
 
-INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
-INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
-REAL(KIND=jprb)               :: zhook_handle
+      INTEGER(KIND=jpim), PARAMETER :: zhook_in = 0
+      INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+      REAL(KIND=jprb)               :: zhook_handle
 
-CHARACTER(LEN=*), PARAMETER :: RoutineName='LYMANA'
+      CHARACTER(LEN=*), PARAMETER :: RoutineName = 'LYMANA'
 
-
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+      IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_in, zhook_handle)
 
 !     Only for zenith angles less than 90 degrees
-DO jt=1,jptem
-  DO jc=1,jpchin-1
-    DO jl=1,jplev
+      DO jt = 1, jptem
+         DO jc = 1, jpchin - 1
+            DO jl = 1, jplev
 
-      !       slant column of O2
-      ply=tspo2(jl,jc)
+               !       slant column of O2
+               ply = tspo2(jl, jc)
 
-      expfac= 4.17e-19*(ply**0.917)
-      siglya=expfac/ply
-      quly=quanta(1)*EXP(-expfac)
+               expfac = 4.17E-19*(ply**0.917)
+               siglya = expfac/ply
+               quly = quanta(1)*EXP(-expfac)
 
-      tabj2  (jl,jc,jt,jo) = siglya*quly
-      tabjh2o(jl,jc,jt,jo) = 1.40e-17*0.85*quly
-      tabjch4(jl,jc,jt,jo) = 1.37e-17*0.85*quly
+               tabj2(jl, jc, jt, jo) = siglya*quly
+               tabjh2o(jl, jc, jt, jo) = 1.40E-17*0.85*quly
+               tabjch4(jl, jc, jt, jo) = 1.37E-17*0.85*quly
 
-    END DO
-  END DO
-END DO
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
-RETURN
+            END DO
+         END DO
+      END DO
+      IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_out, zhook_handle)
+      RETURN
 
-END SUBROUTINE lymana
+   END SUBROUTINE lymana
 END MODULE lymana_mod

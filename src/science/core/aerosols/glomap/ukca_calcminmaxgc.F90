@@ -29,13 +29,13 @@
 ! Subroutine Interface:
 MODULE ukca_calcminmaxgc_mod
 
-IMPLICIT NONE
+   IMPLICIT NONE
 
-CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName = 'UKCA_CALCMINMAXGC_MOD'
+   CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName = 'UKCA_CALCMINMAXGC_MOD'
 
 CONTAINS
 
-SUBROUTINE ukca_calcminmaxgc(str_at,nbox,nchemg,gc)
+   SUBROUTINE ukca_calcminmaxgc(str_at, nbox, nchemg, gc)
 !----------------------------------------------------------------------
 !
 !     Purpose
@@ -60,61 +60,59 @@ SUBROUTINE ukca_calcminmaxgc(str_at,nbox,nchemg,gc)
 !     GCMIN,GCMAX,GCMEAN : min,max,mean of gas phase condensable conc.
 !
 !--------------------------------------------------------------------
-USE ukca_setup_indices, ONLY: condensable
-USE umPrintMgr, ONLY: umMessage, umPrint, PrintStatus, PrStatus_Diag
-USE parkind1, ONLY: jprb, jpim
-USE yomhook, ONLY: lhook, dr_hook
-IMPLICIT NONE
+      USE ukca_setup_indices, ONLY: condensable
+      USE umPrintMgr, ONLY: umMessage, umPrint, PrintStatus, PrStatus_Diag
+      USE parkind1, ONLY: jprb, jpim
+      USE yomhook, ONLY: lhook, dr_hook
+      IMPLICIT NONE
 
 ! Arguments
-CHARACTER(LEN=30), INTENT(IN) :: str_at
-INTEGER,           INTENT(IN) :: nbox
-INTEGER,           INTENT(IN) :: nchemg
-REAL,              INTENT(IN) :: gc(nbox,nchemg)
-
+      CHARACTER(LEN=30), INTENT(IN) :: str_at
+      INTEGER, INTENT(IN) :: nbox
+      INTEGER, INTENT(IN) :: nchemg
+      REAL, INTENT(IN) :: gc(nbox, nchemg)
 
 ! Local variables
-INTEGER :: jl
-INTEGER :: jv
-REAL    :: gcmin
-REAL    :: gcmax
-REAL    :: gcmean
+      INTEGER :: jl
+      INTEGER :: jv
+      REAL    :: gcmin
+      REAL    :: gcmax
+      REAL    :: gcmean
 
-INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
-INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
-REAL(KIND=jprb)               :: zhook_handle
+      INTEGER(KIND=jpim), PARAMETER :: zhook_in = 0
+      INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+      REAL(KIND=jprb)               :: zhook_handle
 
-CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_CALCMINMAXGC'
+      CHARACTER(LEN=*), PARAMETER :: RoutineName = 'UKCA_CALCMINMAXGC'
 
+      IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_in, zhook_handle)
 
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+      DO jv = 1, nchemg
+         IF (condensable(jv)) THEN
+            IF (PrintStatus >= PrStatus_Diag) THEN
+               CALL umPrint('**********************************', &
+                            src='ukca_calcminmaxgc')
+               CALL umPrint(str_at, src='ukca_calcminmaxgc')
+            END IF
+            gcmin = 1.0E9
+            gcmax = -1.0E9
+            gcmean = 0.0E0
+            DO jl = 1, nbox
+               gcmin = MIN(gc(jl, jv), gcmin)
+               gcmax = MAX(gc(jl, jv), gcmax)
+               gcmean = gcmean + gc(jl, jv)/REAL(nbox)
+            END DO
+            IF (PrintStatus >= PrStatus_Diag) THEN
+               WRITE (umMessage, '(A20,I6,3E12.3)') 'GC:JV,Min,max,mean=', jv, gcmin, &
+                  gcmax, gcmean
+               CALL umPrint(umMessage, src='ukca_calcminmaxgc')
+               CALL umPrint('**********************************', &
+                            src='ukca_calcminmaxgc')
+            END IF
+         END IF
+      END DO
 
-DO jv=1,nchemg
-  IF (condensable(jv)) THEN
-    IF (PrintStatus >= PrStatus_Diag) THEN
-      CALL umPrint( '**********************************',                      &
-          src='ukca_calcminmaxgc')
-      CALL umPrint( str_at,src='ukca_calcminmaxgc')
-    END IF
-    gcmin=1.0e9
-    gcmax=-1.0e9
-    gcmean=0.0e0
-    DO jl=1,nbox
-      gcmin=MIN(gc(jl,jv),gcmin)
-      gcmax=MAX(gc(jl,jv),gcmax)
-      gcmean=gcmean+gc(jl,jv)/REAL(nbox)
-    END DO
-    IF (PrintStatus >= PrStatus_Diag) THEN
-      WRITE(umMessage,'(A20,I6,3E12.3)') 'GC:JV,Min,max,mean=',jv,gcmin,       &
-                                 gcmax,gcmean
-      CALL umPrint(umMessage,src='ukca_calcminmaxgc')
-      CALL umPrint( '**********************************',                      &
-          src='ukca_calcminmaxgc')
-    END IF
-  END IF
-END DO
-
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
-RETURN
-END SUBROUTINE ukca_calcminmaxgc
+      IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_out, zhook_handle)
+      RETURN
+   END SUBROUTINE ukca_calcminmaxgc
 END MODULE ukca_calcminmaxgc_mod

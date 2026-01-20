@@ -107,198 +107,196 @@
 !
 MODULE asad_prls_mod
 
-IMPLICIT NONE
+   IMPLICIT NONE
 
-CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName = 'ASAD_PRLS_MOD'
+   CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName = 'ASAD_PRLS_MOD'
 
 CONTAINS
 
-SUBROUTINE asad_prls( kl, knspec, kspec, ldepem )
+   SUBROUTINE asad_prls(kl, knspec, kspec, ldepem)
 
-USE asad_mod,            ONLY: prod, slos, y, rk, prk,                         &
-                               dpd, dpw, pd,                                   &
-                               nuni, nspi, ngrp, nprdx1,                       &
-                               nprdx2, nprdx3, ntabfp, frpx,                   &
-                               nldepx, nnfrp, jpspec, jpnr
-USE parkind1, ONLY: jprb, jpim
-USE yomhook, ONLY: lhook, dr_hook
-IMPLICIT NONE
+      USE asad_mod, ONLY: prod, slos, y, rk, prk, &
+                          dpd, dpw, pd, &
+                          nuni, nspi, ngrp, nprdx1, &
+                          nprdx2, nprdx3, ntabfp, frpx, &
+                          nldepx, nnfrp, jpspec, jpnr
+      USE parkind1, ONLY: jprb, jpim
+      USE yomhook, ONLY: lhook, dr_hook
+      IMPLICIT NONE
 
-INTEGER, INTENT(IN) :: kl
-INTEGER, INTENT(IN) :: knspec
-INTEGER, INTENT(IN) :: kspec(knspec)
+      INTEGER, INTENT(IN) :: kl
+      INTEGER, INTENT(IN) :: knspec
+      INTEGER, INTENT(IN) :: kspec(knspec)
 
-LOGICAL, INTENT(IN) ::  ldepem
+      LOGICAL, INTENT(IN) ::  ldepem
 
 !       Local variables
 
-INTEGER :: j        ! Loop variable
-INTEGER :: j1       ! Loop variable
-INTEGER :: j2       ! Loop variable
-INTEGER :: j3       ! Loop variable
-INTEGER :: jl       ! Loop variable
-INTEGER :: jr       ! Loop variable
-INTEGER :: js       ! Loop variable
-INTEGER :: jskip    ! Loop variable
-INTEGER :: i1       ! Index
-INTEGER :: i2       ! Index
-INTEGER :: i3       ! Index
-INTEGER :: ir1
-INTEGER :: ir2
-INTEGER :: ip1
-INTEGER :: ip2
-INTEGER :: ip3
-INTEGER :: iunip1
-INTEGER :: iss
-INTEGER :: ir
-INTEGER :: ix       ! index for frpx array
-INTEGER :: istart
-INTEGER :: iend
+      INTEGER :: j        ! Loop variable
+      INTEGER :: j1       ! Loop variable
+      INTEGER :: j2       ! Loop variable
+      INTEGER :: j3       ! Loop variable
+      INTEGER :: jl       ! Loop variable
+      INTEGER :: jr       ! Loop variable
+      INTEGER :: js       ! Loop variable
+      INTEGER :: jskip    ! Loop variable
+      INTEGER :: i1       ! Index
+      INTEGER :: i2       ! Index
+      INTEGER :: i3       ! Index
+      INTEGER :: ir1
+      INTEGER :: ir2
+      INTEGER :: ip1
+      INTEGER :: ip2
+      INTEGER :: ip3
+      INTEGER :: iunip1
+      INTEGER :: iss
+      INTEGER :: ir
+      INTEGER :: ix       ! index for frpx array
+      INTEGER :: istart
+      INTEGER :: iend
 
-REAL :: fr
+      REAL :: fr
 
-INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
-INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
-REAL(KIND=jprb)               :: zhook_handle
+      INTEGER(KIND=jpim), PARAMETER :: zhook_in = 0
+      INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+      REAL(KIND=jprb)               :: zhook_handle
 
-CHARACTER(LEN=*), PARAMETER :: RoutineName='ASAD_PRLS'
-
+      CHARACTER(LEN=*), PARAMETER :: RoutineName = 'ASAD_PRLS'
 
 !       1.  Initialise variables.
 !           ---------- ----------
 
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-DO js = 1, jpspec
-  DO jl = 1, kl
-    prod(jl,js) = 0.0
-    slos(jl,js) = 0.0
-  END DO
-END DO
+      IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_in, zhook_handle)
+      DO js = 1, jpspec
+         DO jl = 1, kl
+            prod(jl, js) = 0.0
+            slos(jl, js) = 0.0
+         END DO
+      END DO
 
 !       2.  Compute reaction rate of change (kA or kAB).
 !           ------- -------- ---- -- ------ --- -- -----
 
 !       2.1  Reactions with one reactant.
 
+      DO jr = 1, nuni
+         ir1 = nspi(jr, 1)
 
-DO jr = 1, nuni
-  ir1 = nspi(jr,1)
-
-  DO jl = 1, kl
-    prk(jl,jr) = rk(jl,jr) * y(jl,ir1)
-  END DO
-END DO
+         DO jl = 1, kl
+            prk(jl, jr) = rk(jl, jr)*y(jl, ir1)
+         END DO
+      END DO
 
 !       2.2  Reactions with two reactants.
 
-iunip1 = nuni + 1
-DO jr = iunip1, jpnr
-  ir1 = nspi(jr,1)
-  ir2 = nspi(jr,2)
-  DO jl = 1, kl
-    prk(jl,jr) = rk(jl,jr) * y(jl,ir1) * y(jl,ir2)
-  END DO
-END DO
+      iunip1 = nuni + 1
+      DO jr = iunip1, jpnr
+         ir1 = nspi(jr, 1)
+         ir2 = nspi(jr, 2)
+         DO jl = 1, kl
+            prk(jl, jr) = rk(jl, jr)*y(jl, ir1)*y(jl, ir2)
+         END DO
+      END DO
 
 !       3.  Compute production & loss term; see method for details.
 !           ------- ---------- - ---- ----- --- ------ --- --------
 
-DO jskip = 0, jpspec, jpspec
+      DO jskip = 0, jpspec, jpspec
 
-  DO j = 1, knspec
-    js  = kspec(j) + jskip
-    ip3 = ngrp(js,3)
-    ip2 = ngrp(js,2)
-    ip1 = ngrp(js,1)
+         DO j = 1, knspec
+            js = kspec(j) + jskip
+            ip3 = ngrp(js, 3)
+            ip2 = ngrp(js, 2)
+            ip1 = ngrp(js, 1)
 
-    !           3.1  Terms in groups of 3
+            !           3.1  Terms in groups of 3
 
-    DO j3 = 1, ip3
-      i1 = nprdx3(1,j3,js)
-      i2 = nprdx3(2,j3,js)
-      i3 = nprdx3(3,j3,js)
+            DO j3 = 1, ip3
+               i1 = nprdx3(1, j3, js)
+               i2 = nprdx3(2, j3, js)
+               i3 = nprdx3(3, j3, js)
 
-      DO jl = 1, kl
-        pd(jl,js) = pd(jl,js) + prk(jl,i1) + prk(jl,i2) + prk(jl,i3)
+               DO jl = 1, kl
+                  pd(jl, js) = pd(jl, js) + prk(jl, i1) + prk(jl, i2) + prk(jl, i3)
+               END DO
+            END DO
+
+            !           3.2  Terms in groups of 2; this loop will only ever be
+            !                ip2=0 or 1.
+
+            DO j2 = 1, ip2
+               i1 = nprdx2(1, js)
+               i2 = nprdx2(2, js)
+               DO jl = 1, kl
+                  pd(jl, js) = pd(jl, js) + prk(jl, i1) + prk(jl, i2)
+               END DO
+            END DO
+
+            !           3.3  Single term left over; ip1 will only be 0 or 1.
+
+            DO j1 = 1, ip1
+               i1 = nprdx1(js)
+               DO jl = 1, kl
+                  pd(jl, js) = pd(jl, js) + prk(jl, i1)
+               END DO
+            END DO
+
+         END DO
       END DO
-    END DO
-
-    !           3.2  Terms in groups of 2; this loop will only ever be
-    !                ip2=0 or 1.
-
-    DO j2 = 1, ip2
-      i1 = nprdx2(1,js)
-      i2 = nprdx2(2,js)
-      DO jl = 1, kl
-        pd(jl,js) = pd(jl,js) + prk(jl,i1) + prk(jl,i2)
-      END DO
-    END DO
-
-    !           3.3  Single term left over; ip1 will only be 0 or 1.
-
-    DO j1 = 1, ip1
-      i1 = nprdx1(js)
-      DO jl = 1, kl
-        pd(jl,js) = pd(jl,js) + prk(jl,i1)
-      END DO
-    END DO
-
-  END DO
-END DO
 
 !       3.4  Sum contribution from fractional products.
 
-DO jr = 1, nnfrp
-  iss = ntabfp(jr,1)
-  ir = ntabfp(jr,2)
-  ix = ntabfp(jr,3)
-  fr = frpx(ix)
-  DO jl = 1, kl
-    pd(jl,iss) = pd(jl,iss) + fr * prk(jl,ir)
-  END DO
-END DO
+      DO jr = 1, nnfrp
+         iss = ntabfp(jr, 1)
+         ir = ntabfp(jr, 2)
+         ix = ntabfp(jr, 3)
+         fr = frpx(ix)
+         DO jl = 1, kl
+            pd(jl, iss) = pd(jl, iss) + fr*prk(jl, ir)
+         END DO
+      END DO
 
 !       4.  Add contribution from depositions and emissions.
 !           --- ------------ ---- ----------- --- ----------
 
-IF ( ldepem ) THEN
+      IF (ldepem) THEN
 
-  !         4.1  Loss due to both dry and wet deposition.
+         !         4.1  Loss due to both dry and wet deposition.
 
-  istart = nldepx(1)
-  iend   = nldepx(2)
-  DO j = istart, iend
-    js = nldepx(j)
-    DO  jl = 1, kl
-      slos(jl,js) = slos(jl,js) + ( dpd(jl,js) + dpw(jl,js) ) * y(jl,js)
-    END DO
-  END DO
+         istart = nldepx(1)
+         iend = nldepx(2)
+         DO j = istart, iend
+            js = nldepx(j)
+            DO jl = 1, kl
+               slos(jl, js) = slos(jl, js) + (dpd(jl, js) + dpw(jl, js))*y(jl, js)
+            END DO
+         END DO
 
-  !         4.2  Loss due to dry deposition only.
+         !         4.2  Loss due to dry deposition only.
 
-  istart = nldepx(3)
-  iend   = nldepx(4)
-  DO j = istart, iend
-    js = nldepx(j)
-    DO jl = 1, kl
-      slos(jl,js) = slos(jl,js) + dpd(jl,js) * y(jl,js)
-    END DO
-  END DO
+         istart = nldepx(3)
+         iend = nldepx(4)
+         DO j = istart, iend
+            js = nldepx(j)
+            DO jl = 1, kl
+               slos(jl, js) = slos(jl, js) + dpd(jl, js)*y(jl, js)
+            END DO
+         END DO
 
-  !         4.3  Loss due to wet deposition
+         !         4.3  Loss due to wet deposition
 
-  istart = nldepx(5)
-  iend   = nldepx(6)
-  DO j = istart, iend
-    js = nldepx(j)
-    DO jl = 1, kl
-      slos(jl,js) = slos(jl,js) + dpw(jl,js) * y(jl,js)
-    END DO
-  END DO
+         istart = nldepx(5)
+         iend = nldepx(6)
+         DO j = istart, iend
+            js = nldepx(j)
+            DO jl = 1, kl
+               slos(jl, js) = slos(jl, js) + dpw(jl, js)*y(jl, js)
+            END DO
+         END DO
 
-END IF
+      END IF
 
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
-RETURN
-END SUBROUTINE asad_prls
+      IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_out, zhook_handle)
+      RETURN
+   END SUBROUTINE asad_prls
 END MODULE asad_prls_mod

@@ -30,15 +30,15 @@
 ! Subroutine Interface:
 MODULE ukca_prim_ss_mod
 
-IMPLICIT NONE
+   IMPLICIT NONE
 
-CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName = 'UKCA_PRIM_SS_MOD'
+   CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName = 'UKCA_PRIM_SS_MOD'
 
 CONTAINS
 
-SUBROUTINE ukca_prim_ss(row_length, rows, model_levels, verbose,               &
-       i_primss_method, land_fraction, seaice_frac, u_scalar_10m, tstar,       &
-       aer_mas_primss, aer_num_primss)
+   SUBROUTINE ukca_prim_ss(row_length, rows, model_levels, verbose, &
+                           i_primss_method, land_fraction, seaice_frac, u_scalar_10m, tstar, &
+                           aer_mas_primss, aer_num_primss)
 
 !----------------------------------------------------------------------
 !
@@ -118,53 +118,53 @@ SUBROUTINE ukca_prim_ss(row_length, rows, model_levels, verbose,               &
 ! CP_CL     : index of cpt in which sea-salt mass is stored
 !
 !--------------------------------------------------------------------
-USE ukca_um_legacy_mod,             ONLY: rgas => r
-USE ukca_constants,                 ONLY: pi
-USE ukca_config_constants_mod,      ONLY: avogadro, boltzmann
+      USE ukca_um_legacy_mod, ONLY: rgas => r
+      USE ukca_constants, ONLY: pi
+      USE ukca_config_constants_mod, ONLY: avogadro, boltzmann
 
-USE ukca_mode_setup,                ONLY: cp_cl, nmodes
+      USE ukca_mode_setup, ONLY: cp_cl, nmodes
 
-USE ukca_config_specification_mod,  ONLY: glomap_config, glomap_variables,     &
-                                          i_primss_method_smith,               &
-                                          i_primss_method_monahan,             &
-                                          i_primss_method_combined,            &
-                                          i_primss_method_jaegle
+      USE ukca_config_specification_mod, ONLY: glomap_config, glomap_variables, &
+                                               i_primss_method_smith, &
+                                               i_primss_method_monahan, &
+                                               i_primss_method_combined, &
+                                               i_primss_method_jaegle
 
-USE ereport_mod,                    ONLY: ereport
-USE yomhook,                        ONLY: lhook, dr_hook
-USE parkind1,                       ONLY: jprb, jpim
-USE umPrintMgr,                     ONLY: umPrint
+      USE ereport_mod, ONLY: ereport
+      USE yomhook, ONLY: lhook, dr_hook
+      USE parkind1, ONLY: jprb, jpim
+      USE umPrintMgr, ONLY: umPrint
 
-USE errormessagelength_mod,         ONLY: errormessagelength
+      USE errormessagelength_mod, ONLY: errormessagelength
 
-USE ukca_ingridg_mod,               ONLY: ukca_ingridg
-IMPLICIT NONE
+      USE ukca_ingridg_mod, ONLY: ukca_ingridg
+      IMPLICIT NONE
 
 ! Subroutine interface
-INTEGER, INTENT(IN) :: row_length
+      INTEGER, INTENT(IN) :: row_length
 ! No of rows
-INTEGER, INTENT(IN) :: rows
+      INTEGER, INTENT(IN) :: rows
 ! No of columns
-INTEGER, INTENT(IN) :: model_levels
+      INTEGER, INTENT(IN) :: model_levels
 ! No of model levels
-INTEGER, INTENT(IN) :: verbose
+      INTEGER, INTENT(IN) :: verbose
 ! Verbosity switch
-INTEGER, INTENT(IN) :: i_primss_method
+      INTEGER, INTENT(IN) :: i_primss_method
 ! Emission parameterisation
 
-REAL, INTENT(IN)    :: seaice_frac(row_length,rows)
+      REAL, INTENT(IN)    :: seaice_frac(row_length, rows)
 ! Sea ice fraction
-REAL, INTENT(IN)    :: land_fraction(row_length,rows)
+      REAL, INTENT(IN)    :: land_fraction(row_length, rows)
 ! Land fraction
-REAL, INTENT(IN)    :: u_scalar_10m(row_length,rows)
+      REAL, INTENT(IN)    :: u_scalar_10m(row_length, rows)
 ! Scalar 10m wind
-REAL, INTENT(IN)    :: tstar(row_length,rows)
+      REAL, INTENT(IN)    :: tstar(row_length, rows)
 ! Surface temperature
-REAL, INTENT(IN OUT) :: aer_mas_primss(row_length,rows,                        &
-                                          model_levels,nmodes)
+      REAL, INTENT(IN OUT) :: aer_mas_primss(row_length, rows, &
+                                             model_levels, nmodes)
 ! mass ems flux
-REAL, INTENT(IN OUT) :: aer_num_primss(row_length,rows,                        &
-                                          model_levels,nmodes)
+      REAL, INTENT(IN OUT) :: aer_num_primss(row_length, rows, &
+                                             model_levels, nmodes)
 ! number ems flux
 
 ! Local variables
@@ -172,228 +172,226 @@ REAL, INTENT(IN OUT) :: aer_num_primss(row_length,rows,                        &
 ! Caution - pointers to TYPE glomap_variables%
 !           have been included here to make the code easier to read
 !           take care when making changes involving pointers
-REAL,    POINTER :: ddplim0(:)
-REAL,    POINTER :: mm (:)
-REAL,    POINTER :: rhocomp (:)
+      REAL, POINTER :: ddplim0(:)
+      REAL, POINTER :: mm(:)
+      REAL, POINTER :: rhocomp(:)
 
-INTEGER :: jv
-INTEGER :: modemt
-INTEGER, PARAMETER :: nbins=20
-REAL    :: mbmid(nbins)
-REAL    :: mblo(nbins)
-REAL    :: mbhi(nbins)
-REAL    :: drmid(nbins)
-REAL    :: deltar(nbins)
-REAL    :: drhi(nbins)
-REAL    :: drlo(nbins)
-REAL    :: flux(row_length,rows)
-REAL    :: boxflux(row_length,rows)
-REAL    :: deln_mflux(row_length,rows)
-REAL    :: bet
-REAL    :: agong
-REAL    :: sst(row_length,rows)
-REAL    :: s98flux(row_length,rows)
-REAL    :: m86flux(row_length,rows)
-REAL    :: j11flux(row_length,rows)
-REAL    :: j11mod(row_length,rows)
-REAL    :: combflux(row_length,rows)
-REAL    :: dfdr(row_length,rows)
-REAL    :: dum
-REAL    :: mbsmall       ! grid limits (molecules per particle)
-REAL    :: mblarge       !
-REAL, PARAMETER :: mbsmall_original = 156.0
-REAL, PARAMETER :: mblarge_original = 4.6e13
+      INTEGER :: jv
+      INTEGER :: modemt
+      INTEGER, PARAMETER :: nbins = 20
+      REAL    :: mbmid(nbins)
+      REAL    :: mblo(nbins)
+      REAL    :: mbhi(nbins)
+      REAL    :: drmid(nbins)
+      REAL    :: deltar(nbins)
+      REAL    :: drhi(nbins)
+      REAL    :: drlo(nbins)
+      REAL    :: flux(row_length, rows)
+      REAL    :: boxflux(row_length, rows)
+      REAL    :: deln_mflux(row_length, rows)
+      REAL    :: bet
+      REAL    :: agong
+      REAL    :: sst(row_length, rows)
+      REAL    :: s98flux(row_length, rows)
+      REAL    :: m86flux(row_length, rows)
+      REAL    :: j11flux(row_length, rows)
+      REAL    :: j11mod(row_length, rows)
+      REAL    :: combflux(row_length, rows)
+      REAL    :: dfdr(row_length, rows)
+      REAL    :: dum
+      REAL    :: mbsmall       ! grid limits (molecules per particle)
+      REAL    :: mblarge       !
+      REAL, PARAMETER :: mbsmall_original = 156.0
+      REAL, PARAMETER :: mblarge_original = 4.6E13
 !! changed settings above to match bin -- realised that difference in
 !! sea-salt emissions between bin and mode was due to bin upper-limit
 !! for sea-salt emissions being ~ 7 microns, whereas mode is ~14 microns
 !! Setting MBSMALL,MBLARGE as above results in equivalent emissions
 !! grid being used for GLOMAP-mode as in the standard GLOMAP_bin run.
-REAL, PARAMETER :: mbsmall_corr_rho = 211.0
-REAL, PARAMETER :: mblarge_corr_rho = 6.22e13
+      REAL, PARAMETER :: mbsmall_corr_rho = 211.0
+      REAL, PARAMETER :: mblarge_corr_rho = 6.22E13
 ! For use with corrected sea-salt density
 !
 ! .. use 35 nm cut-off for r at rh=80 (approx 17.5 nm cutoff for dryr)
-REAL, PARAMETER :: cutoff=0.0175e-6
+      REAL, PARAMETER :: cutoff = 0.0175E-6
 
 ! Molar mass of dry air (kg/mol)
-REAL :: mm_da  ! =avogadro*boltzmann/rgas
+      REAL :: mm_da  ! =avogadro*boltzmann/rgas
 ! Scaling factor for emssion of sea salt
-REAL :: scale_emiss
+      REAL :: scale_emiss
 
-CHARACTER(LEN=errormessagelength) :: cmessage       ! Error message
-INTEGER           :: errcode        ! Error code
+      CHARACTER(LEN=errormessagelength) :: cmessage       ! Error message
+      INTEGER           :: errcode        ! Error code
 
+      INTEGER(KIND=jpim), PARAMETER :: zhook_in = 0
+      INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+      REAL(KIND=jprb)               :: zhook_handle
 
-INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
-INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
-REAL(KIND=jprb)               :: zhook_handle
+      CHARACTER(LEN=*), PARAMETER :: RoutineName = 'UKCA_PRIM_SS'
 
-CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_PRIM_SS'
-
-
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+      IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_in, zhook_handle)
 
 ! Caution - pointers to TYPE glomap_variables%
 !           have been included here to make the code easier to read
 !           take care when making changes involving pointers
-ddplim0     => glomap_variables%ddplim0
-mm          => glomap_variables%mm
-rhocomp     => glomap_variables%rhocomp
+      ddplim0 => glomap_variables%ddplim0
+      mm => glomap_variables%mm
+      rhocomp => glomap_variables%rhocomp
 
 ! Molar mass of dry air (kg/mol)
-mm_da = avogadro*boltzmann/rgas
+      mm_da = avogadro*boltzmann/rgas
 
-IF (glomap_config%l_fix_nacl_density) THEN
-  mbsmall = mbsmall_corr_rho
-  mblarge = mblarge_corr_rho
-ELSE
-  mbsmall = mbsmall_original
-  mblarge = mblarge_original
-END IF
-dum=3.0*mm(cp_cl)/(avogadro*rhocomp(cp_cl)*4.0*pi)
+      IF (glomap_config%l_fix_nacl_density) THEN
+         mbsmall = mbsmall_corr_rho
+         mblarge = mblarge_corr_rho
+      ELSE
+         mbsmall = mbsmall_original
+         mblarge = mblarge_original
+      END IF
+      dum = 3.0*mm(cp_cl)/(avogadro*rhocomp(cp_cl)*4.0*pi)
 
-CALL ukca_ingridg(nbins,mbsmall,mblarge,mbmid,mblo,mbhi)
+      CALL ukca_ingridg(nbins, mbsmall, mblarge, mbmid, mblo, mbhi)
 
-DO jv=1,nbins
-  deltar(jv)=((dum*mbhi(jv))**(1.0/3.0)-                                       &
-              (dum*mblo(jv))**(1.0/3.0))*1.0e6 ! in microns
-  drmid(jv)=(dum*mbmid(jv))**(1.0/3.0)         ! in m
-  drlo(jv) =(dum*mblo(jv ))**(1.0/3.0)         ! in m
-  drhi(jv) =(dum*mbhi(jv ))**(1.0/3.0)         ! in m
-END DO
+      DO jv = 1, nbins
+         deltar(jv) = ((dum*mbhi(jv))**(1.0/3.0) - &
+                       (dum*mblo(jv))**(1.0/3.0))*1.0E6 ! in microns
+         drmid(jv) = (dum*mbmid(jv))**(1.0/3.0)         ! in m
+         drlo(jv) = (dum*mblo(jv))**(1.0/3.0)         ! in m
+         drhi(jv) = (dum*mbhi(jv))**(1.0/3.0)         ! in m
+      END DO
 
 ! Determine the scaling factor for emission of sea salt
-IF (glomap_config%l_ukca_scale_sea_salt_ems) THEN
-  scale_emiss = glomap_config%sea_salt_ems_scaling
-ELSE
-  ! No scaling.
-  scale_emiss = 1.0
-END IF
+      IF (glomap_config%l_ukca_scale_sea_salt_ems) THEN
+         scale_emiss = glomap_config%sea_salt_ems_scaling
+      ELSE
+         ! No scaling.
+         scale_emiss = 1.0
+      END IF
 
 ! .. Loop over sea-salt emission bins
-DO jv = 1,nbins
-  IF (drhi(jv) > cutoff) THEN       ! if bin size is > cutoff for flux
-    !                 (cutoff is lowest dry radius for the Gong-Monahan scheme)
+      DO jv = 1, nbins
+         IF (drhi(jv) > cutoff) THEN       ! if bin size is > cutoff for flux
+            !                 (cutoff is lowest dry radius for the Gong-Monahan scheme)
 
-    modemt=0
-    IF (drmid(jv) <  0.5*ddplim0(4)) modemt=3    ! soluble accum. mode
-    IF (drmid(jv) >= 0.5*ddplim0(4)) modemt=4    ! soluble coarse mode
+            modemt = 0
+            IF (drmid(jv) < 0.5*ddplim0(4)) modemt = 3    ! soluble accum. mode
+            IF (drmid(jv) >= 0.5*ddplim0(4)) modemt = 4    ! soluble coarse mode
 
-    ! .. now emit according to widths as set in DDPLIM0 rather than
-    ! .. as hard-coded at 1 micron dry diameter (equivalent for usual setup)
+            ! .. now emit according to widths as set in DDPLIM0 rather than
+            ! .. as hard-coded at 1 micron dry diameter (equivalent for usual setup)
 
-    IF (modemt > 0) THEN
+            IF (modemt > 0) THEN
 
-      IF (i_primss_method == i_primss_method_smith .OR.                        &
-          i_primss_method == i_primss_method_combined) THEN
-        s98flux(:,:) = 0.0
-        WHERE (land_fraction < 0.999 .AND. seaice_frac < 0.999)
-          ! .. Smith et al. (1998)
-          s98flux(:,:) = 1.4367*0.2*(u_scalar_10m(:,:)**3.5)*                  &
-            EXP(-1.5*(LOG(2.0*drmid(jv)/2.088e-6 ))**2) +                      &
-            1.4367 * 6.8e-3*(u_scalar_10m(:,:)**3  )*                          &
-            EXP(-1.0*(LOG(2.0*drmid(jv)/20.88e-6))**2)
-        END WHERE
-      END IF
+               IF (i_primss_method == i_primss_method_smith .OR. &
+                   i_primss_method == i_primss_method_combined) THEN
+                  s98flux(:, :) = 0.0
+                  WHERE (land_fraction < 0.999 .AND. seaice_frac < 0.999)
+                     ! .. Smith et al. (1998)
+                     s98flux(:, :) = 1.4367*0.2*(u_scalar_10m(:, :)**3.5)* &
+                                     EXP(-1.5*(LOG(2.0*drmid(jv)/2.088E-6))**2) + &
+                                     1.4367*6.8E-3*(u_scalar_10m(:, :)**3)* &
+                                     EXP(-1.0*(LOG(2.0*drmid(jv)/20.88E-6))**2)
+                  END WHERE
+               END IF
 
-      IF (i_primss_method == i_primss_method_monahan .OR.                      &
-          i_primss_method == i_primss_method_combined) THEN
-        m86flux(:,:) = 0.0
-        bet = (0.433 - LOG10(drmid(jv)*2.0e6))/0.433
-        agong = 4.7*(1.0 + 30.0*(drmid(jv)*2.0e6))**(-0.017*                   &
-               (drmid(jv)*2.0e6)**(-1.44))
-        WHERE (land_fraction < 0.999 .AND. seaice_frac < 0.999)
-          ! ..  Gong (2003) ---- extension from Monahan et al. (1986)
-          !          (factor of 2.0 to convert dF/dr(80) to dF/dr(dry) )
-          m86flux(:,:) = 2.0*1.373*(u_scalar_10m(:,:)**3.41)*                  &
-                         (drmid(jv)*2.0e6)**(-agong)*                          &
-                         (1.0+0.057*((2.0e6*drmid(jv))**(3.45)))*              &
-                         10.0**(1.607*EXP(-bet**2))
-        END WHERE
-      END IF
+               IF (i_primss_method == i_primss_method_monahan .OR. &
+                   i_primss_method == i_primss_method_combined) THEN
+                  m86flux(:, :) = 0.0
+                  bet = (0.433 - LOG10(drmid(jv)*2.0E6))/0.433
+                  agong = 4.7*(1.0 + 30.0*(drmid(jv)*2.0E6))**(-0.017* &
+                                                               (drmid(jv)*2.0E6)**(-1.44))
+                  WHERE (land_fraction < 0.999 .AND. seaice_frac < 0.999)
+                     ! ..  Gong (2003) ---- extension from Monahan et al. (1986)
+                     !          (factor of 2.0 to convert dF/dr(80) to dF/dr(dry) )
+                     m86flux(:, :) = 2.0*1.373*(u_scalar_10m(:, :)**3.41)* &
+                                     (drmid(jv)*2.0E6)**(-agong)* &
+                                     (1.0 + 0.057*((2.0E6*drmid(jv))**(3.45)))* &
+                                     10.0**(1.607*EXP(-bet**2))
+                  END WHERE
+               END IF
 
-      IF (i_primss_method == i_primss_method_jaegle) THEN
-        j11mod(:,:) = 0.0
-        j11flux(:,:) = 0.0
-        sst(:,:)=tstar(:,:)-273.15 ! Convert sst in kelvin to celsius
-        bet = (0.433 - LOG10(drmid(jv)*2.0e6))/0.433
-        agong = 4.7*(1.0 + 30.0*(drmid(jv)*2.0e6))**(-0.017*                   &
-               (drmid(jv)*2.0e6)**(-1.44))
-        WHERE (land_fraction < 0.999 .AND. seaice_frac < 0.999)
-          ! .. Jaegle (2011) based on Gong (2003) and Monahan (1986)
-          !          (factor of 2.0 to convert dF/dr(80) to dF/dr(dry) )
-          j11mod(:,:)  = 0.3 + (0.1*sst(:,:)) - (0.0076*sst(:,:)**2.0) +       &
-                         (0.00021*sst(:,:)**3.0)
-          j11flux(:,:) = j11mod(:,:) *                                         &
-                         2.0*1.373*(u_scalar_10m(:,:)**3.41)*                  &
-                         (drmid(jv)*2.0e6)**(-agong)*                          &
-                         (1.0+0.057*((2.0e6*drmid(jv))**(3.45)))*              &
-                         10.0**(1.607*EXP(-bet**2))
-        END WHERE
-        WHERE (j11flux < 0.0) j11flux = 0.0 ! Just in case negative SSTs
-      END IF
+               IF (i_primss_method == i_primss_method_jaegle) THEN
+                  j11mod(:, :) = 0.0
+                  j11flux(:, :) = 0.0
+                  sst(:, :) = tstar(:, :) - 273.15 ! Convert sst in kelvin to celsius
+                  bet = (0.433 - LOG10(drmid(jv)*2.0E6))/0.433
+                  agong = 4.7*(1.0 + 30.0*(drmid(jv)*2.0E6))**(-0.017* &
+                                                               (drmid(jv)*2.0E6)**(-1.44))
+                  WHERE (land_fraction < 0.999 .AND. seaice_frac < 0.999)
+                     ! .. Jaegle (2011) based on Gong (2003) and Monahan (1986)
+                     !          (factor of 2.0 to convert dF/dr(80) to dF/dr(dry) )
+                     j11mod(:, :) = 0.3 + (0.1*sst(:, :)) - (0.0076*sst(:, :)**2.0) + &
+                                    (0.00021*sst(:, :)**3.0)
+                     j11flux(:, :) = j11mod(:, :)* &
+                                     2.0*1.373*(u_scalar_10m(:, :)**3.41)* &
+                                     (drmid(jv)*2.0E6)**(-agong)* &
+                                     (1.0 + 0.057*((2.0E6*drmid(jv))**(3.45)))* &
+                                     10.0**(1.607*EXP(-bet**2))
+                  END WHERE
+                  WHERE (j11flux < 0.0) j11flux = 0.0 ! Just in case negative SSTs
+               END IF
 
-      ! .. Choose Smith, Monahan, or combined flux
-      IF (i_primss_method == i_primss_method_smith) THEN
-        dfdr(:,:) = s98flux(:,:)
-        IF (verbose >= 2) CALL umPrint(                                        &
-            'Smith sea-salt flux scheme selected',                             &
-            src='ukca_prim_ss')
-      ELSE IF (i_primss_method == i_primss_method_monahan) THEN
-        dfdr(:,:) = m86flux(:,:)
-        IF (verbose >= 2) CALL umPrint(                                        &
-            'Monahan sea-salt flux scheme selected',                           &
-            src='ukca_prim_ss')
-      ELSE IF (i_primss_method == i_primss_method_jaegle) THEN
-        dfdr(:,:) = j11flux(:,:)
-        IF (verbose >= 2) CALL umPrint(                                        &
-            'Jaegle sea-salt flux scheme selected',                            &
-            src='ukca_prim_ss')
-      ELSE IF (i_primss_method == i_primss_method_combined) THEN
-        ! .. If using a combination of Smith and Monahan, then the
-        !     recommendation is to use the larger of the two fluxes
-        !     at any radius
-        IF (verbose >= 2) CALL umPrint(                                        &
-            'Combined sea-salt flux scheme selected',                          &
-            src='ukca_prim_ss')
-        WHERE (s98flux > m86flux)
-          combflux = s98flux
-        ELSE WHERE
-          combflux = m86flux
-        END WHERE
-        dfdr(:,:) = combflux(:,:)
-      ELSE
-        cmessage = ' No method for sea-salt flux specified'
-        errcode = 1
-        CALL ereport('ukca_prim_ss',errcode,cmessage)
-      END IF
+               ! .. Choose Smith, Monahan, or combined flux
+               IF (i_primss_method == i_primss_method_smith) THEN
+                  dfdr(:, :) = s98flux(:, :)
+                  IF (verbose >= 2) CALL umPrint( &
+                     'Smith sea-salt flux scheme selected', &
+                     src='ukca_prim_ss')
+               ELSE IF (i_primss_method == i_primss_method_monahan) THEN
+                  dfdr(:, :) = m86flux(:, :)
+                  IF (verbose >= 2) CALL umPrint( &
+                     'Monahan sea-salt flux scheme selected', &
+                     src='ukca_prim_ss')
+               ELSE IF (i_primss_method == i_primss_method_jaegle) THEN
+                  dfdr(:, :) = j11flux(:, :)
+                  IF (verbose >= 2) CALL umPrint( &
+                     'Jaegle sea-salt flux scheme selected', &
+                     src='ukca_prim_ss')
+               ELSE IF (i_primss_method == i_primss_method_combined) THEN
+                  ! .. If using a combination of Smith and Monahan, then the
+                  !     recommendation is to use the larger of the two fluxes
+                  !     at any radius
+                  IF (verbose >= 2) CALL umPrint( &
+                     'Combined sea-salt flux scheme selected', &
+                     src='ukca_prim_ss')
+                  WHERE (s98flux > m86flux)
+                     combflux = s98flux
+                  ELSE WHERE
+                     combflux = m86flux
+                  END WHERE
+                  dfdr(:, :) = combflux(:, :)
+               ELSE
+                  cmessage = ' No method for sea-salt flux specified'
+                  errcode = 1
+                  CALL ereport('ukca_prim_ss', errcode, cmessage)
+               END IF
 
-      ! .. Calculate sea-salt emission flux in particles m-2 s-1
-      IF (drlo(jv) > cutoff) THEN
-        flux(:,:) = dfdr(:,:)*deltar(jv)
-      ELSE
-        flux(:,:) = dfdr(:,:)*(drhi(jv) - cutoff)*1.0e6
-      END IF
+               ! .. Calculate sea-salt emission flux in particles m-2 s-1
+               IF (drlo(jv) > cutoff) THEN
+                  flux(:, :) = dfdr(:, :)*deltar(jv)
+               ELSE
+                  flux(:, :) = dfdr(:, :)*(drhi(jv) - cutoff)*1.0E6
+               END IF
 
-      ! .. Calculate  sea-salt aerosol source (particles m-2 s-1)
-      boxflux(:,:) = scale_emiss * flux(:,:) * (1.0 - seaice_frac(:,:)) *      &
-                     (1.0 - land_fraction(:,:))
+               ! .. Calculate  sea-salt aerosol source (particles m-2 s-1)
+               boxflux(:, :) = scale_emiss*flux(:, :)*(1.0 - seaice_frac(:, :))* &
+                               (1.0 - land_fraction(:, :))
 
-      ! .. Calculate change in grid box aerosol number density (kg/m2/s)
-      deln_mflux(:,:) = boxflux(:,:)*mm_da/avogadro
+               ! .. Calculate change in grid box aerosol number density (kg/m2/s)
+               deln_mflux(:, :) = boxflux(:, :)*mm_da/avogadro
 
-      ! .. sum up each emitted mass into mode in kg/m2/s
-      aer_mas_primss(:,:,1,modemt) =                                           &
-          aer_mas_primss(:,:,1,modemt) + deln_mflux*mbmid(jv)
-      ! .. sum up each emitted number into mode in equiv-kg/m2/s
-      aer_num_primss(:,:,1,modemt) =                                           &
-          aer_num_primss(:,:,1,modemt) + deln_mflux(:,:)
+               ! .. sum up each emitted mass into mode in kg/m2/s
+               aer_mas_primss(:, :, 1, modemt) = &
+                  aer_mas_primss(:, :, 1, modemt) + deln_mflux*mbmid(jv)
+               ! .. sum up each emitted number into mode in equiv-kg/m2/s
+               aer_num_primss(:, :, 1, modemt) = &
+                  aer_num_primss(:, :, 1, modemt) + deln_mflux(:, :)
 
-    END IF    ! if modemt > 0
-  END IF     ! if drhi(jv) > cutoff
-END DO      ! jv = 1,nbins
+            END IF    ! if modemt > 0
+         END IF     ! if drhi(jv) > cutoff
+      END DO      ! jv = 1,nbins
 
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
-RETURN
-END SUBROUTINE ukca_prim_ss
+      IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_out, zhook_handle)
+      RETURN
+   END SUBROUTINE ukca_prim_ss
 END MODULE ukca_prim_ss_mod

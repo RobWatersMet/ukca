@@ -30,14 +30,14 @@
 ! Subroutine Interface:
 MODULE ukca_vgrav_av_k_mod
 
-IMPLICIT NONE
+   IMPLICIT NONE
 
-CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName = 'UKCA_VGRAV_AV_K_MOD'
+   CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName = 'UKCA_VGRAV_AV_K_MOD'
 
 CONTAINS
 
-SUBROUTINE ukca_vgrav_av_k(nbox,k,dp,sigma,dvisc,mfpa,rhop,                    &
-                           vgrav_av)
+   SUBROUTINE ukca_vgrav_av_k(nbox, k, dp, sigma, dvisc, mfpa, rhop, &
+                              vgrav_av)
 !------------------------------------------------------------------
 !
 ! Purpose
@@ -79,51 +79,50 @@ SUBROUTINE ukca_vgrav_av_k(nbox,k,dp,sigma,dvisc,mfpa,rhop,                    &
 ! GG        : Gravitational acceleration (ms^-2)
 !
 !--------------------------------------------------------------------
-USE ukca_um_legacy_mod,  ONLY: gg => g
-USE parkind1, ONLY: jprb, jpim
-USE yomhook, ONLY: lhook, dr_hook
-IMPLICIT NONE
+      USE ukca_um_legacy_mod, ONLY: gg => g
+      USE parkind1, ONLY: jprb, jpim
+      USE yomhook, ONLY: lhook, dr_hook
+      IMPLICIT NONE
 
 ! Subroutine interface
-INTEGER, INTENT(IN) :: k
-INTEGER, INTENT(IN) :: nbox
-REAL,    INTENT(IN) :: dp(nbox)
-REAL,    INTENT(IN) :: sigma
-REAL,    INTENT(IN) :: dvisc(nbox)
-REAL,    INTENT(IN) :: mfpa(nbox)
-REAL,    INTENT(IN) :: rhop(nbox)
+      INTEGER, INTENT(IN) :: k
+      INTEGER, INTENT(IN) :: nbox
+      REAL, INTENT(IN) :: dp(nbox)
+      REAL, INTENT(IN) :: sigma
+      REAL, INTENT(IN) :: dvisc(nbox)
+      REAL, INTENT(IN) :: mfpa(nbox)
+      REAL, INTENT(IN) :: rhop(nbox)
 
-REAL,    INTENT(OUT) :: vgrav_av(nbox)
+      REAL, INTENT(OUT) :: vgrav_av(nbox)
 
 ! Local variables
-REAL :: kng(nbox)
-REAL :: pref(nbox)
-REAL :: lnsqsg
-REAL :: term1
-REAL :: term2
-REAL :: term3
-REAL :: term4
+      REAL :: kng(nbox)
+      REAL :: pref(nbox)
+      REAL :: lnsqsg
+      REAL :: term1
+      REAL :: term2
+      REAL :: term3
+      REAL :: term4
 
-INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
-INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
-REAL(KIND=jprb)               :: zhook_handle
+      INTEGER(KIND=jpim), PARAMETER :: zhook_in = 0
+      INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+      REAL(KIND=jprb)               :: zhook_handle
 
-CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_VGRAV_AV_K'
+      CHARACTER(LEN=*), PARAMETER :: RoutineName = 'UKCA_VGRAV_AV_K'
 
+      IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_in, zhook_handle)
 
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+      lnsqsg = LOG(sigma)*LOG(sigma)
+      term1 = (4.0*REAL(k) + 4.0)/2.0
+      term2 = (2.0*REAL(k) + 1.0)/2.0
+      term3 = EXP(term1*lnsqsg)
+      term4 = 1.246*EXP(term2*lnsqsg)
 
-lnsqsg=LOG(sigma)*LOG(sigma)
-term1=(4.0*REAL(k)+4.0)/2.0
-term2=(2.0*REAL(k)+1.0)/2.0
-term3=EXP(term1*lnsqsg)
-term4=1.246*EXP(term2*lnsqsg)
+      kng(:) = 2.0*mfpa(:)/dp(:)
+      pref(:) = rhop(:)*dp(:)*dp(:)*gg/(18.0*dvisc(:))
+      vgrav_av(:) = pref(:)*(term3 + term4*kng(:))
 
-kng(:)=2.0*mfpa(:)/dp(:)
-pref(:)=rhop(:)*dp(:)*dp(:)*gg/(18.0*dvisc(:))
-vgrav_av(:)=pref(:)*(term3+term4*kng(:))
-
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
-RETURN
-END SUBROUTINE ukca_vgrav_av_k
+      IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_out, zhook_handle)
+      RETURN
+   END SUBROUTINE ukca_vgrav_av_k
 END MODULE ukca_vgrav_av_k_mod

@@ -69,112 +69,111 @@
 !
 MODULE fastjx_sphere_mod
 
-IMPLICIT NONE
+   IMPLICIT NONE
 
-CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName = 'FASTJX_SPHERE_MOD'
+   CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName = 'FASTJX_SPHERE_MOD'
 
 CONTAINS
 
-SUBROUTINE fastjx_sphere(gmu,rz,amf2,l1_)
+   SUBROUTINE fastjx_sphere(gmu, rz, amf2, l1_)
 
-USE yomhook,  ONLY: lhook, dr_hook
-USE parkind1, ONLY: jprb, jpim
-IMPLICIT NONE
+      USE yomhook, ONLY: lhook, dr_hook
+      USE parkind1, ONLY: jprb, jpim
+      IMPLICIT NONE
 
-INTEGER, INTENT(IN)  :: l1_                   ! Number of levels
-REAL,    INTENT(IN)  :: gmu                   ! cosine sza
-REAL,    INTENT(IN)  :: rz(l1_+1)             ! Distance from centre of Earth
-                                              !  to each point (cm)
-REAL,    INTENT(OUT) :: amf2(2*l1_+1,2*l1_+1) ! return air mass fraction
+      INTEGER, INTENT(IN)  :: l1_                   ! Number of levels
+      REAL, INTENT(IN)  :: gmu                   ! cosine sza
+      REAL, INTENT(IN)  :: rz(l1_ + 1)             ! Distance from centre of Earth
+      !  to each point (cm)
+      REAL, INTENT(OUT) :: amf2(2*l1_ + 1, 2*l1_ + 1) ! return air mass fraction
 
 ! End of I/O
 
-REAL                 :: xmu1
-REAL                 :: xmu2
-REAL                 :: xl                     ! Slant path between points
-REAL                 :: diff
-REAL                 :: shadht                 ! Shadow height for current zsa
-REAL                 :: rz2(2*l1_+1)           ! Distance on split levels
-REAL                 :: rq2(2*l1_+1)           ! Ratio of distances
+      REAL                 :: xmu1
+      REAL                 :: xmu2
+      REAL                 :: xl                     ! Slant path between points
+      REAL                 :: diff
+      REAL                 :: shadht                 ! Shadow height for current zsa
+      REAL                 :: rz2(2*l1_ + 1)           ! Distance on split levels
+      REAL                 :: rq2(2*l1_ + 1)           ! Ratio of distances
 
 ! Loop variables
-INTEGER  ::   i, j, ii, l2
-INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
-INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
-REAL(KIND=jprb)               :: zhook_handle
+      INTEGER  ::   i, j, ii, l2
+      INTEGER(KIND=jpim), PARAMETER :: zhook_in = 0
+      INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+      REAL(KIND=jprb)               :: zhook_handle
 
-CHARACTER(LEN=*), PARAMETER :: RoutineName='FASTJX_SPHERE'
+      CHARACTER(LEN=*), PARAMETER :: RoutineName = 'FASTJX_SPHERE'
 
 !---------------------------------------------------
 ! End of header
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+      IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_in, zhook_handle)
 
 ! Calculate heights for edges of split ctm-layers
-l2 = 2*l1_
-DO ii = 2,l2,2
-  i = ii/2
-  rz2(ii-1) = rz(i)
-  rz2(ii) = 0.5e0*(rz(i)+rz(i+1))
-END DO
-rz2(l2+1) = rz(l1_+1)
-DO ii = 1,l2
-  rq2(ii) = (rz2(ii)/rz2(ii+1))**2
-END DO
-
+      l2 = 2*l1_
+      DO ii = 2, l2, 2
+         i = ii/2
+         rz2(ii - 1) = rz(i)
+         rz2(ii) = 0.5E0*(rz(i) + rz(i + 1))
+      END DO
+      rz2(l2 + 1) = rz(l1_ + 1)
+      DO ii = 1, l2
+         rq2(ii) = (rz2(ii)/rz2(ii + 1))**2
+      END DO
 
 ! Shadow height for sza > 90
-IF (gmu < 0.0e0) THEN
-  shadht = rz2(1)/SQRT(1.0e0 - gmu**2)
-ELSE
-  shadht = 0.0e0
-END IF
+      IF (gmu < 0.0E0) THEN
+         shadht = rz2(1)/SQRT(1.0E0 - gmu**2)
+      ELSE
+         shadht = 0.0E0
+      END IF
 
 ! Up from the surface calculating the slant paths between each level
 !---  and the level above, and deriving the appropriate air mass factor
-amf2(:,:) = 0.0e0
+      amf2(:, :) = 0.0E0
 
-DO j = 1,2*l1_+1
-  ! air mass factors all zero if below the tangent height
-  IF (rz2(j) < shadht) CYCLE
+      DO j = 1, 2*l1_ + 1
+         ! air mass factors all zero if below the tangent height
+         IF (rz2(j) < shadht) CYCLE
 
-  ! ascend from layer j calculating amf2s
-  xmu1 = ABS(gmu)
-  DO i = j,2*l1_
-    xmu2      =  SQRT(1.0e0 - rq2(i)*(1.0e0-xmu1**2))
-    xl        =  rz2(i+1)*xmu2 - rz2(i)*xmu1
-    amf2(i,j) =  xl / (rz2(i+1)-rz2(i))
-    xmu1      =  xmu2
-  END DO
+         ! ascend from layer j calculating amf2s
+         xmu1 = ABS(gmu)
+         DO i = j, 2*l1_
+            xmu2 = SQRT(1.0E0 - rq2(i)*(1.0E0 - xmu1**2))
+            xl = rz2(i + 1)*xmu2 - rz2(i)*xmu1
+            amf2(i, j) = xl/(rz2(i + 1) - rz2(i))
+            xmu1 = xmu2
+         END DO
 
-  !--fix above top-of-atmos (l=l1_+1), must set dtau(l1_+1)=0
-  amf2(2*l1_+1,j) = 1.0e0
+         !--fix above top-of-atmos (l=l1_+1), must set dtau(l1_+1)=0
+         amf2(2*l1_ + 1, j) = 1.0E0
 
-  !  twilight case - emergent beam, calc air mass factors below layer
-  IF (gmu >= 0.0e0) CYCLE
+         !  twilight case - emergent beam, calc air mass factors below layer
+         IF (gmu >= 0.0E0) CYCLE
 
-  !  Descend from layer j
-  xmu1       = ABS(gmu)
-  DO ii = j-1,1,-1
-    diff        = rz2(ii+1)*SQRT(1.0e0-xmu1**2)-rz2(ii)
-    IF (ii == 1)  diff = MAX(diff,0.0e0)   ! filter
+         !  Descend from layer j
+         xmu1 = ABS(gmu)
+         DO ii = j - 1, 1, -1
+            diff = rz2(ii + 1)*SQRT(1.0E0 - xmu1**2) - rz2(ii)
+            IF (ii == 1) diff = MAX(diff, 0.0E0)   ! filter
 
-    !  tangent height below current level - beam passes through twice
-    IF (diff < 0.0e0) THEN
-      xmu2       =  SQRT(1.0e0 - (1.0e0-xmu1**2)/rq2(ii))
-      xl         =  ABS(rz2(ii+1)*xmu1-rz2(ii)*xmu2)
-      amf2(ii,j) =  2.0e0*xl/(rz2(ii+1)-rz2(ii))
-      xmu1       =  xmu2
+            !  tangent height below current level - beam passes through twice
+            IF (diff < 0.0E0) THEN
+               xmu2 = SQRT(1.0E0 - (1.0E0 - xmu1**2)/rq2(ii))
+               xl = ABS(rz2(ii + 1)*xmu1 - rz2(ii)*xmu2)
+               amf2(ii, j) = 2.0E0*xl/(rz2(ii + 1) - rz2(ii))
+               xmu1 = xmu2
 
-      !  lowest level intersected by emergent beam
-    ELSE
-      xl        = rz2(ii+1)*xmu1*2.0e0
-      amf2(ii,j) = xl/(rz2(ii+1)-rz2(ii))
-      EXIT
-    END IF
-  END DO    ! ii
-END DO    ! j
+               !  lowest level intersected by emergent beam
+            ELSE
+               xl = rz2(ii + 1)*xmu1*2.0E0
+               amf2(ii, j) = xl/(rz2(ii + 1) - rz2(ii))
+               EXIT
+            END IF
+         END DO    ! ii
+      END DO    ! j
 
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
-RETURN
-END SUBROUTINE fastjx_sphere
+      IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_out, zhook_handle)
+      RETURN
+   END SUBROUTINE fastjx_sphere
 END MODULE fastjx_sphere_mod

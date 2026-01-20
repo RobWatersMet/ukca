@@ -29,58 +29,57 @@
 !
 MODULE ukca_inddep_mod
 
-IMPLICIT NONE
+   IMPLICIT NONE
 
-CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName = 'UKCA_INDDEP_MOD'
+   CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName = 'UKCA_INDDEP_MOD'
 
 CONTAINS
 
-SUBROUTINE ukca_inddep
+   SUBROUTINE ukca_inddep
 
-USE asad_mod,           ONLY: depvel, jddepc, jddept, jpdd
-USE ukca_chem_defs_mod, ONLY: depvel_defs
-USE parkind1, ONLY: jprb, jpim
-USE yomhook, ONLY: lhook, dr_hook
-USE ereport_mod, ONLY: ereport
+      USE asad_mod, ONLY: depvel, jddepc, jddept, jpdd
+      USE ukca_chem_defs_mod, ONLY: depvel_defs
+      USE parkind1, ONLY: jprb, jpim
+      USE yomhook, ONLY: lhook, dr_hook
+      USE ereport_mod, ONLY: ereport
 
+      USE errormessagelength_mod, ONLY: errormessagelength
 
-USE errormessagelength_mod, ONLY: errormessagelength
+      IMPLICIT NONE
 
-IMPLICIT NONE
+      INTEGER :: errcode                ! Variable passed to ereport
+      INTEGER :: ns                   ! Loop variable
+      INTEGER :: nt                   ! Loop variable
+      INTEGER :: nc                   ! Loop variable
 
-INTEGER :: errcode                ! Variable passed to ereport
-INTEGER :: ns                   ! Loop variable
-INTEGER :: nt                   ! Loop variable
-INTEGER :: nc                   ! Loop variable
+      CHARACTER(LEN=errormessagelength)  :: cmessage  ! String for error message
 
-CHARACTER(LEN=errormessagelength)  :: cmessage  ! String for error message
+      INTEGER(KIND=jpim), PARAMETER :: zhook_in = 0
+      INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+      REAL(KIND=jprb)               :: zhook_handle
 
-INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
-INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
-REAL(KIND=jprb)               :: zhook_handle
+      CHARACTER(LEN=*), PARAMETER :: RoutineName = 'UKCA_INDDEP'
 
-CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_INDDEP'
-
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+      IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_in, zhook_handle)
 
 !       Reading dry deposition velocities from module
 !       Dataset is for 6 time points and 5 land categories.
 
-IF (SIZE(depvel_defs) /= SIZE(depvel)) THEN
-  cmessage='sizes of depvel_defs and depvel are inconsistent'
-  errcode=1
-  CALL ereport('UKCA_INDDEP',errcode,cmessage)
-END IF
+      IF (SIZE(depvel_defs) /= SIZE(depvel)) THEN
+         cmessage = 'sizes of depvel_defs and depvel are inconsistent'
+         errcode = 1
+         CALL ereport('UKCA_INDDEP', errcode, cmessage)
+      END IF
 
-DO ns=1,jpdd
-  DO nc=1,jddepc
-    DO nt=1,jddept
-      depvel(nt,nc,ns)=depvel_defs(nt,nc,ns)
-    END DO
-  END DO
-END DO
+      DO ns = 1, jpdd
+         DO nc = 1, jddepc
+            DO nt = 1, jddept
+               depvel(nt, nc, ns) = depvel_defs(nt, nc, ns)
+            END DO
+         END DO
+      END DO
 
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
-RETURN
-END SUBROUTINE ukca_inddep
+      IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_out, zhook_handle)
+      RETURN
+   END SUBROUTINE ukca_inddep
 END MODULE ukca_inddep_mod

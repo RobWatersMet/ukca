@@ -31,28 +31,28 @@
 
 MODULE ukca_day_of_week_mod
 
-IMPLICIT NONE
+   IMPLICIT NONE
 
 CONTAINS
 
-INTEGER FUNCTION day_of_week (i_day, i_month, i_year)
+   INTEGER FUNCTION day_of_week(i_day, i_month, i_year)
 
-IMPLICIT NONE
+      IMPLICIT NONE
 
 ! Subroutine arguments
-INTEGER, INTENT(IN) :: i_day
-INTEGER, INTENT(IN) :: i_month
-INTEGER, INTENT(IN) :: i_year
+      INTEGER, INTENT(IN) :: i_day
+      INTEGER, INTENT(IN) :: i_month
+      INTEGER, INTENT(IN) :: i_year
 
 ! Local Variables
-INTEGER :: a, y, m
+      INTEGER :: a, y, m
 
 ! See header for explanation of the calculations
-a = (14 - i_month) / 12
-y = i_year - a
-m = i_month + 12*a - 2
-day_of_week = MOD ((i_day + y + y/4 - y/100 + y/400 + (31*m)/12), 7) + 1
+      a = (14 - i_month)/12
+      y = i_year - a
+      m = i_month + 12*a - 2
+      day_of_week = MOD((i_day + y + y/4 - y/100 + y/400 + (31*m)/12), 7) + 1
 
-END FUNCTION day_of_week
+   END FUNCTION day_of_week
 
 END MODULE ukca_day_of_week_mod

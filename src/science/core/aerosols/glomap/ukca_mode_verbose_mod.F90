@@ -21,9 +21,9 @@
 ! ######################################################################
 MODULE ukca_mode_verbose_mod
 
-IMPLICIT NONE
+   IMPLICIT NONE
 
-INTEGER, SAVE :: glob_verbose     ! Global variable for debug_level
-                                  ! passed to various GLOMAP routines
+   INTEGER, SAVE :: glob_verbose     ! Global variable for debug_level
+   ! passed to various GLOMAP routines
 
 END MODULE ukca_mode_verbose_mod

@@ -26,12 +26,12 @@
 
 MODULE photol_calc_ozonecol_mod
 
-USE yomhook, ONLY: lhook, dr_hook
-USE parkind1, ONLY: jprb, jpim
+   USE yomhook, ONLY: lhook, dr_hook
+   USE parkind1, ONLY: jprb, jpim
 
-IMPLICIT NONE
+   IMPLICIT NONE
 
-CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName='PHOTOL_CALC_OZONECOL_MOD'
+   CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName = 'PHOTOL_CALC_OZONECOL_MOD'
 
 CONTAINS
 
@@ -43,38 +43,38 @@ CONTAINS
 ! This routine calculates overhead ozone columns in molecules/cm^2 needed
 ! for photolysis calculations.
 
-SUBROUTINE photol_calc_ozonecol(error_code_ptr, row_length, rows, model_levels,&
-  z_top_of_model, p_layer_boundaries, p_layer_centres, ozone_vmr, ozonecol,    &
-  error_message, error_routine)
+   SUBROUTINE photol_calc_ozonecol(error_code_ptr, row_length, rows, model_levels, &
+                                   z_top_of_model, p_layer_boundaries, p_layer_centres, ozone_vmr, ozonecol, &
+                                   error_message, error_routine)
 
-USE photol_config_specification_mod, ONLY: photol_config
-USE ukca_error_mod,                  ONLY: maxlen_message, maxlen_procname,    &
-                                           error_report, errcode_value_invalid
+      USE photol_config_specification_mod, ONLY: photol_config
+      USE ukca_error_mod, ONLY: maxlen_message, maxlen_procname, &
+                                error_report, errcode_value_invalid
 
-IMPLICIT NONE
+      IMPLICIT NONE
 
 ! Subroutine interface
 
 ! Model dimensions
-INTEGER, POINTER, INTENT(IN) :: error_code_ptr
-INTEGER, INTENT(IN) :: row_length
-INTEGER, INTENT(IN) :: rows
-INTEGER, INTENT(IN) :: model_levels
+      INTEGER, POINTER, INTENT(IN) :: error_code_ptr
+      INTEGER, INTENT(IN) :: row_length
+      INTEGER, INTENT(IN) :: rows
+      INTEGER, INTENT(IN) :: model_levels
 
-REAL, INTENT(IN) :: z_top_of_model       ! model top (m)
-REAL, INTENT(IN) :: p_layer_boundaries(row_length, rows,                       &
-  0:model_levels)
-REAL, INTENT(IN) :: p_layer_centres(row_length, rows, model_levels)
-REAL, INTENT(IN) :: ozone_vmr(row_length, rows, model_levels)
+      REAL, INTENT(IN) :: z_top_of_model       ! model top (m)
+      REAL, INTENT(IN) :: p_layer_boundaries(row_length, rows, &
+                                             0:model_levels)
+      REAL, INTENT(IN) :: p_layer_centres(row_length, rows, model_levels)
+      REAL, INTENT(IN) :: ozone_vmr(row_length, rows, model_levels)
 
-REAL, INTENT(OUT) :: ozonecol(row_length, rows, model_levels)
+      REAL, INTENT(OUT) :: ozonecol(row_length, rows, model_levels)
 ! Ozone column above level in molecules/cm^2
 
 ! error handling arguments
-CHARACTER(LEN=maxlen_message), OPTIONAL, INTENT(OUT) :: error_message
-                                                       ! Error return message
-CHARACTER(LEN=maxlen_procname), OPTIONAL, INTENT(OUT) :: error_routine
-                                         ! Routine in which error was trapped
+      CHARACTER(LEN=maxlen_message), OPTIONAL, INTENT(OUT) :: error_message
+      ! Error return message
+      CHARACTER(LEN=maxlen_procname), OPTIONAL, INTENT(OUT) :: error_routine
+      ! Routine in which error was trapped
 
 ! local variables
 
@@ -82,70 +82,69 @@ CHARACTER(LEN=maxlen_procname), OPTIONAL, INTENT(OUT) :: error_routine
 ! tology. At 85 km, extrapolated (hence a wild guess but should not matter
 ! too much...).  In molecules/cm^2 units
 
-REAL, PARAMETER :: ozcol_39km = 5.0e17
-REAL, PARAMETER :: ozcol_41km = 4.8e17
-REAL, PARAMETER :: ozcol_85km = 6.7e13
+      REAL, PARAMETER :: ozcol_39km = 5.0E17
+      REAL, PARAMETER :: ozcol_41km = 4.8E17
+      REAL, PARAMETER :: ozcol_85km = 6.7E13
 
 !REAL, PARAMETER :: colfac = 2.132e20 !! OLD VALUE
-REAL, PARAMETER :: colfac = 2.117e20      ! Na/(g*M_air*1e4)
+      REAL, PARAMETER :: colfac = 2.117E20      ! Na/(g*M_air*1e4)
 
-INTEGER :: l
-CHARACTER(LEN=maxlen_message) :: cmessage   !  Error message
+      INTEGER :: l
+      CHARACTER(LEN=maxlen_message) :: cmessage   !  Error message
 
-INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
-INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
-REAL(KIND=jprb)               :: zhook_handle
+      INTEGER(KIND=jpim), PARAMETER :: zhook_in = 0
+      INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+      REAL(KIND=jprb)               :: zhook_handle
 
-CHARACTER(LEN=*), PARAMETER :: RoutineName='PHOTOL_CALC_OZONECOL'
+      CHARACTER(LEN=*), PARAMETER :: RoutineName = 'PHOTOL_CALC_OZONECOL'
 
+      IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_in, zhook_handle)
 
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+      error_code_ptr = 0
+      IF (PRESENT(error_message)) error_message = ''
+      IF (PRESENT(error_routine)) error_routine = ''
 
-error_code_ptr = 0
-IF (PRESENT(error_message)) error_message = ''
-IF (PRESENT(error_routine)) error_routine = ''
+      ozonecol = 0.0
+      DO l = model_levels - 1, 1, -1
 
-ozonecol = 0.0
-DO l=model_levels-1,1,-1
-
-  ! compute the contributions from layers above l
-  ozonecol(:,:,l) = ozonecol(:,:,l+1) +                                        &
-    ozone_vmr(:,:,l+1) *                                                       &
-    (p_layer_boundaries(:,:,l) - p_layer_boundaries(:,:,l+1))                  &
-    * colfac
-END DO
+         ! compute the contributions from layers above l
+         ozonecol(:, :, l) = ozonecol(:, :, l + 1) + &
+                             ozone_vmr(:, :, l + 1)* &
+                             (p_layer_boundaries(:, :, l) - p_layer_boundaries(:, :, l + 1)) &
+                             *colfac
+      END DO
 
 ! add contribution within top of level L
 
-DO l=1,model_levels-1
-  ozonecol(:,:,l) = ozonecol(:,:,l) +                                          &
-    ozone_vmr(:,:,model_levels) *                                              &
-    (p_layer_centres(:,:,model_levels) -                                       &
-    p_layer_boundaries(:,:,model_levels)) * colfac
-END DO
+      DO l = 1, model_levels - 1
+         ozonecol(:, :, l) = ozonecol(:, :, l) + &
+                             ozone_vmr(:, :, model_levels)* &
+                             (p_layer_centres(:, :, model_levels) - &
+                              p_layer_boundaries(:, :, model_levels))*colfac
+      END DO
 
 ! Add contribution above model top.
 ! If z_top_of_model lies in the given ranges, an approximate contribution
 ! of ozone column for above the model top (selected at 39, 41 or 85 km)
 ! is added to the total.
 
-IF (z_top_of_model > 38000.0 .AND. z_top_of_model < 40500.0) THEN
-  ozonecol = ozonecol + ozcol_39km
-ELSE IF (z_top_of_model > 40500.0 .AND. z_top_of_model < 42000.0) THEN
-  ozonecol = ozonecol + ozcol_41km
-ELSE IF (z_top_of_model > 77000.0 .AND. z_top_of_model < 85500.0) THEN
-  ozonecol = ozonecol + ozcol_85km
-ELSE
-  WRITE(cmessage, '(A,I0)')                                                    &
-    'Ozone column undefined for specified z_top_of_model: ', z_top_of_model
-  error_code_ptr = errcode_value_invalid
-  CALL error_report(photol_config%i_error_method, error_code_ptr, cmessage,    &
-          RoutineName, msg_out=error_message, locn_out=error_routine)
+      IF (z_top_of_model > 38000.0 .AND. z_top_of_model < 40500.0) THEN
+         ozonecol = ozonecol + ozcol_39km
+      ELSE IF (z_top_of_model > 40500.0 .AND. z_top_of_model < 42000.0) THEN
+         ozonecol = ozonecol + ozcol_41km
+      ELSE IF (z_top_of_model > 77000.0 .AND. z_top_of_model < 85500.0) THEN
+         ozonecol = ozonecol + ozcol_85km
+      ELSE
+         WRITE (cmessage, '(A,I0)') &
+            'Ozone column undefined for specified z_top_of_model: ', z_top_of_model
+         error_code_ptr = errcode_value_invalid
+         CALL error_report(photol_config%i_error_method, error_code_ptr, cmessage, &
+                           RoutineName, msg_out=error_message, locn_out=error_routine)
 
-END IF
+      END IF
 
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
-RETURN
-END SUBROUTINE photol_calc_ozonecol
+      IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_out, zhook_handle)
+      RETURN
+   END SUBROUTINE photol_calc_ozonecol
 
 END MODULE photol_calc_ozonecol_mod

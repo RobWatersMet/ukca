@@ -46,38 +46,36 @@
 !
 MODULE asad_posthet_mod
 
-IMPLICIT NONE
+   IMPLICIT NONE
 
-CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName = 'ASAD_POSTHET_MOD'
+   CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName = 'ASAD_POSTHET_MOD'
 
 CONTAINS
 
-SUBROUTINE asad_posthet
+   SUBROUTINE asad_posthet
 
+      USE yomhook, ONLY: lhook, dr_hook
+      USE parkind1, ONLY: jprb, jpim
+      USE ereport_mod, ONLY: ereport
+      USE errormessagelength_mod, ONLY: errormessagelength
 
-USE yomhook, ONLY: lhook, dr_hook
-USE parkind1, ONLY: jprb, jpim
-USE ereport_mod, ONLY: ereport
-USE errormessagelength_mod, ONLY: errormessagelength
+      IMPLICIT NONE
 
-IMPLICIT NONE
+      INTEGER                       ::  icode
+      CHARACTER(LEN=errormessagelength)            ::  cmessage
+      CHARACTER(LEN=*), PARAMETER ::  RoutineName = 'ASAD_POSTHET'
 
-INTEGER                       ::  icode
-CHARACTER (LEN=errormessagelength)            ::  cmessage
-CHARACTER (LEN=* ), PARAMETER ::  RoutineName='ASAD_POSTHET'
+      INTEGER(KIND=jpim), PARAMETER :: zhook_in = 0
+      INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+      REAL(KIND=jprb)               :: zhook_handle
 
-INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
-INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
-REAL(KIND=jprb)               :: zhook_handle
+      IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_in, zhook_handle)
+      cmessage = 'Routine should not be callable'
+      icode = 1
 
+      CALL ereport(RoutineName, icode, cmessage)
 
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-cmessage = 'Routine should not be callable'
-icode = 1
-
-CALL ereport(RoutineName,icode,cmessage)
-
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
-RETURN
-END SUBROUTINE asad_posthet
+      IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_out, zhook_handle)
+      RETURN
+   END SUBROUTINE asad_posthet
 END MODULE asad_posthet_mod
