@@ -342,4 +342,3 @@ RETURN
 END FUNCTION refract_mix_mg
 
 END MODULE ukca_radaer_ri_calc_mod
-

@@ -505,4 +505,3 @@ RETURN
 END SUBROUTINE check_envgroup_fullhtphot_real
 
 END MODULE photol_check_environment_mod
-

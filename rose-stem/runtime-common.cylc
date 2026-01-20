@@ -11,4 +11,3 @@
         inherit = SCRIPTS, EXTRACT
         [[[environment]]]
             ROSE_TASK_APP = umdp3_checker
-

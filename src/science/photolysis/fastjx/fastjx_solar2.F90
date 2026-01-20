@@ -129,4 +129,3 @@ IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
 RETURN
 END SUBROUTINE fastjx_solar2
 END MODULE fastjx_solar2_mod
-

@@ -21,7 +21,3 @@
     [[SCRIPTS]]
         inherit = None, METO_AZSPICE
         execution time limit = PT20M
-
-
-
-

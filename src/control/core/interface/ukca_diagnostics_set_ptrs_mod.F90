@@ -536,4 +536,3 @@ RETURN
 END SUBROUTINE set_diag_ptrs_3d_domain
 
 END MODULE ukca_diagnostics_set_ptrs_mod
-

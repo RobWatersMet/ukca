@@ -1409,4 +1409,3 @@ END FUNCTION name2ntpindex
 ! ----------------------------------------------------------------------
 
 END MODULE ukca_ntp_mod
-
