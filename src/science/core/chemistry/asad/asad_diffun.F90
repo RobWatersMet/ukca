@@ -66,89 +66,88 @@
 !
 MODULE asad_diffun_mod
 
-IMPLICIT NONE
+   IMPLICIT NONE
 
-CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName = 'ASAD_DIFFUN_MOD'
+   CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName = 'ASAD_DIFFUN_MOD'
 
 CONTAINS
 
-SUBROUTINE asad_diffun( kl )
+   SUBROUTINE asad_diffun(kl)
 
-USE asad_mod,               ONLY: fdot, ydot, prod, slos,                      &
-                                  linfam, nodd, moffam, madvtr,                &
-                                  nf, nlf, jpcspf
-USE parkind1, ONLY: jprb, jpim
-USE yomhook, ONLY: lhook, dr_hook
-USE asad_prls_mod, ONLY: asad_prls
-IMPLICIT NONE
+      USE asad_mod, ONLY: fdot, ydot, prod, slos, &
+                          linfam, nodd, moffam, madvtr, &
+                          nf, nlf, jpcspf
+      USE parkind1, ONLY: jprb, jpim
+      USE yomhook, ONLY: lhook, dr_hook
+      USE asad_prls_mod, ONLY: asad_prls
+      IMPLICIT NONE
 
-INTEGER, INTENT(IN) :: kl      ! No of spatial points
+      INTEGER, INTENT(IN) :: kl      ! No of spatial points
 
 !       Local variables
 
-INTEGER :: ifam                ! Index
-INTEGER :: itr                 ! Index
-INTEGER :: j                   ! Loop variable
-INTEGER :: jl                  ! Loop variable
-INTEGER :: jtr                 ! Loop variable
-INTEGER :: js                  ! Index
+      INTEGER :: ifam                ! Index
+      INTEGER :: itr                 ! Index
+      INTEGER :: j                   ! Loop variable
+      INTEGER :: jl                  ! Loop variable
+      INTEGER :: jtr                 ! Loop variable
+      INTEGER :: js                  ! Index
 
-LOGICAL :: gfam
-LOGICAL :: gtr
-LOGICAL, SAVE :: gdepem = .TRUE.
+      LOGICAL :: gfam
+      LOGICAL :: gtr
+      LOGICAL, SAVE :: gdepem = .TRUE.
 
-INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
-INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
-REAL(KIND=jprb)               :: zhook_handle
+      INTEGER(KIND=jpim), PARAMETER :: zhook_in = 0
+      INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+      REAL(KIND=jprb)               :: zhook_handle
 
-CHARACTER(LEN=*), PARAMETER :: RoutineName='ASAD_DIFFUN'
-
+      CHARACTER(LEN=*), PARAMETER :: RoutineName = 'ASAD_DIFFUN'
 
 !       1. Initialise tracer/family chemistry tendencies
 !          ---------- ------------- --------- ----------
 
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-DO jtr = 1, jpcspf
-  DO jl = 1, kl
-    fdot(jl,jtr) = 0.0
-  END DO
-END DO
+      IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_in, zhook_handle)
+      DO jtr = 1, jpcspf
+         DO jl = 1, kl
+            fdot(jl, jtr) = 0.0
+         END DO
+      END DO
 
 !       2. Calculate production & loss terms of individual species
 !          --------- ---------- - ---- ----- -- ---------- -------
 
-CALL asad_prls( kl, nf, nlf, gdepem )
+      CALL asad_prls(kl, nf, nlf, gdepem)
 
 !       3. Calculate tendencies
 !          --------- ----------
 
-DO j = 1, nf
-  js = nlf(j)
-  ifam = moffam(js)
-  itr  = madvtr(js)
-  gfam = ifam /= 0
-  gtr  = itr  /= 0
-  DO jl = 1, kl
+      DO j = 1, nf
+         js = nlf(j)
+         ifam = moffam(js)
+         itr = madvtr(js)
+         gfam = ifam /= 0
+         gtr = itr /= 0
+         DO jl = 1, kl
 
-    !           3.1 Tendencies of individual species
+            !           3.1 Tendencies of individual species
 
-    ydot(jl,js) = prod(jl,js) - slos(jl,js)
+            ydot(jl, js) = prod(jl, js) - slos(jl, js)
 
-    !           3.2 Tendencies of families
-    !            (add in/out species if in family).
+            !           3.2 Tendencies of families
+            !            (add in/out species if in family).
 
-    IF ( gfam .AND. ( .NOT. gtr .OR. gtr .AND. linfam(jl,itr) ) )              &
-       fdot(jl,ifam) = fdot(jl,ifam) + nodd(js) * ydot(jl,js)
+            IF (gfam .AND. (.NOT. gtr .OR. gtr .AND. linfam(jl, itr))) &
+               fdot(jl, ifam) = fdot(jl, ifam) + nodd(js)*ydot(jl, js)
 
-    !           3.3 Tendencies of non-family tracers
-    !           (and in/out species).
+            !           3.3 Tendencies of non-family tracers
+            !           (and in/out species).
 
-    IF ( gtr ) fdot(jl,itr) = ydot(jl,js)
+            IF (gtr) fdot(jl, itr) = ydot(jl, js)
 
-  END DO
-END DO
+         END DO
+      END DO
 
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
-RETURN
-END SUBROUTINE asad_diffun
+      IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_out, zhook_handle)
+      RETURN
+   END SUBROUTINE asad_diffun
 END MODULE asad_diffun_mod

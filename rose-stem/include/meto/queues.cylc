@@ -1,4 +1,3 @@
 # In the collaboration zone the scripts run in the background of the login node.
 # In an attempt to limit the impact of rose stem on MONSooN we therefore limit
 # the number of script tasks.
-

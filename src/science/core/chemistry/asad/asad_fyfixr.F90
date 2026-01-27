@@ -49,77 +49,76 @@
 !
 MODULE asad_fyfixr_mod
 
-IMPLICIT NONE
+   IMPLICIT NONE
 
-CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName = 'ASAD_FYFIXR_MOD'
+   CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName = 'ASAD_FYFIXR_MOD'
 
 CONTAINS
 
-SUBROUTINE asad_fyfixr(n_points)
+   SUBROUTINE asad_fyfixr(n_points)
 
-USE asad_mod,       ONLY: y, f, ratio, linfam, nlmajmin, jpif,                 &
+      USE asad_mod, ONLY: y, f, ratio, linfam, nlmajmin, jpif, &
                           moffam, madvtr, majors, ctype
-USE parkind1, ONLY: jprb, jpim
-USE yomhook, ONLY: lhook, dr_hook
-IMPLICIT NONE
+      USE parkind1, ONLY: jprb, jpim
+      USE yomhook, ONLY: lhook, dr_hook
+      IMPLICIT NONE
 
-INTEGER, INTENT(IN) :: n_points
+      INTEGER, INTENT(IN) :: n_points
 
 !       Local variables
 
-INTEGER :: istart
-INTEGER :: iend
-INTEGER :: j       ! Loop variable
-INTEGER :: jl      ! Loop variable
-INTEGER :: js      ! Index
-INTEGER :: ifam    ! Index
-INTEGER :: imaj    ! Index
-INTEGER :: itr     ! Index
+      INTEGER :: istart
+      INTEGER :: iend
+      INTEGER :: j       ! Loop variable
+      INTEGER :: jl      ! Loop variable
+      INTEGER :: js      ! Index
+      INTEGER :: ifam    ! Index
+      INTEGER :: imaj    ! Index
+      INTEGER :: itr     ! Index
 
-INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
-INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
-REAL(KIND=jprb)               :: zhook_handle
+      INTEGER(KIND=jpim), PARAMETER :: zhook_in = 0
+      INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+      REAL(KIND=jprb)               :: zhook_handle
 
-CHARACTER(LEN=*), PARAMETER :: RoutineName='ASAD_FYFIXR'
-
+      CHARACTER(LEN=*), PARAMETER :: RoutineName = 'ASAD_FYFIXR'
 
 !       1.  Calculate major species of family
 !           --------- ----- ------- -- ------
 
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-istart = nlmajmin(1)
-iend   = nlmajmin(2)
-DO j = istart, iend
-  js   = nlmajmin(j)
-  ifam = moffam(js)
-  DO jl = 1, n_points
-    y(jl,js) = f(jl,ifam) * ratio(jl,js)
-  END DO
-END DO
+      IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_in, zhook_handle)
+      istart = nlmajmin(1)
+      iend = nlmajmin(2)
+      DO j = istart, iend
+         js = nlmajmin(j)
+         ifam = moffam(js)
+         DO jl = 1, n_points
+            y(jl, js) = f(jl, ifam)*ratio(jl, js)
+         END DO
+      END DO
 
 !       3.  Calculate minor species of family
 !           --------- ----- ------- -- ------
 
-istart = nlmajmin(3)
-iend   = nlmajmin(4)
-DO j = istart, iend
-  js   = nlmajmin(j)
-  ifam = moffam(js)
-  imaj = majors(ifam)
-  IF ( ctype(js) /= jpif ) THEN
-    DO jl = 1, n_points
-      y(jl,js) = y(jl,imaj) * ratio(jl,js)
-    END DO
-  ELSE
-    itr = madvtr(js)
-    DO jl = 1, n_points
-      IF ( linfam(jl,itr) ) y(jl,js) =                                         &
-                            y(jl,imaj) * ratio(jl,js)
-    END DO
-  END IF
-END DO
+      istart = nlmajmin(3)
+      iend = nlmajmin(4)
+      DO j = istart, iend
+         js = nlmajmin(j)
+         ifam = moffam(js)
+         imaj = majors(ifam)
+         IF (ctype(js) /= jpif) THEN
+            DO jl = 1, n_points
+               y(jl, js) = y(jl, imaj)*ratio(jl, js)
+            END DO
+         ELSE
+            itr = madvtr(js)
+            DO jl = 1, n_points
+               IF (linfam(jl, itr)) y(jl, js) = &
+                  y(jl, imaj)*ratio(jl, js)
+            END DO
+         END IF
+      END DO
 
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
-RETURN
-END SUBROUTINE asad_fyfixr
+      IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_out, zhook_handle)
+      RETURN
+   END SUBROUTINE asad_fyfixr
 END MODULE asad_fyfixr_mod

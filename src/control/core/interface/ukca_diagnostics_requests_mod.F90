@@ -34,51 +34,51 @@
 
 MODULE ukca_diagnostics_requests_mod
 
-USE ukca_diagnostics_type_mod, ONLY: n_diag_group, dgroup_flat_real,           &
-                                     dgroup_fullht_real,                       &
-                                     diag_requests_type, diagnostics_type,     &
-                                     diag_status_inactive,                     &
-                                     diag_status_requested,                    &
-                                     diag_status_unavailable
+   USE ukca_diagnostics_type_mod, ONLY: n_diag_group, dgroup_flat_real, &
+                                        dgroup_fullht_real, &
+                                        diag_requests_type, diagnostics_type, &
+                                        diag_status_inactive, &
+                                        diag_status_requested, &
+                                        diag_status_unavailable
 
-USE ukca_diagnostics_master_mod, ONLY: master_diag_list
+   USE ukca_diagnostics_master_mod, ONLY: master_diag_list
 
-USE ukca_error_mod, ONLY: maxlen_message, maxlen_procname,                     &
-                          errcode_ukca_uninit, errcode_diag_req_unknown,       &
-                          errcode_diag_req_duplicate,                          &
-                          errcode_diag_req_unsupported_use,                    &
-                          errcode_diag_mismatch, errcode_value_unknown,        &
-                          errcode_value_invalid, error_report,                 &
-                          i_error_method_abort
+   USE ukca_error_mod, ONLY: maxlen_message, maxlen_procname, &
+                             errcode_ukca_uninit, errcode_diag_req_unknown, &
+                             errcode_diag_req_duplicate, &
+                             errcode_diag_req_unsupported_use, &
+                             errcode_diag_mismatch, errcode_value_unknown, &
+                             errcode_value_invalid, error_report, &
+                             i_error_method_abort
 
-USE yomhook,  ONLY: lhook, dr_hook
-USE parkind1, ONLY: jprb, jpim
+   USE yomhook, ONLY: lhook, dr_hook
+   USE parkind1, ONLY: jprb, jpim
 
-IMPLICIT NONE
+   IMPLICIT NONE
 
-PRIVATE
+   PRIVATE
 
 ! Public procedures
-PUBLIC ukca_set_diagnostic_requests, ukca_update_diagnostic_requests,          &
-       ukca_get_diagnostic_request_info
+   PUBLIC ukca_set_diagnostic_requests, ukca_update_diagnostic_requests, &
+      ukca_get_diagnostic_request_info
 
 ! Current diagnostic requests
-TYPE(diag_requests_type), TARGET, PUBLIC :: diag_requests(n_diag_group)
+   TYPE(diag_requests_type), TARGET, PUBLIC :: diag_requests(n_diag_group)
 
 ! Dr Hook parameters
-INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
-INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+   INTEGER(KIND=jpim), PARAMETER :: zhook_in = 0
+   INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
 
-CHARACTER(LEN=*), PARAMETER :: ModuleName = 'UKCA_DIAGNOSTIC_REQUESTS_MOD'
+   CHARACTER(LEN=*), PARAMETER :: ModuleName = 'UKCA_DIAGNOSTIC_REQUESTS_MOD'
 
 CONTAINS
 
 ! ----------------------------------------------------------------------
-SUBROUTINE ukca_set_diagnostic_requests(error_code,                            &
-                                        names_flat_real, names_fullht_real,    &
-                                        dreq_status_flat_real,                 &
-                                        dreq_status_fullht_real,               &
-                                        error_message, error_routine)
+   SUBROUTINE ukca_set_diagnostic_requests(error_code, &
+                                           names_flat_real, names_fullht_real, &
+                                           dreq_status_flat_real, &
+                                           dreq_status_fullht_real, &
+                                           error_message, error_routine)
 ! ----------------------------------------------------------------------
 ! Description:
 !
@@ -124,176 +124,176 @@ SUBROUTINE ukca_set_diagnostic_requests(error_code,                            &
 !   support this functionality.
 ! ----------------------------------------------------------------------
 
-USE ukca_config_specification_mod, ONLY: ukca_config, l_ukca_config_available
-USE asad_chem_flux_diags, ONLY: asad_setstash_chemdiag,                        &
-                                asad_init_chemdiag, n_asad_diags
+      USE ukca_config_specification_mod, ONLY: ukca_config, l_ukca_config_available
+      USE asad_chem_flux_diags, ONLY: asad_setstash_chemdiag, &
+                                      asad_init_chemdiag, n_asad_diags
 
-IMPLICIT NONE
+      IMPLICIT NONE
 
 ! Subroutine arguments
 
-INTEGER, TARGET, INTENT(OUT) :: error_code
+      INTEGER, TARGET, INTENT(OUT) :: error_code
 
-CHARACTER(LEN=*), OPTIONAL, INTENT(IN) :: names_flat_real(:)
-                                            ! Names of requested diagnostics in
-                                            ! flat real group
-CHARACTER(LEN=*), OPTIONAL, INTENT(IN) :: names_fullht_real(:)
-                                            ! Names of requested diagnostics in
-                                            ! full height real group
+      CHARACTER(LEN=*), OPTIONAL, INTENT(IN) :: names_flat_real(:)
+      ! Names of requested diagnostics in
+      ! flat real group
+      CHARACTER(LEN=*), OPTIONAL, INTENT(IN) :: names_fullht_real(:)
+      ! Names of requested diagnostics in
+      ! full height real group
 
-INTEGER, OPTIONAL, INTENT(IN OUT) :: dreq_status_flat_real(:)
-                                            ! Status flags for requested
-                                            ! diagnostics in flat real group
-INTEGER, OPTIONAL, INTENT(IN OUT) :: dreq_status_fullht_real(:)
-                                            ! Status flags for requested
-                                            ! diagnostics in full height real
-                                            ! group
+      INTEGER, OPTIONAL, INTENT(IN OUT) :: dreq_status_flat_real(:)
+      ! Status flags for requested
+      ! diagnostics in flat real group
+      INTEGER, OPTIONAL, INTENT(IN OUT) :: dreq_status_fullht_real(:)
+      ! Status flags for requested
+      ! diagnostics in full height real
+      ! group
 
-CHARACTER(LEN=maxlen_message), OPTIONAL, INTENT(OUT) :: error_message
-CHARACTER(LEN=maxlen_procname), OPTIONAL, INTENT(OUT) :: error_routine
+      CHARACTER(LEN=maxlen_message), OPTIONAL, INTENT(OUT) :: error_message
+      CHARACTER(LEN=maxlen_procname), OPTIONAL, INTENT(OUT) :: error_routine
 
 ! Local variables
 
-INTEGER, POINTER :: error_code_ptr
-INTEGER :: group
-INTEGER :: n_req_flat_real
-INTEGER :: n_req_fullht_real
+      INTEGER, POINTER :: error_code_ptr
+      INTEGER :: group
+      INTEGER :: n_req_flat_real
+      INTEGER :: n_req_fullht_real
 
-CHARACTER(LEN=maxlen_message) :: message_txt  ! Buffer for output message
+      CHARACTER(LEN=maxlen_message) :: message_txt  ! Buffer for output message
 
 ! Dr Hook
-REAL(KIND=jprb) :: zhook_handle
+      REAL(KIND=jprb) :: zhook_handle
 
-CHARACTER(LEN=*), PARAMETER :: RoutineName = 'UKCA_SET_DIAGNOSTIC_REQUESTS'
+      CHARACTER(LEN=*), PARAMETER :: RoutineName = 'UKCA_SET_DIAGNOSTIC_REQUESTS'
 
 ! End of header
 
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+      IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_in, zhook_handle)
 
 ! Use parent supplied argument for return code
-error_code_ptr => error_code
+      error_code_ptr => error_code
 
-error_code_ptr = 0
-IF (PRESENT(error_message)) error_message = ''
-IF (PRESENT(error_routine)) error_routine = ''
+      error_code_ptr = 0
+      IF (PRESENT(error_message)) error_message = ''
+      IF (PRESENT(error_routine)) error_routine = ''
 
-message_txt = ''
+      message_txt = ''
 
 ! Check for availability of UKCA configuration data
-IF (.NOT. l_ukca_config_available) THEN
-  error_code_ptr = errcode_ukca_uninit
-  CALL error_report(i_error_method_abort, error_code_ptr,                      &
-         'No UKCA configuration has been set up', RoutineName,                 &
-         msg_out=error_message, locn_out=error_routine)
-  IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_out, zhook_handle)
-  RETURN
-END IF
+      IF (.NOT. l_ukca_config_available) THEN
+         error_code_ptr = errcode_ukca_uninit
+         CALL error_report(i_error_method_abort, error_code_ptr, &
+                           'No UKCA configuration has been set up', RoutineName, &
+                           msg_out=error_message, locn_out=error_routine)
+         IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_out, zhook_handle)
+         RETURN
+      END IF
 
 ! Cancel any existing requests for all diagnostic groups
-DO group = 1, n_diag_group
-  IF (ALLOCATED(diag_requests(group)%varnames))                                &
-    DEALLOCATE(diag_requests(group)%varnames)
-  IF (ALLOCATED(diag_requests(group)%status_flags))                            &
-    DEALLOCATE(diag_requests(group)%status_flags)
-  IF (ALLOCATED(diag_requests(group)%i_master))                                &
-    DEALLOCATE(diag_requests(group)%i_master)
-END DO
+      DO group = 1, n_diag_group
+         IF (ALLOCATED(diag_requests(group)%varnames)) &
+            DEALLOCATE (diag_requests(group)%varnames)
+         IF (ALLOCATED(diag_requests(group)%status_flags)) &
+            DEALLOCATE (diag_requests(group)%status_flags)
+         IF (ALLOCATED(diag_requests(group)%i_master)) &
+            DEALLOCATE (diag_requests(group)%i_master)
+      END DO
 
-n_req_flat_real = 0
-n_req_fullht_real = 0
+      n_req_flat_real = 0
+      n_req_fullht_real = 0
 
 ! Check availability and create new request data for each diagnostic group.
 ! Status flags will be updated for any unavailable diagnostics if necessary.
 
-IF (PRESENT(names_flat_real)) THEN
-  IF (PRESENT(dreq_status_flat_real)) THEN
-    CALL set_diag_requests(error_code_ptr, dgroup_flat_real,                   &
-                           names_flat_real, dreq_status_flat_real,             &
-                           diag_requests, n_req_flat_real,                     &
-                           error_message=error_message,                        &
-                           error_routine=error_routine)
-  ELSE
-    error_code_ptr = errcode_diag_mismatch
-    message_txt =                                                              &
-      'Status flags missing for diagnostic requests (flat real group)'
-  END IF
-ELSE
-  IF (PRESENT(dreq_status_flat_real)) THEN
-    error_code_ptr = errcode_diag_mismatch
-    message_txt =                                                              &
-      'Status flag array present but no diagnostic name array ' //             &
-      '(flat real group)'
-  END IF
-END IF
+      IF (PRESENT(names_flat_real)) THEN
+         IF (PRESENT(dreq_status_flat_real)) THEN
+            CALL set_diag_requests(error_code_ptr, dgroup_flat_real, &
+                                   names_flat_real, dreq_status_flat_real, &
+                                   diag_requests, n_req_flat_real, &
+                                   error_message=error_message, &
+                                   error_routine=error_routine)
+         ELSE
+            error_code_ptr = errcode_diag_mismatch
+            message_txt = &
+               'Status flags missing for diagnostic requests (flat real group)'
+         END IF
+      ELSE
+         IF (PRESENT(dreq_status_flat_real)) THEN
+            error_code_ptr = errcode_diag_mismatch
+            message_txt = &
+               'Status flag array present but no diagnostic name array '// &
+               '(flat real group)'
+         END IF
+      END IF
 
-IF (error_code_ptr <= 0) THEN
+      IF (error_code_ptr <= 0) THEN
 
-  IF (PRESENT(names_fullht_real)) THEN
-    IF (PRESENT(dreq_status_fullht_real)) THEN
-      CALL set_diag_requests(error_code_ptr, dgroup_fullht_real,               &
-                             names_fullht_real, dreq_status_fullht_real,       &
-                             diag_requests, n_req_fullht_real,                 &
-                             error_message=error_message,                      &
-                             error_routine=error_routine)
-    ELSE
-      error_code_ptr = errcode_diag_mismatch
-      message_txt =                                                            &
-        'Status flags missing for diagnostic requests (full height real group)'
-    END IF
-  ELSE
-    IF (PRESENT(dreq_status_fullht_real)) THEN
-      error_code_ptr = errcode_diag_mismatch
-      message_txt =                                                            &
-        'Status flag array present but no diagnostic name array ' //           &
-        '(full height real group)'
-    END IF
-  END IF
+         IF (PRESENT(names_fullht_real)) THEN
+            IF (PRESENT(dreq_status_fullht_real)) THEN
+               CALL set_diag_requests(error_code_ptr, dgroup_fullht_real, &
+                                      names_fullht_real, dreq_status_fullht_real, &
+                                      diag_requests, n_req_fullht_real, &
+                                      error_message=error_message, &
+                                      error_routine=error_routine)
+            ELSE
+               error_code_ptr = errcode_diag_mismatch
+               message_txt = &
+                  'Status flags missing for diagnostic requests (full height real group)'
+            END IF
+         ELSE
+            IF (PRESENT(dreq_status_fullht_real)) THEN
+               error_code_ptr = errcode_diag_mismatch
+               message_txt = &
+                  'Status flag array present but no diagnostic name array '// &
+                  '(full height real group)'
+            END IF
+         END IF
 
-END IF
+      END IF
 
 ! Initialise ASAD chemical diagnostics if supported for the current UKCA
 ! configuration (or skip if we know there are no requests to process)
 
-IF (error_code_ptr <=0 .AND. ukca_config%l_asad_chem_diags_support) THEN
-  ! Trap the case where ASAD diagnostic requests have already been set up in
-  ! a previous call since repeating the ASAD diagnostic setup during the run
-  ! is not currently supported. It is intended that this restriction will be
-  ! removed in future.
-  IF (n_asad_diags /= 0) THEN
-    error_code_ptr = errcode_diag_req_unsupported_use
-    message_txt =                                                              &
-      'ASAD diagnostic requests are already set up; ' //                       &
-      'subsequent changes are not currently supported'
-  END IF
-  ! Check requests (including UM legacy requests if parent is the UM) to see
-  ! which ASAD chemical diagnostics are required (if any) and set up STASH
-  ! codes and other info for processing them.
-  IF (error_code_ptr <= 0 .AND. (ukca_config%l_enable_diag_um .OR.             &
-      n_req_flat_real > 0 .OR. n_req_fullht_real > 0)) THEN
-    CALL asad_setstash_chemdiag(ukca_config%row_length, ukca_config%rows,      &
-                                ukca_config%model_levels, diag_requests,       &
-                                master_diag_list)
-    ! Initialise info for chemical fluxes contributing to any required
-    ! diagnostics
-    IF (n_asad_diags > 0) CALL asad_init_chemdiag()
-  END IF
-END IF
+      IF (error_code_ptr <= 0 .AND. ukca_config%l_asad_chem_diags_support) THEN
+         ! Trap the case where ASAD diagnostic requests have already been set up in
+         ! a previous call since repeating the ASAD diagnostic setup during the run
+         ! is not currently supported. It is intended that this restriction will be
+         ! removed in future.
+         IF (n_asad_diags /= 0) THEN
+            error_code_ptr = errcode_diag_req_unsupported_use
+            message_txt = &
+               'ASAD diagnostic requests are already set up; '// &
+               'subsequent changes are not currently supported'
+         END IF
+         ! Check requests (including UM legacy requests if parent is the UM) to see
+         ! which ASAD chemical diagnostics are required (if any) and set up STASH
+         ! codes and other info for processing them.
+         IF (error_code_ptr <= 0 .AND. (ukca_config%l_enable_diag_um .OR. &
+                                        n_req_flat_real > 0 .OR. n_req_fullht_real > 0)) THEN
+            CALL asad_setstash_chemdiag(ukca_config%row_length, ukca_config%rows, &
+                                        ukca_config%model_levels, diag_requests, &
+                                        master_diag_list)
+            ! Initialise info for chemical fluxes contributing to any required
+            ! diagnostics
+            IF (n_asad_diags > 0) CALL asad_init_chemdiag()
+         END IF
+      END IF
 
 ! Call error report here if an error has been trapped locally (i.e. not in a
 ! subroutine call) as indicated by presence of message text.
-IF (error_code_ptr > 0 .AND. message_txt /= '') THEN
-  CALL error_report(ukca_config%i_error_method, error_code_ptr, message_txt,   &
-                    RoutineName, msg_out=error_message, locn_out=error_routine)
-END IF
+      IF (error_code_ptr > 0 .AND. message_txt /= '') THEN
+         CALL error_report(ukca_config%i_error_method, error_code_ptr, message_txt, &
+                           RoutineName, msg_out=error_message, locn_out=error_routine)
+      END IF
 
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_out, zhook_handle)
-RETURN
-END SUBROUTINE ukca_set_diagnostic_requests
+      IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_out, zhook_handle)
+      RETURN
+   END SUBROUTINE ukca_set_diagnostic_requests
 
 ! ----------------------------------------------------------------------
-SUBROUTINE set_diag_requests(error_code_ptr, group, varnames,                  &
-                             status_flags, diag_requests, n_req,               &
-                             error_message, error_routine)
+   SUBROUTINE set_diag_requests(error_code_ptr, group, varnames, &
+                                status_flags, diag_requests, n_req, &
+                                error_message, error_routine)
 ! ----------------------------------------------------------------------
 ! Description:
 !   Check availability and create new request data for the given group.
@@ -301,179 +301,179 @@ SUBROUTINE set_diag_requests(error_code_ptr, group, varnames,                  &
 !   in the current UKCA configuration.
 ! ----------------------------------------------------------------------
 
-USE ukca_config_specification_mod, ONLY: ukca_config
-USE ukca_fieldname_mod, ONLY: maxlen_diagname
+      USE ukca_config_specification_mod, ONLY: ukca_config
+      USE ukca_fieldname_mod, ONLY: maxlen_diagname
 
-IMPLICIT NONE
+      IMPLICIT NONE
 
 ! Subroutine arguments
 
-INTEGER, POINTER, INTENT(IN) :: error_code_ptr  ! Pointer to return code
-INTEGER, INTENT(IN) :: group                    ! Diagnostic group
+      INTEGER, POINTER, INTENT(IN) :: error_code_ptr  ! Pointer to return code
+      INTEGER, INTENT(IN) :: group                    ! Diagnostic group
 
-CHARACTER(LEN=*), INTENT(IN) :: varnames(:)     ! List of diagnostic names
+      CHARACTER(LEN=*), INTENT(IN) :: varnames(:)     ! List of diagnostic names
 
-INTEGER, INTENT(IN OUT) :: status_flags(:)      ! Status flag for each
-                                                ! diagnostic in list
+      INTEGER, INTENT(IN OUT) :: status_flags(:)      ! Status flag for each
+      ! diagnostic in list
 
-TYPE(diag_requests_type), INTENT(IN OUT) :: diag_requests(:)
-                                                ! Diagnostic request info
-                                                ! by group
+      TYPE(diag_requests_type), INTENT(IN OUT) :: diag_requests(:)
+      ! Diagnostic request info
+      ! by group
 
-INTEGER, INTENT(OUT) :: n_req                   ! Number of diagnostic requests
-                                                ! in group
+      INTEGER, INTENT(OUT) :: n_req                   ! Number of diagnostic requests
+      ! in group
 
-CHARACTER(LEN=maxlen_message), OPTIONAL, INTENT(OUT) :: error_message
-CHARACTER(LEN=maxlen_procname), OPTIONAL, INTENT(OUT) :: error_routine
+      CHARACTER(LEN=maxlen_message), OPTIONAL, INTENT(OUT) :: error_message
+      CHARACTER(LEN=maxlen_procname), OPTIONAL, INTENT(OUT) :: error_routine
 
 ! Local variables
 
-INTEGER :: i
-INTEGER :: j
+      INTEGER :: i
+      INTEGER :: j
 
-INTEGER, ALLOCATABLE :: i_master(:)  ! Index in master diagnostics list
+      INTEGER, ALLOCATABLE :: i_master(:)  ! Index in master diagnostics list
 
-LOGICAL :: l_found  ! True if diagnostic name found in master list
+      LOGICAL :: l_found  ! True if diagnostic name found in master list
 
-CHARACTER(LEN=maxlen_diagname), ALLOCATABLE :: varnames_checked(:)
-                    ! List of accepted names against which to check for
-                    ! duplication.
-CHARACTER(LEN=maxlen_message) :: message_txt  ! Buffer for output message
+      CHARACTER(LEN=maxlen_diagname), ALLOCATABLE :: varnames_checked(:)
+      ! List of accepted names against which to check for
+      ! duplication.
+      CHARACTER(LEN=maxlen_message) :: message_txt  ! Buffer for output message
 
 ! Dr Hook
-REAL(KIND=jprb) :: zhook_handle
+      REAL(KIND=jprb) :: zhook_handle
 
-CHARACTER(LEN=*), PARAMETER :: RoutineName = 'SET_DIAG_REQUESTS'
+      CHARACTER(LEN=*), PARAMETER :: RoutineName = 'SET_DIAG_REQUESTS'
 
 ! End of header
 
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+      IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_in, zhook_handle)
 
-error_code_ptr = 0
-IF (PRESENT(error_message)) error_message = ''
-IF (PRESENT(error_routine)) error_routine = ''
+      error_code_ptr = 0
+      IF (PRESENT(error_message)) error_message = ''
+      IF (PRESENT(error_routine)) error_routine = ''
 
-message_txt = ''
+      message_txt = ''
 
-n_req = SIZE(varnames)
+      n_req = SIZE(varnames)
 
 ! Check number of status flags matches number of requests
-IF (SIZE(status_flags) /= n_req) THEN
-  error_code_ptr = errcode_diag_mismatch
-  WRITE(message_txt, '(A,I0,A)')                                               &
-    'Wrong number of status flags for group ', group,                          &
-    ' diagnostic requests'
-  CALL error_report(ukca_config%i_error_method, error_code_ptr, message_txt,   &
-                    RoutineName, msg_out=error_message, locn_out=error_routine)
-  IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_out, zhook_handle)
-  RETURN
-END IF
+      IF (SIZE(status_flags) /= n_req) THEN
+         error_code_ptr = errcode_diag_mismatch
+         WRITE (message_txt, '(A,I0,A)') &
+            'Wrong number of status flags for group ', group, &
+            ' diagnostic requests'
+         CALL error_report(ukca_config%i_error_method, error_code_ptr, message_txt, &
+                           RoutineName, msg_out=error_message, locn_out=error_routine)
+         IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_out, zhook_handle)
+         RETURN
+      END IF
 
 ! Validate each request in turn and find index in master list
 
-ALLOCATE(i_master(n_req))
-IF (n_req > 0) THEN
-  i_master(:) = 0
-  ALLOCATE(varnames_checked(n_req))
-  varnames_checked = ''
-END IF
-
-DO i = 1, n_req
-
-  ! Diagnostic name must not be a duplicate
-  IF (ANY(varnames_checked(:) == varnames(i))) THEN
-    error_code_ptr = errcode_diag_req_duplicate
-    WRITE(message_txt, '(A,I0,A,A,A)')                                         &
-      'Duplicate group ', group, ' request found for diagnostic ''',           &
-      TRIM(varnames(i)), ''''
-    CALL error_report(ukca_config%i_error_method, error_code_ptr, message_txt, &
-                    RoutineName, msg_out=error_message, locn_out=error_routine)
-    IF (lhook) THEN
-      CALL dr_hook(ModuleName//':'//RoutineName, zhook_out, zhook_handle)
-    END IF
-    RETURN
-  ELSE
-    varnames_checked(i) = varnames(i)
-  END IF
-
-  ! Check that status flag has an expected value
-
-  IF (status_flags(i) /= diag_status_inactive .AND.                            &
-      status_flags(i) /= diag_status_requested) THEN
-    error_code_ptr = errcode_value_invalid
-    WRITE(message_txt, '(A,I0,A,I0,A)')                                        &
-      'Unexpected value of status flag (', status_flags(i), ') in group ',     &
-      group, ' diagnostic request'
-    CALL error_report(ukca_config%i_error_method, error_code_ptr, message_txt, &
-                    RoutineName, msg_out=error_message, locn_out=error_routine)
-    IF (lhook) THEN
-      CALL dr_hook(ModuleName//':'//RoutineName, zhook_out, zhook_handle)
-    END IF
-    RETURN
-  END IF
-
-  ! Check for diagnostic name in master list
-
-  l_found = .FALSE.
-  j = 0
-  DO WHILE (j < SIZE(master_diag_list) .AND. .NOT. l_found)
-    j = j + 1
-    IF (master_diag_list(j)%varname == varnames(i)) THEN
-      ! Diagnostic name is recognised so check compatibility
-      IF (master_diag_list(j)%group /= group .AND.                             &
-          master_diag_list(j)%group_alt /= group) THEN
-        error_code_ptr = errcode_diag_mismatch
-        WRITE(message_txt, '(A,A,A,I0)')                                       &
-          'Diagnostic ''', TRIM(varnames(i)),                                  &
-          ''' is not compatible with request group ', group
-        CALL error_report(ukca_config%i_error_method, error_code_ptr,          &
-                          message_txt, RoutineName, msg_out=error_message,     &
-                          locn_out=error_routine)
-        IF (lhook) THEN
-          CALL dr_hook(ModuleName//':'//RoutineName, zhook_out, zhook_handle)
-        END IF
-        RETURN
+      ALLOCATE (i_master(n_req))
+      IF (n_req > 0) THEN
+         i_master(:) = 0
+         ALLOCATE (varnames_checked(n_req))
+         varnames_checked = ''
       END IF
-      ! Compatible - Add master list index to request for later referencing
-      l_found = .TRUE.
-      i_master(i) = j
-      ! Modify status flag if diagnostic is unavailable
-      IF (.NOT. master_diag_list(j)%l_available)                               &
-        status_flags(i) = diag_status_unavailable
-    END IF
-  END DO
 
-  IF (.NOT. l_found) THEN
-    error_code_ptr = errcode_diag_req_unknown
-    CALL error_report(ukca_config%i_error_method, error_code_ptr,              &
-           'Diagnostic name ''' // TRIM(varnames(i)) //                        &
-           ''' is not recognised',                                             &
-           RoutineName, msg_out=error_message, locn_out=error_routine)
-    IF (lhook) THEN
-      CALL dr_hook(ModuleName//':'//RoutineName, zhook_out, zhook_handle)
-    END IF
-    RETURN
-  END IF
+      DO i = 1, n_req
 
-END DO
+         ! Diagnostic name must not be a duplicate
+         IF (ANY(varnames_checked(:) == varnames(i))) THEN
+            error_code_ptr = errcode_diag_req_duplicate
+            WRITE (message_txt, '(A,I0,A,A,A)') &
+               'Duplicate group ', group, ' request found for diagnostic ''', &
+               TRIM(varnames(i)), ''''
+            CALL error_report(ukca_config%i_error_method, error_code_ptr, message_txt, &
+                              RoutineName, msg_out=error_message, locn_out=error_routine)
+            IF (lhook) THEN
+               CALL dr_hook(ModuleName//':'//RoutineName, zhook_out, zhook_handle)
+            END IF
+            RETURN
+         ELSE
+            varnames_checked(i) = varnames(i)
+         END IF
+
+         ! Check that status flag has an expected value
+
+         IF (status_flags(i) /= diag_status_inactive .AND. &
+             status_flags(i) /= diag_status_requested) THEN
+            error_code_ptr = errcode_value_invalid
+            WRITE (message_txt, '(A,I0,A,I0,A)') &
+               'Unexpected value of status flag (', status_flags(i), ') in group ', &
+               group, ' diagnostic request'
+            CALL error_report(ukca_config%i_error_method, error_code_ptr, message_txt, &
+                              RoutineName, msg_out=error_message, locn_out=error_routine)
+            IF (lhook) THEN
+               CALL dr_hook(ModuleName//':'//RoutineName, zhook_out, zhook_handle)
+            END IF
+            RETURN
+         END IF
+
+         ! Check for diagnostic name in master list
+
+         l_found = .FALSE.
+         j = 0
+         DO WHILE (j < SIZE(master_diag_list) .AND. .NOT. l_found)
+            j = j + 1
+            IF (master_diag_list(j)%varname == varnames(i)) THEN
+               ! Diagnostic name is recognised so check compatibility
+               IF (master_diag_list(j)%group /= group .AND. &
+                   master_diag_list(j)%group_alt /= group) THEN
+                  error_code_ptr = errcode_diag_mismatch
+                  WRITE (message_txt, '(A,A,A,I0)') &
+                     'Diagnostic ''', TRIM(varnames(i)), &
+                     ''' is not compatible with request group ', group
+                  CALL error_report(ukca_config%i_error_method, error_code_ptr, &
+                                    message_txt, RoutineName, msg_out=error_message, &
+                                    locn_out=error_routine)
+                  IF (lhook) THEN
+                     CALL dr_hook(ModuleName//':'//RoutineName, zhook_out, zhook_handle)
+                  END IF
+                  RETURN
+               END IF
+               ! Compatible - Add master list index to request for later referencing
+               l_found = .TRUE.
+               i_master(i) = j
+               ! Modify status flag if diagnostic is unavailable
+               IF (.NOT. master_diag_list(j)%l_available) &
+                  status_flags(i) = diag_status_unavailable
+            END IF
+         END DO
+
+         IF (.NOT. l_found) THEN
+            error_code_ptr = errcode_diag_req_unknown
+            CALL error_report(ukca_config%i_error_method, error_code_ptr, &
+                              'Diagnostic name '''//TRIM(varnames(i))// &
+                              ''' is not recognised', &
+                              RoutineName, msg_out=error_message, locn_out=error_routine)
+            IF (lhook) THEN
+               CALL dr_hook(ModuleName//':'//RoutineName, zhook_out, zhook_handle)
+            END IF
+            RETURN
+         END IF
+
+      END DO
 
 ! Copy diagnostic requests to UKCA data structure
-ALLOCATE(diag_requests(group)%varnames(n_req))
-ALLOCATE(diag_requests(group)%status_flags(n_req))
-ALLOCATE(diag_requests(group)%i_master(n_req))
-diag_requests(group)%varnames = varnames
-diag_requests(group)%status_flags = status_flags
-diag_requests(group)%i_master = i_master
+      ALLOCATE (diag_requests(group)%varnames(n_req))
+      ALLOCATE (diag_requests(group)%status_flags(n_req))
+      ALLOCATE (diag_requests(group)%i_master(n_req))
+      diag_requests(group)%varnames = varnames
+      diag_requests(group)%status_flags = status_flags
+      diag_requests(group)%i_master = i_master
 
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_out, zhook_handle)
-RETURN
-END SUBROUTINE set_diag_requests
+      IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_out, zhook_handle)
+      RETURN
+   END SUBROUTINE set_diag_requests
 
 ! ----------------------------------------------------------------------
-SUBROUTINE ukca_update_diagnostic_requests(error_code,                         &
-                                           dreq_status_flat_real,              &
-                                           dreq_status_fullht_real,            &
-                                           error_message, error_routine)
+   SUBROUTINE ukca_update_diagnostic_requests(error_code, &
+                                              dreq_status_flat_real, &
+                                              dreq_status_fullht_real, &
+                                              error_message, error_routine)
 ! ----------------------------------------------------------------------
 ! Description:
 !
@@ -504,96 +504,96 @@ SUBROUTINE ukca_update_diagnostic_requests(error_code,                         &
 !   support this functionality.
 ! ----------------------------------------------------------------------
 
-USE ukca_config_specification_mod, ONLY: ukca_config, l_ukca_config_available
+      USE ukca_config_specification_mod, ONLY: ukca_config, l_ukca_config_available
 
-IMPLICIT NONE
+      IMPLICIT NONE
 
 ! Subroutine arguments
 
-INTEGER, TARGET, INTENT(OUT) :: error_code
+      INTEGER, TARGET, INTENT(OUT) :: error_code
 
-INTEGER, OPTIONAL, INTENT(IN OUT) :: dreq_status_flat_real(:)
-                                       ! Status flags for requested
-                                       ! diagnostics in flat real group
-INTEGER, OPTIONAL, INTENT(IN OUT) :: dreq_status_fullht_real(:)
-                                       ! Status flags for requested
-                                       ! diagnostics in full height real group
+      INTEGER, OPTIONAL, INTENT(IN OUT) :: dreq_status_flat_real(:)
+      ! Status flags for requested
+      ! diagnostics in flat real group
+      INTEGER, OPTIONAL, INTENT(IN OUT) :: dreq_status_fullht_real(:)
+      ! Status flags for requested
+      ! diagnostics in full height real group
 
-CHARACTER(LEN=maxlen_message), OPTIONAL, INTENT(OUT) :: error_message
-CHARACTER(LEN=maxlen_procname), OPTIONAL, INTENT(OUT) :: error_routine
+      CHARACTER(LEN=maxlen_message), OPTIONAL, INTENT(OUT) :: error_message
+      CHARACTER(LEN=maxlen_procname), OPTIONAL, INTENT(OUT) :: error_routine
 
 ! Local variables
 
-INTEGER, POINTER :: error_code_ptr
+      INTEGER, POINTER :: error_code_ptr
 
-LOGICAL :: l_status_flags_present
+      LOGICAL :: l_status_flags_present
 
 ! Dr Hook
-REAL(KIND=jprb) :: zhook_handle
+      REAL(KIND=jprb) :: zhook_handle
 
-CHARACTER(LEN=*), PARAMETER :: RoutineName = 'UKCA_UPDATE_DIAGNOSTIC_REQUESTS'
+      CHARACTER(LEN=*), PARAMETER :: RoutineName = 'UKCA_UPDATE_DIAGNOSTIC_REQUESTS'
 
 ! End of header
 
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+      IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_in, zhook_handle)
 
 ! Use parent supplied argument for return code
-error_code_ptr => error_code
+      error_code_ptr => error_code
 
-error_code_ptr = 0
-IF (PRESENT(error_message)) error_message = ''
-IF (PRESENT(error_routine)) error_routine = ''
+      error_code_ptr = 0
+      IF (PRESENT(error_message)) error_message = ''
+      IF (PRESENT(error_routine)) error_routine = ''
 
 ! Check for availability of UKCA configuration data
-IF (.NOT. l_ukca_config_available) THEN
-  error_code_ptr = errcode_ukca_uninit
-  CALL error_report(i_error_method_abort, error_code_ptr,                      &
-         'No UKCA configuration has been set up', RoutineName,                 &
-         msg_out=error_message, locn_out=error_routine)
-  IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_out, zhook_handle)
-  RETURN
-END IF
+      IF (.NOT. l_ukca_config_available) THEN
+         error_code_ptr = errcode_ukca_uninit
+         CALL error_report(i_error_method_abort, error_code_ptr, &
+                           'No UKCA configuration has been set up', RoutineName, &
+                           msg_out=error_message, locn_out=error_routine)
+         IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_out, zhook_handle)
+         RETURN
+      END IF
 
 ! Check compatibility of each status flag array with the existing request
 ! data for each diagnostic group and update flags as indicated ignoring any
 ! requests for unavailable diagnostics.
 ! At least one status flag array must be present for the call to make sense
 
-l_status_flags_present = .FALSE.
+      l_status_flags_present = .FALSE.
 
-IF (PRESENT(dreq_status_flat_real)) THEN
-  l_status_flags_present = .TRUE.
-  CALL update_diag_requests(error_code_ptr, dgroup_flat_real,                  &
-                            dreq_status_flat_real,                             &
-                            diag_requests,                                     &
-                            error_message=error_message,                       &
-                            error_routine=error_routine)
-END IF
+      IF (PRESENT(dreq_status_flat_real)) THEN
+         l_status_flags_present = .TRUE.
+         CALL update_diag_requests(error_code_ptr, dgroup_flat_real, &
+                                   dreq_status_flat_real, &
+                                   diag_requests, &
+                                   error_message=error_message, &
+                                   error_routine=error_routine)
+      END IF
 
-IF (error_code_ptr <= 0 .AND. PRESENT(dreq_status_fullht_real)) THEN
-  l_status_flags_present = .TRUE.
-  CALL update_diag_requests(error_code_ptr, dgroup_fullht_real,                &
-                            dreq_status_fullht_real,                           &
-                            diag_requests,                                     &
-                            error_message=error_message,                       &
-                            error_routine=error_routine)
-END IF
+      IF (error_code_ptr <= 0 .AND. PRESENT(dreq_status_fullht_real)) THEN
+         l_status_flags_present = .TRUE.
+         CALL update_diag_requests(error_code_ptr, dgroup_fullht_real, &
+                                   dreq_status_fullht_real, &
+                                   diag_requests, &
+                                   error_message=error_message, &
+                                   error_routine=error_routine)
+      END IF
 
-IF (.NOT. l_status_flags_present) THEN
-  error_code_ptr = errcode_diag_mismatch
-  CALL error_report(ukca_config%i_error_method, error_code_ptr,                &
-                    'No status flag arrays provided', RoutineName,             &
-                     msg_out=error_message, locn_out=error_routine)
-END IF
+      IF (.NOT. l_status_flags_present) THEN
+         error_code_ptr = errcode_diag_mismatch
+         CALL error_report(ukca_config%i_error_method, error_code_ptr, &
+                           'No status flag arrays provided', RoutineName, &
+                           msg_out=error_message, locn_out=error_routine)
+      END IF
 
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_out, zhook_handle)
-RETURN
-END SUBROUTINE ukca_update_diagnostic_requests
+      IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_out, zhook_handle)
+      RETURN
+   END SUBROUTINE ukca_update_diagnostic_requests
 
 ! ----------------------------------------------------------------------
-SUBROUTINE update_diag_requests(error_code_ptr, group,                         &
-                                status_flags, diag_requests,                   &
-                                error_message, error_routine)
+   SUBROUTINE update_diag_requests(error_code_ptr, group, &
+                                   status_flags, diag_requests, &
+                                   error_message, error_routine)
 ! ----------------------------------------------------------------------
 ! Description:
 !   Check compatibility of status flag array with existing request data
@@ -602,143 +602,143 @@ SUBROUTINE update_diag_requests(error_code_ptr, group,                         &
 !   unavailable diagnostics are ignored.
 ! ----------------------------------------------------------------------
 
-USE ukca_config_specification_mod, ONLY: ukca_config
+      USE ukca_config_specification_mod, ONLY: ukca_config
 
-IMPLICIT NONE
+      IMPLICIT NONE
 
 ! Subroutine arguments
 
-INTEGER, POINTER, INTENT(IN) :: error_code_ptr  ! Pointer to return code
-INTEGER, INTENT(IN) :: group                    ! Diagnostic group
+      INTEGER, POINTER, INTENT(IN) :: error_code_ptr  ! Pointer to return code
+      INTEGER, INTENT(IN) :: group                    ! Diagnostic group
 
-INTEGER, INTENT(IN OUT) :: status_flags(:)      ! Status flags for requested
-                                                ! diagnostics in group
+      INTEGER, INTENT(IN OUT) :: status_flags(:)      ! Status flags for requested
+      ! diagnostics in group
 
-TYPE(diag_requests_type), INTENT(IN OUT) :: diag_requests(:)
-                                                ! Diagnostic request info
-                                                ! by group
+      TYPE(diag_requests_type), INTENT(IN OUT) :: diag_requests(:)
+      ! Diagnostic request info
+      ! by group
 
-CHARACTER(LEN=maxlen_message), OPTIONAL, INTENT(OUT) :: error_message
-CHARACTER(LEN=maxlen_procname), OPTIONAL, INTENT(OUT) :: error_routine
+      CHARACTER(LEN=maxlen_message), OPTIONAL, INTENT(OUT) :: error_message
+      CHARACTER(LEN=maxlen_procname), OPTIONAL, INTENT(OUT) :: error_routine
 
 ! Local variables
 
-INTEGER :: n_req  ! Number of diagnostics requested in group
-INTEGER :: i
+      INTEGER :: n_req  ! Number of diagnostics requested in group
+      INTEGER :: i
 
-CHARACTER(LEN=maxlen_message) :: message_txt  ! Buffer for output message
+      CHARACTER(LEN=maxlen_message) :: message_txt  ! Buffer for output message
 
 ! Dr Hook
-REAL(KIND=jprb) :: zhook_handle
+      REAL(KIND=jprb) :: zhook_handle
 
-CHARACTER(LEN=*), PARAMETER :: RoutineName = 'UPDATE_DIAG_REQUESTS'
+      CHARACTER(LEN=*), PARAMETER :: RoutineName = 'UPDATE_DIAG_REQUESTS'
 
 ! End of header
 
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+      IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_in, zhook_handle)
 
-error_code_ptr = 0
-IF (PRESENT(error_message)) error_message = ''
-IF (PRESENT(error_routine)) error_routine = ''
+      error_code_ptr = 0
+      IF (PRESENT(error_message)) error_message = ''
+      IF (PRESENT(error_routine)) error_routine = ''
 
-message_txt = ''
+      message_txt = ''
 
 ! Check whether requests have been set up
-IF (ALLOCATED(diag_requests(group)%varnames)) THEN
-  n_req = SIZE(diag_requests(group)%varnames)
-ELSE
-  n_req = 0
-  error_code_ptr = errcode_diag_mismatch
-  WRITE(message_txt,'(A,I0,A)')                                                &
-    'Status flag array present but diagnostic requests are not set ' //        &
-    '(group ', group, ')'
-END IF
+      IF (ALLOCATED(diag_requests(group)%varnames)) THEN
+         n_req = SIZE(diag_requests(group)%varnames)
+      ELSE
+         n_req = 0
+         error_code_ptr = errcode_diag_mismatch
+         WRITE (message_txt, '(A,I0,A)') &
+            'Status flag array present but diagnostic requests are not set '// &
+            '(group ', group, ')'
+      END IF
 
 ! Check number of status flags matches number of requests
-IF (error_code_ptr <=0 .AND. SIZE(status_flags) /= n_req) THEN
-  error_code_ptr = errcode_diag_mismatch
-  WRITE(message_txt, '(A,I0)')                                                 &
-    'Wrong number of status flags in diagnostic request update for group ',    &
-    group
-END IF
+      IF (error_code_ptr <= 0 .AND. SIZE(status_flags) /= n_req) THEN
+         error_code_ptr = errcode_diag_mismatch
+         WRITE (message_txt, '(A,I0)') &
+            'Wrong number of status flags in diagnostic request update for group ', &
+            group
+      END IF
 
-IF (error_code_ptr > 0) THEN
-  CALL error_report(ukca_config%i_error_method, error_code_ptr, message_txt,   &
-                    RoutineName, msg_out=error_message, locn_out=error_routine)
-  IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_out, zhook_handle)
-  RETURN
-END IF
+      IF (error_code_ptr > 0) THEN
+         CALL error_report(ukca_config%i_error_method, error_code_ptr, message_txt, &
+                           RoutineName, msg_out=error_message, locn_out=error_routine)
+         IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_out, zhook_handle)
+         RETURN
+      END IF
 
 ! Validate each input status flag value in turn and update the corresponding
 ! internal status flag if required
 
-DO i = 1, n_req
+      DO i = 1, n_req
 
-  ! Ignore negative status flags
-  IF (status_flags(i) >= 0) THEN
+         ! Ignore negative status flags
+         IF (status_flags(i) >= 0) THEN
 
-    ! Check that status flag has an expected value
-    IF (status_flags(i) /= diag_status_inactive .AND.                          &
-        status_flags(i) /= diag_status_requested .AND.                         &
-        status_flags(i) /= diag_status_unavailable) THEN
-      error_code_ptr = errcode_value_invalid
-      WRITE(message_txt, '(A,I0,A,I0,A)')                                      &
-        'Unexpected value of status flag (', status_flags(i), ') in group ',   &
-         group, ' diagnostic request'
-      CALL error_report(ukca_config%i_error_method, error_code_ptr,            &
-                        message_txt, RoutineName,                              &
-                        msg_out=error_message, locn_out=error_routine)
-      IF (lhook) THEN
-        CALL dr_hook(ModuleName//':'//RoutineName, zhook_out, zhook_handle)
-      END IF
-      RETURN
-    END IF
+            ! Check that status flag has an expected value
+            IF (status_flags(i) /= diag_status_inactive .AND. &
+                status_flags(i) /= diag_status_requested .AND. &
+                status_flags(i) /= diag_status_unavailable) THEN
+               error_code_ptr = errcode_value_invalid
+               WRITE (message_txt, '(A,I0,A,I0,A)') &
+                  'Unexpected value of status flag (', status_flags(i), ') in group ', &
+                  group, ' diagnostic request'
+               CALL error_report(ukca_config%i_error_method, error_code_ptr, &
+                                 message_txt, RoutineName, &
+                                 msg_out=error_message, locn_out=error_routine)
+               IF (lhook) THEN
+                  CALL dr_hook(ModuleName//':'//RoutineName, zhook_out, zhook_handle)
+               END IF
+               RETURN
+            END IF
 
-    ! Update status flag if appropriate.
-    ! The parent is not allowed to update the availability status because
-    ! this is determined by UKCA itself. An attempt to mark an available
-    ! diagnostic as unavailable is trapped as an error but an attempt to
-    ! request a diagnostic already marked as unavailable is silently ignored,
-    ! consistent with the behaviour of 'ukca_set_diagnostic_requests'.
-    IF (status_flags(i) == diag_status_unavailable) THEN
-      IF (diag_requests(group)%status_flags(i) /=                              &
-          diag_status_unavailable) THEN
-        error_code_ptr = errcode_value_invalid
-        WRITE(message_txt, '(A,A,A,I0)')                                       &
-          'Status flag set to ''unavailable'' for available diagnostic ''',    &
-          TRIM(diag_requests(group)%varnames(i)), ''' in group ', group
-        CALL error_report(ukca_config%i_error_method, error_code_ptr,          &
-                          message_txt, RoutineName,                            &
-                          msg_out=error_message, locn_out=error_routine)
-        IF (lhook) THEN
-          CALL dr_hook(ModuleName//':'//RoutineName, zhook_out, zhook_handle)
-        END IF
-        RETURN
-      END IF
-    ELSE IF (diag_requests(group)%status_flags(i) /=                           &
-             diag_status_unavailable) THEN
-      ! Update internal status flag
-      diag_requests(group)%status_flags(i) = status_flags(i)
-    END IF
+            ! Update status flag if appropriate.
+            ! The parent is not allowed to update the availability status because
+            ! this is determined by UKCA itself. An attempt to mark an available
+            ! diagnostic as unavailable is trapped as an error but an attempt to
+            ! request a diagnostic already marked as unavailable is silently ignored,
+            ! consistent with the behaviour of 'ukca_set_diagnostic_requests'.
+            IF (status_flags(i) == diag_status_unavailable) THEN
+               IF (diag_requests(group)%status_flags(i) /= &
+                   diag_status_unavailable) THEN
+                  error_code_ptr = errcode_value_invalid
+                  WRITE (message_txt, '(A,A,A,I0)') &
+                     'Status flag set to ''unavailable'' for available diagnostic ''', &
+                     TRIM(diag_requests(group)%varnames(i)), ''' in group ', group
+                  CALL error_report(ukca_config%i_error_method, error_code_ptr, &
+                                    message_txt, RoutineName, &
+                                    msg_out=error_message, locn_out=error_routine)
+                  IF (lhook) THEN
+                     CALL dr_hook(ModuleName//':'//RoutineName, zhook_out, zhook_handle)
+                  END IF
+                  RETURN
+               END IF
+            ELSE IF (diag_requests(group)%status_flags(i) /= &
+                     diag_status_unavailable) THEN
+               ! Update internal status flag
+               diag_requests(group)%status_flags(i) = status_flags(i)
+            END IF
 
-  END IF  ! status_flags(i) >= 0
+         END IF  ! status_flags(i) >= 0
 
-END DO
+      END DO
 
 ! Return updated status flag array
-status_flags = diag_requests(group)%status_flags
+      status_flags = diag_requests(group)%status_flags
 
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_out, zhook_handle)
-RETURN
-END SUBROUTINE update_diag_requests
+      IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_out, zhook_handle)
+      RETURN
+   END SUBROUTINE update_diag_requests
 
 ! ----------------------------------------------------------------------
-SUBROUTINE ukca_get_diagnostic_request_info(error_code,                        &
-                                            names_flat_real_ptr,               &
-                                            names_fullht_real_ptr,             &
-                                            dreq_status_flat_real_ptr,         &
-                                            dreq_status_fullht_real_ptr,       &
-                                            error_message, error_routine)
+   SUBROUTINE ukca_get_diagnostic_request_info(error_code, &
+                                               names_flat_real_ptr, &
+                                               names_fullht_real_ptr, &
+                                               dreq_status_flat_real_ptr, &
+                                               dreq_status_fullht_real_ptr, &
+                                               error_message, error_routine)
 ! ----------------------------------------------------------------------
 ! Description:
 !   UKCA API procedure that returns information about the current set of
@@ -753,91 +753,91 @@ SUBROUTINE ukca_get_diagnostic_request_info(error_code,                        &
 !   support this functionality.
 ! ----------------------------------------------------------------------
 
-USE ukca_config_specification_mod, ONLY: l_ukca_config_available
+      USE ukca_config_specification_mod, ONLY: l_ukca_config_available
 
-IMPLICIT NONE
+      IMPLICIT NONE
 
 ! Subroutine arguments
 
-INTEGER, TARGET, INTENT(OUT) :: error_code
+      INTEGER, TARGET, INTENT(OUT) :: error_code
 
-CHARACTER(LEN=*), POINTER, OPTIONAL, INTENT(OUT) :: names_flat_real_ptr(:)
-                                    ! Names of requested diagnostics in
-                                    ! flat real group
-CHARACTER(LEN=*), POINTER, OPTIONAL, INTENT(OUT) :: names_fullht_real_ptr(:)
-                                    ! Names of requested diagnostics in
-                                    ! full height real group
+      CHARACTER(LEN=*), POINTER, OPTIONAL, INTENT(OUT) :: names_flat_real_ptr(:)
+      ! Names of requested diagnostics in
+      ! flat real group
+      CHARACTER(LEN=*), POINTER, OPTIONAL, INTENT(OUT) :: names_fullht_real_ptr(:)
+      ! Names of requested diagnostics in
+      ! full height real group
 
-INTEGER, POINTER, OPTIONAL, INTENT(OUT) :: dreq_status_flat_real_ptr(:)
-                                    ! Status flags for requested
-                                    ! diagnostics in flat real group
-INTEGER, POINTER, OPTIONAL, INTENT(OUT) :: dreq_status_fullht_real_ptr(:)
-                                    ! Status flags for requested
-                                    ! diagnostics in full height real group
+      INTEGER, POINTER, OPTIONAL, INTENT(OUT) :: dreq_status_flat_real_ptr(:)
+      ! Status flags for requested
+      ! diagnostics in flat real group
+      INTEGER, POINTER, OPTIONAL, INTENT(OUT) :: dreq_status_fullht_real_ptr(:)
+      ! Status flags for requested
+      ! diagnostics in full height real group
 
-CHARACTER(LEN=maxlen_message), OPTIONAL, INTENT(OUT) :: error_message
-CHARACTER(LEN=maxlen_procname), OPTIONAL, INTENT(OUT) :: error_routine
+      CHARACTER(LEN=maxlen_message), OPTIONAL, INTENT(OUT) :: error_message
+      CHARACTER(LEN=maxlen_procname), OPTIONAL, INTENT(OUT) :: error_routine
 
 ! Local variables
 
-INTEGER, POINTER :: error_code_ptr
+      INTEGER, POINTER :: error_code_ptr
 
-CHARACTER(LEN=*), PARAMETER :: RoutineName = 'UKCA_GET_DIAGNOSTIC_REQUEST_INFO'
+      CHARACTER(LEN=*), PARAMETER :: RoutineName = 'UKCA_GET_DIAGNOSTIC_REQUEST_INFO'
 
 ! End of header
 
 ! Use parent error code argument
-error_code_ptr => error_code
+      error_code_ptr => error_code
 
-error_code_ptr = 0
-IF (PRESENT(error_message)) error_message = ''
-IF (PRESENT(error_routine)) error_routine = ''
+      error_code_ptr = 0
+      IF (PRESENT(error_message)) error_message = ''
+      IF (PRESENT(error_routine)) error_routine = ''
 
 ! Check for availability of UKCA configuration data
-IF (.NOT. l_ukca_config_available) THEN
-  error_code_ptr = errcode_ukca_uninit
-  CALL error_report(i_error_method_abort, error_code_ptr,                      &
-         'No UKCA configuration has been set up', RoutineName,                 &
-         msg_out=error_message, locn_out=error_routine)
-  IF (PRESENT(names_flat_real_ptr)) NULLIFY(names_flat_real_ptr)
-  IF (PRESENT(names_fullht_real_ptr)) NULLIFY(names_fullht_real_ptr)
-  IF (PRESENT(dreq_status_flat_real_ptr)) NULLIFY(dreq_status_flat_real_ptr)
-  IF (PRESENT(dreq_status_fullht_real_ptr)) NULLIFY(dreq_status_fullht_real_ptr)
-  RETURN
-END IF
+      IF (.NOT. l_ukca_config_available) THEN
+         error_code_ptr = errcode_ukca_uninit
+         CALL error_report(i_error_method_abort, error_code_ptr, &
+                           'No UKCA configuration has been set up', RoutineName, &
+                           msg_out=error_message, locn_out=error_routine)
+         IF (PRESENT(names_flat_real_ptr)) NULLIFY (names_flat_real_ptr)
+         IF (PRESENT(names_fullht_real_ptr)) NULLIFY (names_fullht_real_ptr)
+         IF (PRESENT(dreq_status_flat_real_ptr)) NULLIFY (dreq_status_flat_real_ptr)
+         IF (PRESENT(dreq_status_fullht_real_ptr)) NULLIFY (dreq_status_fullht_real_ptr)
+         RETURN
+      END IF
 
 ! Assign pointers to the reference lists. Nullify if no list is set up.
-IF (PRESENT(names_flat_real_ptr)) THEN
-  IF (ALLOCATED(diag_requests(dgroup_flat_real)%varnames)) THEN
-    names_flat_real_ptr => diag_requests(dgroup_flat_real)%varnames
-  ELSE
-    NULLIFY(names_flat_real_ptr)
-  END IF
-END IF
-IF (PRESENT(names_fullht_real_ptr)) THEN
-  IF (ALLOCATED(diag_requests(dgroup_fullht_real)%varnames)) THEN
-    names_fullht_real_ptr => diag_requests(dgroup_fullht_real)%varnames
-  ELSE
-    NULLIFY(names_fullht_real_ptr)
-  END IF
-END IF
-IF (PRESENT(dreq_status_flat_real_ptr)) THEN
-  IF (ALLOCATED(diag_requests(dgroup_flat_real)%status_flags)) THEN
-    dreq_status_flat_real_ptr => diag_requests(dgroup_flat_real)%status_flags
-  ELSE
-    NULLIFY(dreq_status_flat_real_ptr)
-  END IF
-END IF
-IF (PRESENT(dreq_status_fullht_real_ptr)) THEN
-  IF (ALLOCATED(diag_requests(dgroup_fullht_real)%status_flags)) THEN
-    dreq_status_fullht_real_ptr =>                                             &
-      diag_requests(dgroup_fullht_real)%status_flags
-  ELSE
-    NULLIFY(dreq_status_fullht_real_ptr)
-  END IF
-END IF
+      IF (PRESENT(names_flat_real_ptr)) THEN
+         IF (ALLOCATED(diag_requests(dgroup_flat_real)%varnames)) THEN
+            names_flat_real_ptr => diag_requests(dgroup_flat_real)%varnames
+         ELSE
+            NULLIFY (names_flat_real_ptr)
+         END IF
+      END IF
+      IF (PRESENT(names_fullht_real_ptr)) THEN
+         IF (ALLOCATED(diag_requests(dgroup_fullht_real)%varnames)) THEN
+            names_fullht_real_ptr => diag_requests(dgroup_fullht_real)%varnames
+         ELSE
+            NULLIFY (names_fullht_real_ptr)
+         END IF
+      END IF
+      IF (PRESENT(dreq_status_flat_real_ptr)) THEN
+         IF (ALLOCATED(diag_requests(dgroup_flat_real)%status_flags)) THEN
+            dreq_status_flat_real_ptr => diag_requests(dgroup_flat_real)%status_flags
+         ELSE
+            NULLIFY (dreq_status_flat_real_ptr)
+         END IF
+      END IF
+      IF (PRESENT(dreq_status_fullht_real_ptr)) THEN
+         IF (ALLOCATED(diag_requests(dgroup_fullht_real)%status_flags)) THEN
+            dreq_status_fullht_real_ptr => &
+               diag_requests(dgroup_fullht_real)%status_flags
+         ELSE
+            NULLIFY (dreq_status_fullht_real_ptr)
+         END IF
+      END IF
 
-RETURN
-END SUBROUTINE ukca_get_diagnostic_request_info
+      RETURN
+   END SUBROUTINE ukca_get_diagnostic_request_info
 
 END MODULE ukca_diagnostics_requests_mod

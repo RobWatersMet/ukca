@@ -66,128 +66,127 @@
 !
 MODULE asad_findreaction_mod
 
-IMPLICIT NONE
+   IMPLICIT NONE
 
-CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName = 'ASAD_FINDREACTION_MOD'
+   CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName = 'ASAD_FINDREACTION_MOD'
 
 CONTAINS
-INTEGER FUNCTION asad_findreaction( react1,react2,products,                    &
-                                    np,reactions,idx_in,nr,ns )
+   INTEGER FUNCTION asad_findreaction(react1, react2, products, &
+                                      np, reactions, idx_in, nr, ns)
 
-USE yomhook, ONLY: lhook, dr_hook
-USE parkind1, ONLY: jprb, jpim
-IMPLICIT NONE
+      USE yomhook, ONLY: lhook, dr_hook
+      USE parkind1, ONLY: jprb, jpim
+      IMPLICIT NONE
 
-INTEGER, INTENT(IN)    :: nr, idx_in(nr), ns, np
+      INTEGER, INTENT(IN)    :: nr, idx_in(nr), ns, np
 
-CHARACTER(LEN=10), INTENT(IN) :: react1, react2
-CHARACTER(LEN=10), INTENT(IN) :: products(np)
-CHARACTER(LEN=10), INTENT(IN) :: reactions(nr,ns)
+      CHARACTER(LEN=10), INTENT(IN) :: react1, react2
+      CHARACTER(LEN=10), INTENT(IN) :: products(np)
+      CHARACTER(LEN=10), INTENT(IN) :: reactions(nr, ns)
 
 !     Local variables
 
-INTEGER           :: j, jp, jp2, jr, nreacts
-INTEGER           :: nprods, iprods, ipargs
+      INTEGER           :: j, jp, jp2, jr, nreacts
+      INTEGER           :: nprods, iprods, ipargs
 
-CHARACTER(LEN=10) :: prods(ns-2), inprods(ns-2), empty_ten
+      CHARACTER(LEN=10) :: prods(ns - 2), inprods(ns - 2), empty_ten
 
-LOGICAL           :: found(ns-2), thelast
+      LOGICAL           :: found(ns - 2), thelast
 
-INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
-INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
-REAL(KIND=jprb)               :: zhook_handle
+      INTEGER(KIND=jpim), PARAMETER :: zhook_in = 0
+      INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+      REAL(KIND=jprb)               :: zhook_handle
 
-CHARACTER(LEN=*), PARAMETER :: RoutineName='ASAD_FINDREACTION'
-
+      CHARACTER(LEN=*), PARAMETER :: RoutineName = 'ASAD_FINDREACTION'
 
 !     -----------------------------------------------------------------
 !          Search for reactants first.
 !          ------ --- --------- ------
 !
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-asad_findreaction = 0
-empty_ten             = '         '
+      IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_in, zhook_handle)
+      asad_findreaction = 0
+      empty_ten = '         '
 
-nreacts = SIZE(reactions,1)
-nprods  = SIZE(reactions,2) - 2    ! always 2 reactants
+      nreacts = SIZE(reactions, 1)
+      nprods = SIZE(reactions, 2) - 2    ! always 2 reactants
 
 !     Get the non-blank products that we're looking for.
 
-ipargs = 0
-inprods = empty_ten
-DO j = 1, np
-  IF ( products(j) /= empty_ten ) THEN
-    ipargs = ipargs + 1
-    inprods(ipargs) = products(j)
-  END IF
-END DO
-
-j = 1
-DO
-  jr = idx_in(j)             ! loop over reactions
-
-  IF ((reactions(j,1)==react1 .AND. reactions(j,2)==react2 ) .OR.              &
-     ( reactions(j,1)==react2 .AND. reactions(j,2)==react1 )) THEN
-
-    !         Found a reaction with matching reactants, now check all the
-    !         possible cases that the products could match. Need to allow
-    !         for rate files which have varying no. of products.
-
-    prods = empty_ten
-    found = .FALSE.
-    iprods = 0
-    DO jp = 1, nprods   ! only copy the non-blank products
-      IF ( reactions(j,2+jp) /= empty_ten ) THEN
-        iprods = iprods + 1
-        prods(iprods) = reactions(j,2+jp)
-      END IF
-    END DO
-
-    !         If no. of nonblank products doesn't match then
-    !         try next reaction.
-
-    IF ( iprods /= ipargs ) THEN
-      j = j + 1
-      IF ( j > nreacts ) GO TO 9999
-      CYCLE
-    END IF
-
-    !         Otherwise check the names of the products
-
-    DO jp = 1, iprods
-      DO jp2 = 1, iprods
-        IF (.NOT. found(jp) .AND. inprods(jp)==prods(jp2)) THEN
-          found(jp) = .TRUE.
-          prods(jp2) = empty_ten
-        END IF
+      ipargs = 0
+      inprods = empty_ten
+      DO j = 1, np
+         IF (products(j) /= empty_ten) THEN
+            ipargs = ipargs + 1
+            inprods(ipargs) = products(j)
+         END IF
       END DO
-    END DO
 
-    !         check to see if we have found all the products.
-    !         If we have then exit
+      j = 1
+      DO
+         jr = idx_in(j)             ! loop over reactions
 
-    thelast = .TRUE.
-    DO jp = 1, iprods
-      thelast = thelast .AND. found(jp)
-    END DO
-    IF ( thelast ) THEN
-      asad_findreaction = jr
-      GO TO 9999
-    END IF
-  END IF
+         IF ((reactions(j, 1) == react1 .AND. reactions(j, 2) == react2) .OR. &
+             (reactions(j, 1) == react2 .AND. reactions(j, 2) == react1)) THEN
 
-  !       next reaction
+            !         Found a reaction with matching reactants, now check all the
+            !         possible cases that the products could match. Need to allow
+            !         for rate files which have varying no. of products.
 
-  j = j + 1
-  IF ( j > nreacts ) THEN
-    IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
-    RETURN
-  END IF
-END DO
+            prods = empty_ten
+            found = .FALSE.
+            iprods = 0
+            DO jp = 1, nprods   ! only copy the non-blank products
+               IF (reactions(j, 2 + jp) /= empty_ten) THEN
+                  iprods = iprods + 1
+                  prods(iprods) = reactions(j, 2 + jp)
+               END IF
+            END DO
 
-9999 CONTINUE
+            !         If no. of nonblank products doesn't match then
+            !         try next reaction.
 
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
-RETURN
-END FUNCTION asad_findreaction
+            IF (iprods /= ipargs) THEN
+               j = j + 1
+               IF (j > nreacts) GO TO 9999
+               CYCLE
+            END IF
+
+            !         Otherwise check the names of the products
+
+            DO jp = 1, iprods
+               DO jp2 = 1, iprods
+                  IF (.NOT. found(jp) .AND. inprods(jp) == prods(jp2)) THEN
+                     found(jp) = .TRUE.
+                     prods(jp2) = empty_ten
+                  END IF
+               END DO
+            END DO
+
+            !         check to see if we have found all the products.
+            !         If we have then exit
+
+            thelast = .TRUE.
+            DO jp = 1, iprods
+               thelast = thelast .AND. found(jp)
+            END DO
+            IF (thelast) THEN
+               asad_findreaction = jr
+               GO TO 9999
+            END IF
+         END IF
+
+         !       next reaction
+
+         j = j + 1
+         IF (j > nreacts) THEN
+            IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_out, zhook_handle)
+            RETURN
+         END IF
+      END DO
+
+9999  CONTINUE
+
+      IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_out, zhook_handle)
+      RETURN
+   END FUNCTION asad_findreaction
 END MODULE asad_findreaction_mod

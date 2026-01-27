@@ -28,14 +28,14 @@
 ! Subroutine Interface:
 MODULE ukca_coag_coff_v_mod
 
-IMPLICIT NONE
+   IMPLICIT NONE
 
-CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName = 'UKCA_COAG_COFF_V_MOD'
+   CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName = 'UKCA_COAG_COFF_V_MOD'
 
 CONTAINS
 
-SUBROUTINE ukca_coag_coff_v(nv,mask,ri,rj,vi,vj,rhoi,rhoj,                     &
-     mfpa,dvisc,t,kij,coag_on,icoag)
+   SUBROUTINE ukca_coag_coff_v(nv, mask, ri, rj, vi, vj, rhoi, rhoj, &
+                               mfpa, dvisc, t, kij, coag_on, icoag)
 !----------------------------------------------------------------------
 !
 ! Purpose
@@ -166,183 +166,183 @@ SUBROUTINE ukca_coag_coff_v(nv,mask,ri,rj,vi,vj,rhoi,rhoj,                     &
 ! BOLTZMANN : Boltzmann's constant (kg m2 s-2 K-1 molec-1)
 !
 !--------------------------------------------------------------------
-USE ukca_constants,     ONLY: pi
-USE ukca_types_mod,     ONLY: log_small
-USE ukca_config_constants_mod, ONLY: boltzmann
-USE parkind1,           ONLY: jprb, jpim
-USE yomhook,            ONLY: lhook, dr_hook
-IMPLICIT NONE
+      USE ukca_constants, ONLY: pi
+      USE ukca_types_mod, ONLY: log_small
+      USE ukca_config_constants_mod, ONLY: boltzmann
+      USE parkind1, ONLY: jprb, jpim
+      USE yomhook, ONLY: lhook, dr_hook
+      IMPLICIT NONE
 
 ! Subroutine interface:
-INTEGER, INTENT(IN) :: nv
-INTEGER, INTENT(IN) :: coag_on
-INTEGER, INTENT(IN) :: icoag
-REAL, INTENT(IN)    :: ri(nv)
-REAL, INTENT(IN)    :: rj(nv)
-REAL, INTENT(IN)    :: vi(nv)
-REAL, INTENT(IN)    :: vj(nv)
-REAL, INTENT(IN)    :: rhoi(nv)
-REAL, INTENT(IN)    :: rhoj(nv)
-REAL, INTENT(IN)    :: mfpa(nv)
-REAL, INTENT(IN)    :: dvisc(nv)
-REAL, INTENT(IN)    :: t(nv)
-LOGICAL(KIND=log_small), INTENT(IN) :: mask(nv)
-REAL, INTENT(OUT)   :: kij(nv)
+      INTEGER, INTENT(IN) :: nv
+      INTEGER, INTENT(IN) :: coag_on
+      INTEGER, INTENT(IN) :: icoag
+      REAL, INTENT(IN)    :: ri(nv)
+      REAL, INTENT(IN)    :: rj(nv)
+      REAL, INTENT(IN)    :: vi(nv)
+      REAL, INTENT(IN)    :: vj(nv)
+      REAL, INTENT(IN)    :: rhoi(nv)
+      REAL, INTENT(IN)    :: rhoj(nv)
+      REAL, INTENT(IN)    :: mfpa(nv)
+      REAL, INTENT(IN)    :: dvisc(nv)
+      REAL, INTENT(IN)    :: t(nv)
+      LOGICAL(KIND=log_small), INTENT(IN) :: mask(nv)
+      REAL, INTENT(OUT)   :: kij(nv)
 !
 ! Local variables:
-REAL :: dpi(nv)
-REAL :: dpj(nv)
-REAL :: veli(nv)
-REAL :: dcoefi(nv)
-REAL :: mfppi(nv)
-REAL :: deli(nv)
-REAL :: kni(nv)
-REAL :: cci(nv)
-REAL :: velj(nv)
-REAL :: dcoefj(nv)
-REAL :: mfppj(nv)
-REAL :: delj(nv)
-REAL :: knj(nv)
-REAL :: ccj(nv)
-REAL :: vel(nv)
-REAL :: dcoef(nv)
-REAL :: mfpp(nv)
-REAL :: kn(nv)
-REAL :: cc(nv)
-REAL :: rtot(nv)
-REAL :: dtot(nv)
-REAL :: rmid(nv)
-REAL :: vmid(nv)
-REAL :: rhomid(nv)
-REAL :: termv1(nv)
-REAL :: termv2(nv)
-REAL :: termv3(nv)
-REAL :: termv4(nv)
-REAL :: term1
-REAL :: term2
-REAL :: term3
-REAL :: term4
-REAL :: term5
+      REAL :: dpi(nv)
+      REAL :: dpj(nv)
+      REAL :: veli(nv)
+      REAL :: dcoefi(nv)
+      REAL :: mfppi(nv)
+      REAL :: deli(nv)
+      REAL :: kni(nv)
+      REAL :: cci(nv)
+      REAL :: velj(nv)
+      REAL :: dcoefj(nv)
+      REAL :: mfppj(nv)
+      REAL :: delj(nv)
+      REAL :: knj(nv)
+      REAL :: ccj(nv)
+      REAL :: vel(nv)
+      REAL :: dcoef(nv)
+      REAL :: mfpp(nv)
+      REAL :: kn(nv)
+      REAL :: cc(nv)
+      REAL :: rtot(nv)
+      REAL :: dtot(nv)
+      REAL :: rmid(nv)
+      REAL :: vmid(nv)
+      REAL :: rhomid(nv)
+      REAL :: termv1(nv)
+      REAL :: termv2(nv)
+      REAL :: termv3(nv)
+      REAL :: termv4(nv)
+      REAL :: term1
+      REAL :: term2
+      REAL :: term3
+      REAL :: term4
+      REAL :: term5
 
-REAL, PARAMETER :: ukca_mfp_ref=6.6e-8
+      REAL, PARAMETER :: ukca_mfp_ref = 6.6E-8
 
-INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
-INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
-REAL(KIND=jprb)               :: zhook_handle
+      INTEGER(KIND=jpim), PARAMETER :: zhook_in = 0
+      INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+      REAL(KIND=jprb)               :: zhook_handle
 
-CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_COAG_COFF_V'
+      CHARACTER(LEN=*), PARAMETER :: RoutineName = 'UKCA_COAG_COFF_V'
 
 !
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-kij(:) = 0.0
+      IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_in, zhook_handle)
+      kij(:) = 0.0
 !
-IF (coag_on == 0) THEN
-  IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
-  RETURN
-END IF
+      IF (coag_on == 0) THEN
+         IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_out, zhook_handle)
+         RETURN
+      END IF
 !
-term1=8.0*boltzmann/pi
-term2=boltzmann/(6.0*pi)
-term3=8.0/pi
-term4=4.0e6*pi
-term5=16.0e6*pi
+      term1 = 8.0*boltzmann/pi
+      term2 = boltzmann/(6.0*pi)
+      term3 = 8.0/pi
+      term4 = 4.0E6*pi
+      term5 = 16.0E6*pi
 !
 !  .. For ICOAG=1, calculate KIJ following the full method
 !  .. as GLOMAP does for each bin (see header above).
-IF (icoag == 1) THEN
-  WHERE (mask(:))
+      IF (icoag == 1) THEN
+         WHERE (mask(:))
 
-    dpi(:)=2.0*ri(:)
-    veli(:)=SQRT(term1*t(:)/(rhoi(:)*vi(:)))
-    kni(:)=mfpa(:)/ri(:)
-    cci(:)=1.0+kni(:)*(1.257+0.4*EXP(-1.1/kni(:)))
-    ! .. n.b. use 1.257,0.4,1.1 as in Seinfeld & Pandis pg. 465
-    ! .. following Allen & Raabe (1982) reanalysis of Millikan (1923)
-    dcoefi(:)=term2*cci(:)*t(:)/(ri(:)*dvisc(:))
-    mfppi(:)=term3*dcoefi(:)/veli(:)
-    deli(:)=((dpi(:)+mfppi(:))**3-                                             &
-             SQRT((dpi(:)*dpi(:)+mfppi(:)*mfppi(:))**3))/                      &
-             (3.0*dpi(:)*mfppi(:))-dpi(:)
-    !
-    dpj(:)=2.0*rj(:)
-    velj(:)=SQRT(term1*t(:)/(rhoj(:)*vj(:)))
-    knj(:)=mfpa(:)/rj(:)
-    ccj(:)=1.0+knj(:)*(1.257+0.4*EXP(-1.1/knj(:)))
-    ! .. n.b. use 1.257,0.4,1.1 as in Seinfeld & Pandis pg. 465
-    ! .. following Allen & Raabe (1982) reanalysis of Millikan (1923)
-    dcoefj(:)=term2*ccj(:)*t(:)/(rj(:)*dvisc(:))
-    mfppj(:)=term3*dcoefj(:)/velj(:)
-    delj(:)=((dpj(:)+mfppj(:))**3-                                             &
-             SQRT((dpj(:)*dpj(:)+mfppj(:)*mfppj(:))**3))/                      &
-             (3.0*dpj(:)*mfppj(:))-dpj(:)
-    !
-    rtot(:)=ri(:)+rj(:)
-    dtot(:)=dcoefi(:)+dcoefj(:)
-    termv1(:)=                                                                 &
-     rtot(:)/(rtot(:)+SQRT(deli(:)*deli(:)+delj(:)*delj(:)))
-    termv2(:)=                                                                 &
-     4.0*dtot(:)/SQRT(veli(:)*veli(:)+velj(:)*velj(:))/rtot(:)
-    kij(:)=term4*rtot(:)*dtot(:)/(termv1(:)+termv2(:))
-  END WHERE
-END IF
+            dpi(:) = 2.0*ri(:)
+            veli(:) = SQRT(term1*t(:)/(rhoi(:)*vi(:)))
+            kni(:) = mfpa(:)/ri(:)
+            cci(:) = 1.0 + kni(:)*(1.257 + 0.4*EXP(-1.1/kni(:)))
+            ! .. n.b. use 1.257,0.4,1.1 as in Seinfeld & Pandis pg. 465
+            ! .. following Allen & Raabe (1982) reanalysis of Millikan (1923)
+            dcoefi(:) = term2*cci(:)*t(:)/(ri(:)*dvisc(:))
+            mfppi(:) = term3*dcoefi(:)/veli(:)
+            deli(:) = ((dpi(:) + mfppi(:))**3 - &
+                       SQRT((dpi(:)*dpi(:) + mfppi(:)*mfppi(:))**3))/ &
+                      (3.0*dpi(:)*mfppi(:)) - dpi(:)
+            !
+            dpj(:) = 2.0*rj(:)
+            velj(:) = SQRT(term1*t(:)/(rhoj(:)*vj(:)))
+            knj(:) = mfpa(:)/rj(:)
+            ccj(:) = 1.0 + knj(:)*(1.257 + 0.4*EXP(-1.1/knj(:)))
+            ! .. n.b. use 1.257,0.4,1.1 as in Seinfeld & Pandis pg. 465
+            ! .. following Allen & Raabe (1982) reanalysis of Millikan (1923)
+            dcoefj(:) = term2*ccj(:)*t(:)/(rj(:)*dvisc(:))
+            mfppj(:) = term3*dcoefj(:)/velj(:)
+            delj(:) = ((dpj(:) + mfppj(:))**3 - &
+                       SQRT((dpj(:)*dpj(:) + mfppj(:)*mfppj(:))**3))/ &
+                      (3.0*dpj(:)*mfppj(:)) - dpj(:)
+            !
+            rtot(:) = ri(:) + rj(:)
+            dtot(:) = dcoefi(:) + dcoefj(:)
+            termv1(:) = &
+               rtot(:)/(rtot(:) + SQRT(deli(:)*deli(:) + delj(:)*delj(:)))
+            termv2(:) = &
+               4.0*dtot(:)/SQRT(veli(:)*veli(:) + velj(:)*velj(:))/rtot(:)
+            kij(:) = term4*rtot(:)*dtot(:)/(termv1(:) + termv2(:))
+         END WHERE
+      END IF
 !
 !  .. For ICOAG=2, calculates KIJ following the M7 method as
 !  .. described in Stier et al (2005) in ACP (see header above)
-IF (icoag == 2) THEN
-  WHERE (mask(:))
-    rmid(:)=0.5*(ri(:)+rj(:))
-    vmid(:)=(pi/0.75)*rmid(:)**3
-    rhomid(:)=0.5*(rhoi(:)+rhoj(:))
-    vel(:)=SQRT(term1*t(:)/(rhomid(:)*vmid(:)))
-    kn(:)=mfpa(:)/rmid(:)
-    cc(:)=1.0+kn(:)*(1.257+0.4*EXP(-1.1/kn(:)))
-    ! .. n.b. use 1.257,0.4,1.1 as in Seinfeld & Pandis pg. 465
-    ! .. following Allen & Raabe (1982) reanalysis of Millikan (1923)
-    dcoef(:)=term2*cc(:)*t(:)/(rmid(:)*dvisc(:))
-    termv1(:)=4.0*dcoef(:)/(vel(:)*rmid(:))
-    mfpp(:)=2.0*dcoef(:)/(pi*vel(:))
-    termv2(:)=rmid(:)/(rmid(:)+mfpp(:))
-    kij(:)=term5*rmid(:)*dcoef(:)/(termv1(:)+termv2(:))
-  END WHERE
-END IF
+      IF (icoag == 2) THEN
+         WHERE (mask(:))
+            rmid(:) = 0.5*(ri(:) + rj(:))
+            vmid(:) = (pi/0.75)*rmid(:)**3
+            rhomid(:) = 0.5*(rhoi(:) + rhoj(:))
+            vel(:) = SQRT(term1*t(:)/(rhomid(:)*vmid(:)))
+            kn(:) = mfpa(:)/rmid(:)
+            cc(:) = 1.0 + kn(:)*(1.257 + 0.4*EXP(-1.1/kn(:)))
+            ! .. n.b. use 1.257,0.4,1.1 as in Seinfeld & Pandis pg. 465
+            ! .. following Allen & Raabe (1982) reanalysis of Millikan (1923)
+            dcoef(:) = term2*cc(:)*t(:)/(rmid(:)*dvisc(:))
+            termv1(:) = 4.0*dcoef(:)/(vel(:)*rmid(:))
+            mfpp(:) = 2.0*dcoef(:)/(pi*vel(:))
+            termv2(:) = rmid(:)/(rmid(:) + mfpp(:))
+            kij(:) = term5*rmid(:)*dcoef(:)/(termv1(:) + termv2(:))
+         END WHERE
+      END IF
 !
 !  .. For ICOAG=3, KIJ is calculated as in the original UM sulphate
 !  .. aerosol scheme where the Cunningham slip correction was assumed
 !  .. the same for each mode and the mean free path length for
 !  .. particles in each mode assumed to that of air
-IF (icoag == 3) THEN
-  WHERE (mask(:))
-    termv3(:)=(2.0e6*boltzmann*t(:)/3.0/dvisc(:))
-    termv4(:)=1.591*ukca_mfp_ref*(1.0/ri(:)/ri(:)+1.0/rj(:)/rj(:))
-    kij(:)=termv3(:)*(ri(:)+rj(:))*(1.0/ri(:)+1.0/rj(:)+termv4(:))
-  END WHERE
-END IF
+      IF (icoag == 3) THEN
+         WHERE (mask(:))
+            termv3(:) = (2.0E6*boltzmann*t(:)/3.0/dvisc(:))
+            termv4(:) = 1.591*ukca_mfp_ref*(1.0/ri(:)/ri(:) + 1.0/rj(:)/rj(:))
+            kij(:) = termv3(:)*(ri(:) + rj(:))*(1.0/ri(:) + 1.0/rj(:) + termv4(:))
+         END WHERE
+      END IF
 !
 !  .. For ICOAG=4, KIJ is calculated as in the original UM sulphate
 !  .. aerosol scheme but values of CCI,CCJ,MFPPI,MFPPJ are computed
 !  .. rather than just setting MFPPI=MFPPJ=MFPA and CCI=CCJ=1.591
-IF (icoag == 4) THEN
-  WHERE (mask(:))
-    kni(:)=mfpa(:)/ri(:)
-    cci(:)=1.0+kni(:)*(1.257+0.4*EXP(-1.1/kni(:)))
-    ! .. n.b. use 1.257,0.4,1.1 as in Seinfeld & Pandis pg. 465
-    ! .. following Allen & Raabe (1982) reanalysis of Millikan (1923)
-    ! .. UM originally used 1.249, 0.42 and -0.87 as in
-    ! .. Jacobson page 445 [following Kasten (1968) reanalysis of Millikan]
-    knj(:)=mfpa(:)/rj(:)
-    ccj(:)=1.0+knj(:)*(1.257+0.4*EXP(-1.1/knj(:)))
-    ! .. n.b. use 1.257,0.4,1.1 as in Seinfeld & Pandis pg. 465
-    ! .. following Allen & Raabe (1982) reanalysis of Millikan (1923)
-    ! .. UM originally used 1.249, 0.42 and -0.87 as in
-    ! .. Jacobson page 445 [following Kasten (1968) reanalysis of Millikan]
-    termv3(:)=(2.0e6*boltzmann*t(:)/3.0/dvisc(:))
-    termv4(:)=                                                                 &
-     mfppi(:)*cci(:)/ri(:)/ri(:)+mfppj(:)*ccj(:)/rj(:)/rj(:)
-    kij(:)=termv3(:)*(ri(:)+rj(:))*(1.0/ri(:)+1.0/rj(:)+termv4(:))
-  END WHERE
-END IF
+      IF (icoag == 4) THEN
+         WHERE (mask(:))
+            kni(:) = mfpa(:)/ri(:)
+            cci(:) = 1.0 + kni(:)*(1.257 + 0.4*EXP(-1.1/kni(:)))
+            ! .. n.b. use 1.257,0.4,1.1 as in Seinfeld & Pandis pg. 465
+            ! .. following Allen & Raabe (1982) reanalysis of Millikan (1923)
+            ! .. UM originally used 1.249, 0.42 and -0.87 as in
+            ! .. Jacobson page 445 [following Kasten (1968) reanalysis of Millikan]
+            knj(:) = mfpa(:)/rj(:)
+            ccj(:) = 1.0 + knj(:)*(1.257 + 0.4*EXP(-1.1/knj(:)))
+            ! .. n.b. use 1.257,0.4,1.1 as in Seinfeld & Pandis pg. 465
+            ! .. following Allen & Raabe (1982) reanalysis of Millikan (1923)
+            ! .. UM originally used 1.249, 0.42 and -0.87 as in
+            ! .. Jacobson page 445 [following Kasten (1968) reanalysis of Millikan]
+            termv3(:) = (2.0E6*boltzmann*t(:)/3.0/dvisc(:))
+            termv4(:) = &
+               mfppi(:)*cci(:)/ri(:)/ri(:) + mfppj(:)*ccj(:)/rj(:)/rj(:)
+            kij(:) = termv3(:)*(ri(:) + rj(:))*(1.0/ri(:) + 1.0/rj(:) + termv4(:))
+         END WHERE
+      END IF
 
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
-RETURN
-END SUBROUTINE ukca_coag_coff_v
+      IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_out, zhook_handle)
+      RETURN
+   END SUBROUTINE ukca_coag_coff_v
 END MODULE ukca_coag_coff_v_mod

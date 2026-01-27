@@ -24,12 +24,11 @@
 
 MODULE ukca_missing_data_mod
 
-IMPLICIT NONE
-PUBLIC
+   IMPLICIT NONE
+   PUBLIC
 
-INTEGER, PARAMETER :: imdi     = -32768
+   INTEGER, PARAMETER :: imdi = -32768
 
-REAL, PARAMETER    :: rmdi     = -32768.0 * 32768.0   ! -(2**30)
+   REAL, PARAMETER    :: rmdi = -32768.0*32768.0   ! -(2**30)
 
 END MODULE ukca_missing_data_mod
-

@@ -9,9 +9,9 @@
 ! *****************************COPYRIGHT*******************************
 MODULE ukca_parpho_mod
 
-USE parkind1, ONLY: jprb, jpim
-USE yomhook, ONLY: lhook, dr_hook
-IMPLICIT NONE
+   USE parkind1, ONLY: jprb, jpim
+   USE yomhook, ONLY: lhook, dr_hook
+   IMPLICIT NONE
 
 !
 ! Description:
@@ -31,32 +31,32 @@ IMPLICIT NONE
 !
 
 ! Number of levels in jtable.
-INTEGER, PARAMETER :: jplevp1=64
-INTEGER, PARAMETER :: jplev=jplevp1-1
+   INTEGER, PARAMETER :: jplevp1 = 64
+   INTEGER, PARAMETER :: jplev = jplevp1 - 1
 !Number of zenith angles in jtable.
-INTEGER, PARAMETER :: jpchi=20
+   INTEGER, PARAMETER :: jpchi = 20
 !Number of za greater than 90 deg in jtable.
-INTEGER, PARAMETER :: jps90=5
+   INTEGER, PARAMETER :: jps90 = 5
 !Index of 90 degrees in jtable.
-INTEGER, PARAMETER :: jpchin=jpchi-jps90
+   INTEGER, PARAMETER :: jpchin = jpchi - jps90
 !Number of wavelength intervals.
-INTEGER, PARAMETER :: jpwav=203
+   INTEGER, PARAMETER :: jpwav = 203
 !Range of wavelength intervals to use.
-INTEGER, PARAMETER :: jplo=46
-INTEGER, PARAMETER :: jphi=203
+   INTEGER, PARAMETER :: jplo = 46
+   INTEGER, PARAMETER :: jphi = 203
 !Number of temperatures in jtable
-INTEGER, PARAMETER :: jptem=3
+   INTEGER, PARAMETER :: jptem = 3
 !Number of O3 profiles in jtable
-INTEGER, PARAMETER :: jpo3p=5
+   INTEGER, PARAMETER :: jpo3p = 5
 
 !Maximum zenith angle in jtable :: degrees
-REAL, PARAMETER :: szamax=98.0
+   REAL, PARAMETER :: szamax = 98.0
 !Min and max temperatures
-REAL, PARAMETER :: tmin=200.0
-REAL, PARAMETER :: tmax=250.0
+   REAL, PARAMETER :: tmin = 200.0
+   REAL, PARAMETER :: tmax = 250.0
 !Min and max O3 profile factors
-REAL, PARAMETER :: o3min=0.3
-REAL, PARAMETER :: o3max=2.0
+   REAL, PARAMETER :: o3min = 0.3
+   REAL, PARAMETER :: o3max = 2.0
 !
 
 END MODULE ukca_parpho_mod

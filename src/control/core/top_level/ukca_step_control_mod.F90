@@ -40,70 +40,70 @@
 MODULE ukca_step_control_mod
 
 ! Dr Hook modules
-USE yomhook,             ONLY: lhook, dr_hook
-USE parkind1,            ONLY: jprb, jpim
+   USE yomhook, ONLY: lhook, dr_hook
+   USE parkind1, ONLY: jprb, jpim
 
-IMPLICIT NONE
+   IMPLICIT NONE
 
-PRIVATE
+   PRIVATE
 
-PUBLIC ukca_step_control
+   PUBLIC ukca_step_control
 
 ! Dr Hook parameters
-INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
-INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+   INTEGER(KIND=jpim), PARAMETER :: zhook_in = 0
+   INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
 
-CHARACTER(LEN=*), PARAMETER :: ModuleName = 'UKCA_STEP_CONTROL_MOD'
+   CHARACTER(LEN=*), PARAMETER :: ModuleName = 'UKCA_STEP_CONTROL_MOD'
 
 ! Generic interface for UKCA time step subroutine - overloaded according to
 ! the dimension of the tracer and NTP data
-INTERFACE ukca_step_control
-  MODULE PROCEDURE ukca_step_control_1d_domain
-  MODULE PROCEDURE ukca_step_control_3d_domain
-END INTERFACE ukca_step_control
+   INTERFACE ukca_step_control
+      MODULE PROCEDURE ukca_step_control_1d_domain
+      MODULE PROCEDURE ukca_step_control_3d_domain
+   END INTERFACE ukca_step_control
 
 CONTAINS
 
 ! ----------------------------------------------------------------------
-SUBROUTINE ukca_step_control_1d_domain(   timestep_number,                     &
-                                          current_time,                        &
-                                          tracer_data,                         &
-                                          ntp_data,                            &
-                                          r_theta_levels,                      &
-                                          r_rho_levels,                        &
-                                          error_code,                          &
-                                          previous_time,                       &
-                                          eta_theta_levels,                    &
+   SUBROUTINE ukca_step_control_1d_domain(timestep_number, &
+                                          current_time, &
+                                          tracer_data, &
+                                          ntp_data, &
+                                          r_theta_levels, &
+                                          r_rho_levels, &
+                                          error_code, &
+                                          previous_time, &
+                                          eta_theta_levels, &
                                           ! Scalar environment field groups
-                                          envgroup_flat_integer,               &
-                                          envgroup_scalar_real,                &
-                                          envgroup_flat_real,                  &
-                                          emissions_flat,                      &
-                                          envgroup_flat_logical,               &
+                                          envgroup_flat_integer, &
+                                          envgroup_scalar_real, &
+                                          envgroup_flat_real, &
+                                          emissions_flat, &
+                                          envgroup_flat_logical, &
                                           ! 1D environment field groups
-                                          envgroup_flatpft_real,               &
-                                          envgroup_fullht_real,                &
-                                          envgroup_fullht0_real,               &
-                                          envgroup_fullhtp1_real,              &
-                                          envgroup_bllev_real,                 &
-                                          envgroup_entlev_real,                &
-                                          envgroup_land_real,                  &
-                                          emissions_fullht,                    &
+                                          envgroup_flatpft_real, &
+                                          envgroup_fullht_real, &
+                                          envgroup_fullht0_real, &
+                                          envgroup_fullhtp1_real, &
+                                          envgroup_bllev_real, &
+                                          envgroup_entlev_real, &
+                                          envgroup_land_real, &
+                                          emissions_fullht, &
                                           ! 2D environment field groups
-                                          envgroup_landtile_real,              &
-                                          envgroup_landpft_real,               &
-                                          envgroup_landtile_logical,           &
+                                          envgroup_landtile_real, &
+                                          envgroup_landpft_real, &
+                                          envgroup_landtile_logical, &
                                           ! 2D environment fields
                                           ! (spatial + photol species)
-                                          envgroup_fullhtphot_real,            &
+                                          envgroup_fullhtphot_real, &
                                           ! Diagnostics output
-                                          diag_status_flat_real,               &
-                                          diag_status_fullht_real,             &
-                                          diag_data_flat_real,                 &
-                                          diag_data_fullht_real,               &
+                                          diag_status_flat_real, &
+                                          diag_status_fullht_real, &
+                                          diag_data_flat_real, &
+                                          diag_data_fullht_real, &
                                           ! Error return info
-                                          error_message,                       &
-                                          error_routine )
+                                          error_message, &
+                                          error_routine)
 ! ----------------------------------------------------------------------
 ! Description:
 !   Obtains environmental driver and emission fields and performs
@@ -131,47 +131,47 @@ SUBROUTINE ukca_step_control_1d_domain(   timestep_number,                     &
 !   data will be required for thread-safe operation.
 ! ----------------------------------------------------------------------
 
-USE ukca_environment_req_mod, ONLY: ukca_get_envgroup_varlists
-USE ukca_environment_mod, ONLY: ukca_set_environment
-USE ukca_emiss_api_mod, ONLY: get_registered_ems_info, ukca_set_emission
-USE ukca_step_mod, ONLY: ukca_step
-USE ukca_fieldname_mod, ONLY: maxlen_fieldname, maxlen_diagname
-USE ukca_error_mod, ONLY: maxlen_message, maxlen_procname,                     &
-                          errcode_env_field_mismatch
+      USE ukca_environment_req_mod, ONLY: ukca_get_envgroup_varlists
+      USE ukca_environment_mod, ONLY: ukca_set_environment
+      USE ukca_emiss_api_mod, ONLY: get_registered_ems_info, ukca_set_emission
+      USE ukca_step_mod, ONLY: ukca_step
+      USE ukca_fieldname_mod, ONLY: maxlen_fieldname, maxlen_diagname
+      USE ukca_error_mod, ONLY: maxlen_message, maxlen_procname, &
+                                errcode_env_field_mismatch
 
-IMPLICIT NONE
+      IMPLICIT NONE
 
 ! Subroutine arguments
 
 ! Model timestep number (counted from basis time at start of run)
-INTEGER, INTENT(IN) :: timestep_number
+      INTEGER, INTENT(IN) :: timestep_number
 
 ! Current model time (year, month, day, hour, minute, second, day of year)
-INTEGER, INTENT(IN) :: current_time(7)
+      INTEGER, INTENT(IN) :: current_time(7)
 
 ! Height of theta and rho levels from Earth centre
-REAL, INTENT(IN) :: r_theta_levels(:,:,0:), r_rho_levels(:,:,:)
+      REAL, INTENT(IN) :: r_theta_levels(:, :, 0:), r_rho_levels(:, :, :)
 
 ! UKCA tracers. Dimensions: X,Y,Z,N
 ! where X is row length of tracer field (= no. of columns)
 !       Y is no. of rows in tracer field
 !       Z is no. of levels in tracer fields
 !       N is number of tracers
-REAL, ALLOCATABLE, INTENT(IN OUT) :: tracer_data(:, :)
+      REAL, ALLOCATABLE, INTENT(IN OUT) :: tracer_data(:, :)
 
 ! Non-transported prognostics. Dimensions: X,Y,Z,N
-REAL, ALLOCATABLE, INTENT(IN OUT) :: ntp_data(:, :)
+      REAL, ALLOCATABLE, INTENT(IN OUT) :: ntp_data(:, :)
 
 ! Error code for status reporting
-INTEGER, INTENT(OUT) :: error_code
+      INTEGER, INTENT(OUT) :: error_code
 
 ! Model time at previous timestep (required for chemistry)
-INTEGER, OPTIONAL, INTENT(IN) :: previous_time(7)
+      INTEGER, OPTIONAL, INTENT(IN) :: previous_time(7)
 
 ! Non-dimensional coordinate vector for theta levels (0.0 at planet radius,
 ! 1.0 at top of model), used to define level height without orography effect.
 ! Allocatable to preserve bounds (may or may not include Level 0).
-REAL, ALLOCATABLE, OPTIONAL, INTENT(IN) :: eta_theta_levels(:)
+      REAL, ALLOCATABLE, OPTIONAL, INTENT(IN) :: eta_theta_levels(:)
 
 ! Environmental driver field groups (ordered by dimension and type)
 ! Outer dimension is field index determined with reference to list of
@@ -179,731 +179,714 @@ REAL, ALLOCATABLE, OPTIONAL, INTENT(IN) :: eta_theta_levels(:)
 
 ! Scalar fields (scalar & flat grid groups)
 
-INTEGER, ALLOCATABLE, OPTIONAL, INTENT(IN) :: envgroup_flat_integer(:)
+      INTEGER, ALLOCATABLE, OPTIONAL, INTENT(IN) :: envgroup_flat_integer(:)
 
-REAL, ALLOCATABLE, OPTIONAL, INTENT(IN) :: envgroup_scalar_real(:)
-REAL, ALLOCATABLE, OPTIONAL, INTENT(IN) :: envgroup_flat_real(:)
-REAL, ALLOCATABLE, OPTIONAL, INTENT(IN) :: emissions_flat(:)
+      REAL, ALLOCATABLE, OPTIONAL, INTENT(IN) :: envgroup_scalar_real(:)
+      REAL, ALLOCATABLE, OPTIONAL, INTENT(IN) :: envgroup_flat_real(:)
+      REAL, ALLOCATABLE, OPTIONAL, INTENT(IN) :: emissions_flat(:)
 
-LOGICAL, ALLOCATABLE, OPTIONAL, INTENT(IN) :: envgroup_flat_logical(:)
+      LOGICAL, ALLOCATABLE, OPTIONAL, INTENT(IN) :: envgroup_flat_logical(:)
 
 ! 1D fields (flat grid plant function type tile group, vertical grid groups &
 ! land point group)
 
-REAL, ALLOCATABLE, OPTIONAL, INTENT(IN) :: envgroup_flatpft_real(:,:)
-REAL, ALLOCATABLE, OPTIONAL, INTENT(IN) :: envgroup_fullht_real(:,:)
-REAL, ALLOCATABLE, OPTIONAL, INTENT(IN) :: envgroup_fullht0_real(:,:)
-REAL, ALLOCATABLE, OPTIONAL, INTENT(IN) :: envgroup_fullhtp1_real(:,:)
-REAL, ALLOCATABLE, OPTIONAL, INTENT(IN) :: envgroup_bllev_real(:,:)
-REAL, ALLOCATABLE, OPTIONAL, INTENT(IN) :: envgroup_entlev_real(:,:)
-REAL, ALLOCATABLE, OPTIONAL, INTENT(IN) :: envgroup_land_real(:,:)
-REAL, ALLOCATABLE, OPTIONAL, INTENT(IN) :: emissions_fullht(:,:)
+      REAL, ALLOCATABLE, OPTIONAL, INTENT(IN) :: envgroup_flatpft_real(:, :)
+      REAL, ALLOCATABLE, OPTIONAL, INTENT(IN) :: envgroup_fullht_real(:, :)
+      REAL, ALLOCATABLE, OPTIONAL, INTENT(IN) :: envgroup_fullht0_real(:, :)
+      REAL, ALLOCATABLE, OPTIONAL, INTENT(IN) :: envgroup_fullhtp1_real(:, :)
+      REAL, ALLOCATABLE, OPTIONAL, INTENT(IN) :: envgroup_bllev_real(:, :)
+      REAL, ALLOCATABLE, OPTIONAL, INTENT(IN) :: envgroup_entlev_real(:, :)
+      REAL, ALLOCATABLE, OPTIONAL, INTENT(IN) :: envgroup_land_real(:, :)
+      REAL, ALLOCATABLE, OPTIONAL, INTENT(IN) :: emissions_fullht(:, :)
 ! Photolysis rates: 2D fields= 1D spatial, no. photolysis reactions, n_fields
-REAL, ALLOCATABLE, OPTIONAL, INTENT(IN) :: envgroup_fullhtphot_real(:,:,:)
+      REAL, ALLOCATABLE, OPTIONAL, INTENT(IN) :: envgroup_fullhtphot_real(:, :, :)
 
 ! 2D fields (land-point tile groups)
 
-REAL, ALLOCATABLE, OPTIONAL, INTENT(IN) :: envgroup_landtile_real(:,:,:)
-REAL, ALLOCATABLE, OPTIONAL, INTENT(IN) :: envgroup_landpft_real(:,:,:)
+      REAL, ALLOCATABLE, OPTIONAL, INTENT(IN) :: envgroup_landtile_real(:, :, :)
+      REAL, ALLOCATABLE, OPTIONAL, INTENT(IN) :: envgroup_landpft_real(:, :, :)
 
-LOGICAL, ALLOCATABLE, OPTIONAL, INTENT(IN) :: envgroup_landtile_logical(:,:,:)
+      LOGICAL, ALLOCATABLE, OPTIONAL, INTENT(IN) :: envgroup_landtile_logical(:, :, :)
 
 ! Diagnostic status flags
-INTEGER, OPTIONAL, INTENT(IN OUT) :: diag_status_flat_real(:)
-INTEGER, OPTIONAL, INTENT(IN OUT) :: diag_status_fullht_real(:)
+      INTEGER, OPTIONAL, INTENT(IN OUT) :: diag_status_flat_real(:)
+      INTEGER, OPTIONAL, INTENT(IN OUT) :: diag_status_fullht_real(:)
 
 ! Diagnostic data
-REAL, OPTIONAL, INTENT(OUT) :: diag_data_flat_real(:)
-REAL, OPTIONAL, INTENT(OUT) :: diag_data_fullht_real(:,:)
+      REAL, OPTIONAL, INTENT(OUT) :: diag_data_flat_real(:)
+      REAL, OPTIONAL, INTENT(OUT) :: diag_data_fullht_real(:, :)
 
 ! Further arguments for status reporting
-CHARACTER(LEN=maxlen_message), OPTIONAL, INTENT(OUT) :: error_message
-CHARACTER(LEN=maxlen_procname), OPTIONAL, INTENT(OUT) :: error_routine
+      CHARACTER(LEN=maxlen_message), OPTIONAL, INTENT(OUT) :: error_message
+      CHARACTER(LEN=maxlen_procname), OPTIONAL, INTENT(OUT) :: error_routine
 
 ! Local variables
 
-INTEGER :: i
-INTEGER :: n
-INTEGER :: n_flat_ems
-INTEGER :: n_fullht_ems
-INTEGER :: emiss_id
+      INTEGER :: i
+      INTEGER :: n
+      INTEGER :: n_flat_ems
+      INTEGER :: n_fullht_ems
+      INTEGER :: emiss_id
 
-REAL, ALLOCATABLE :: tmp_1d_real(:)
-REAL, ALLOCATABLE :: tmp_2d_real(:,:)
-REAL, ALLOCATABLE :: tmp_3d_real(:,:,:)
+      REAL, ALLOCATABLE :: tmp_1d_real(:)
+      REAL, ALLOCATABLE :: tmp_2d_real(:, :)
+      REAL, ALLOCATABLE :: tmp_3d_real(:, :, :)
 
-LOGICAL :: l_ndim_order
-LOGICAL, ALLOCATABLE :: tmp_2d_logical(:,:)
+      LOGICAL :: l_ndim_order
+      LOGICAL, ALLOCATABLE :: tmp_2d_logical(:, :)
 
-CHARACTER(LEN=maxlen_fieldname), POINTER :: varnames(:)
+      CHARACTER(LEN=maxlen_fieldname), POINTER :: varnames(:)
 
 ! Dr Hook data
-REAL(KIND=jprb) :: zhook_handle
-CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_STEP_CONTROL_1D_DOMAIN'
+      REAL(KIND=jprb) :: zhook_handle
+      CHARACTER(LEN=*), PARAMETER :: RoutineName = 'UKCA_STEP_CONTROL_1D_DOMAIN'
 
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+      IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_in, zhook_handle)
 
-error_code = 0
-IF (PRESENT(error_message)) error_message = ''
-IF (PRESENT(error_routine)) error_routine = ''
+      error_code = 0
+      IF (PRESENT(error_message)) error_message = ''
+      IF (PRESENT(error_routine)) error_routine = ''
 
 ! Note - envgroup_flat_logical is processed first because of the dependency of
 !        the land-point only fields on the land sea mask
 
-IF (PRESENT(envgroup_flat_logical)) THEN
-  CALL ukca_get_envgroup_varlists(error_code,                                  &
-                                  varnames_flat_logical_ptr=varnames,          &
-                                  error_message=error_message,                 &
-                                  error_routine=error_routine)
-  IF (error_code <= 0) THEN
-    n = SIZE(envgroup_flat_logical)
-    IF (n /= SIZE(varnames)) THEN
-      error_code = errcode_env_field_mismatch
-      IF (PRESENT(error_message))                                              &
-        WRITE(error_message, '(A,I0,A,I0,A)')                                  &
-          'Wrong number of scalar environment fields (', n,                    &
-          ') for logical group on flat grid. Expecting ', SIZE(varnames)
-      IF (PRESENT(error_routine)) error_routine = RoutineName
-    ELSE
-      DO i = 1, n
-        CALL ukca_set_environment(varnames(i), envgroup_flat_logical(i),       &
-                                  error_code, error_message=error_message,     &
-                                  error_routine=error_routine)
-      END DO
-    END IF
-  END IF
-END IF
+      IF (PRESENT(envgroup_flat_logical)) THEN
+         CALL ukca_get_envgroup_varlists(error_code, &
+                                         varnames_flat_logical_ptr=varnames, &
+                                         error_message=error_message, &
+                                         error_routine=error_routine)
+         IF (error_code <= 0) THEN
+            n = SIZE(envgroup_flat_logical)
+            IF (n /= SIZE(varnames)) THEN
+               error_code = errcode_env_field_mismatch
+               IF (PRESENT(error_message)) &
+                  WRITE (error_message, '(A,I0,A,I0,A)') &
+                  'Wrong number of scalar environment fields (', n, &
+                  ') for logical group on flat grid. Expecting ', SIZE(varnames)
+               IF (PRESENT(error_routine)) error_routine = RoutineName
+            ELSE
+               DO i = 1, n
+                  CALL ukca_set_environment(varnames(i), envgroup_flat_logical(i), &
+                                            error_code, error_message=error_message, &
+                                            error_routine=error_routine)
+               END DO
+            END IF
+         END IF
+      END IF
 
 ! Set environmental drivers in scalar group
 
-IF (error_code <= 0 .AND. PRESENT(envgroup_scalar_real)) THEN
-  CALL ukca_get_envgroup_varlists(error_code,                                  &
-                                  varnames_scalar_real_ptr=varnames,           &
-                                  error_message=error_message,                 &
-                                  error_routine=error_routine)
-  IF (error_code <= 0) THEN
-    n = SIZE(envgroup_scalar_real)
-    IF (n /= SIZE(varnames)) THEN
-      error_code = errcode_env_field_mismatch
-      IF (PRESENT(error_message))                                              &
-        WRITE(error_message, '(A,I0,A,I0,A)')                                  &
-          'Wrong number of environment fields (', n,                           &
-          ') for scalar real group. Expecting ', SIZE(varnames)
-      IF (PRESENT(error_routine)) error_routine = RoutineName
-    ELSE
-      DO i = 1, n
-        CALL ukca_set_environment(varnames(i), envgroup_scalar_real(i),        &
-                                  error_code, error_message=error_message,     &
-                                  error_routine=error_routine)
-      END DO
-    END IF
-  END IF
-END IF
+      IF (error_code <= 0 .AND. PRESENT(envgroup_scalar_real)) THEN
+         CALL ukca_get_envgroup_varlists(error_code, &
+                                         varnames_scalar_real_ptr=varnames, &
+                                         error_message=error_message, &
+                                         error_routine=error_routine)
+         IF (error_code <= 0) THEN
+            n = SIZE(envgroup_scalar_real)
+            IF (n /= SIZE(varnames)) THEN
+               error_code = errcode_env_field_mismatch
+               IF (PRESENT(error_message)) &
+                  WRITE (error_message, '(A,I0,A,I0,A)') &
+                  'Wrong number of environment fields (', n, &
+                  ') for scalar real group. Expecting ', SIZE(varnames)
+               IF (PRESENT(error_routine)) error_routine = RoutineName
+            ELSE
+               DO i = 1, n
+                  CALL ukca_set_environment(varnames(i), envgroup_scalar_real(i), &
+                                            error_code, error_message=error_message, &
+                                            error_routine=error_routine)
+               END DO
+            END IF
+         END IF
+      END IF
 
 ! Set environmental drivers in flat grid groups
 ! (Input values are scalar for the column model)
 
-IF (error_code <= 0 .AND. PRESENT(envgroup_flat_integer)) THEN
-  CALL ukca_get_envgroup_varlists(error_code,                                  &
-                                  varnames_flat_integer_ptr=varnames,          &
-                                  error_message=error_message,                 &
-                                  error_routine=error_routine)
-  IF (error_code <= 0) THEN
-    n = SIZE(envgroup_flat_integer)
-    IF (n /= SIZE(varnames)) THEN
-      error_code = errcode_env_field_mismatch
-      IF (PRESENT(error_message))                                              &
-        WRITE(error_message, '(A,I0,A,I0,A)')                                  &
-          'Wrong number of scalar environment fields (', n,                    &
-          ') for integer group on flat grid. Expecting ', SIZE(varnames)
-      IF (PRESENT(error_routine)) error_routine = RoutineName
-    ELSE
-      DO i = 1, n
-        CALL ukca_set_environment(varnames(i), envgroup_flat_integer(i),       &
-                                  error_code, error_message=error_message,     &
-                                  error_routine=error_routine)
-      END DO
-    END IF
-  END IF
-END IF
+      IF (error_code <= 0 .AND. PRESENT(envgroup_flat_integer)) THEN
+         CALL ukca_get_envgroup_varlists(error_code, &
+                                         varnames_flat_integer_ptr=varnames, &
+                                         error_message=error_message, &
+                                         error_routine=error_routine)
+         IF (error_code <= 0) THEN
+            n = SIZE(envgroup_flat_integer)
+            IF (n /= SIZE(varnames)) THEN
+               error_code = errcode_env_field_mismatch
+               IF (PRESENT(error_message)) &
+                  WRITE (error_message, '(A,I0,A,I0,A)') &
+                  'Wrong number of scalar environment fields (', n, &
+                  ') for integer group on flat grid. Expecting ', SIZE(varnames)
+               IF (PRESENT(error_routine)) error_routine = RoutineName
+            ELSE
+               DO i = 1, n
+                  CALL ukca_set_environment(varnames(i), envgroup_flat_integer(i), &
+                                            error_code, error_message=error_message, &
+                                            error_routine=error_routine)
+               END DO
+            END IF
+         END IF
+      END IF
 
-IF (error_code <= 0 .AND. PRESENT(envgroup_flat_real)) THEN
-  CALL ukca_get_envgroup_varlists(error_code,                                  &
-                                  varnames_flat_real_ptr=varnames,             &
-                                  error_message=error_message,                 &
-                                  error_routine=error_routine)
-  IF (error_code <= 0) THEN
-    n = SIZE(envgroup_flat_real)
-    IF (n /= SIZE(varnames)) THEN
-      error_code = errcode_env_field_mismatch
-      IF (PRESENT(error_message))                                              &
-        WRITE(error_message, '(A,I0,A,I0,A)')                                  &
-          'Wrong number of scalar environment fields (', n,                    &
-          ') for real group on flat grid. Expecting ', SIZE(varnames)
-      IF (PRESENT(error_routine)) error_routine = RoutineName
-    ELSE
-      DO i = 1, n
-        CALL ukca_set_environment(varnames(i), envgroup_flat_real(i),          &
-                                  error_code, error_message=error_message,     &
-                                  error_routine=error_routine)
-      END DO
-    END IF
-  END IF
-END IF
-
-
+      IF (error_code <= 0 .AND. PRESENT(envgroup_flat_real)) THEN
+         CALL ukca_get_envgroup_varlists(error_code, &
+                                         varnames_flat_real_ptr=varnames, &
+                                         error_message=error_message, &
+                                         error_routine=error_routine)
+         IF (error_code <= 0) THEN
+            n = SIZE(envgroup_flat_real)
+            IF (n /= SIZE(varnames)) THEN
+               error_code = errcode_env_field_mismatch
+               IF (PRESENT(error_message)) &
+                  WRITE (error_message, '(A,I0,A,I0,A)') &
+                  'Wrong number of scalar environment fields (', n, &
+                  ') for real group on flat grid. Expecting ', SIZE(varnames)
+               IF (PRESENT(error_routine)) error_routine = RoutineName
+            ELSE
+               DO i = 1, n
+                  CALL ukca_set_environment(varnames(i), envgroup_flat_real(i), &
+                                            error_code, error_message=error_message, &
+                                            error_routine=error_routine)
+               END DO
+            END IF
+         END IF
+      END IF
 
 ! Set environmental drivers in flat grid plant functional type tile group
 ! (Input values are 1D for the column model)
 
-IF (error_code <= 0 .AND. PRESENT(envgroup_flatpft_real)) THEN
-  CALL ukca_get_envgroup_varlists(error_code,                                  &
-                                  varnames_flatpft_real_ptr=varnames,          &
-                                  error_message=error_message,                 &
-                                  error_routine=error_routine)
-  IF (error_code <= 0) THEN
-    n = SIZE(envgroup_flatpft_real,DIM=2)
-    IF (n /= SIZE(varnames)) THEN
-      error_code = errcode_env_field_mismatch
-      IF (PRESENT(error_message))                                              &
-        WRITE(error_message, '(A,I0,A,I0,A)')                                  &
-          'Wrong number of environment fields (', n,                           &
-          ') for real group on flat grid PFT tiles. Expecting ', SIZE(varnames)
-      IF (PRESENT(error_routine)) error_routine = RoutineName
-    ELSE IF (n > 0) THEN
+      IF (error_code <= 0 .AND. PRESENT(envgroup_flatpft_real)) THEN
+         CALL ukca_get_envgroup_varlists(error_code, &
+                                         varnames_flatpft_real_ptr=varnames, &
+                                         error_message=error_message, &
+                                         error_routine=error_routine)
+         IF (error_code <= 0) THEN
+            n = SIZE(envgroup_flatpft_real, DIM=2)
+            IF (n /= SIZE(varnames)) THEN
+               error_code = errcode_env_field_mismatch
+               IF (PRESENT(error_message)) &
+                  WRITE (error_message, '(A,I0,A,I0,A)') &
+                  'Wrong number of environment fields (', n, &
+                  ') for real group on flat grid PFT tiles. Expecting ', SIZE(varnames)
+               IF (PRESENT(error_routine)) error_routine = RoutineName
+            ELSE IF (n > 0) THEN
 
-      ALLOCATE( tmp_1d_real( LBOUND( envgroup_flatpft_real, DIM=1):            &
-                             UBOUND( envgroup_flatpft_real, DIM=1) ) )
+               ALLOCATE (tmp_1d_real(LBOUND(envgroup_flatpft_real, DIM=1): &
+                                     UBOUND(envgroup_flatpft_real, DIM=1)))
 
-      DO i = 1, n
-        tmp_1d_real = envgroup_flatpft_real(:,i)
-        CALL ukca_set_environment(varnames(i), tmp_1d_real,                    &
-                                  error_code, error_message=error_message,     &
-                                  error_routine=error_routine)
-      END DO
+               DO i = 1, n
+                  tmp_1d_real = envgroup_flatpft_real(:, i)
+                  CALL ukca_set_environment(varnames(i), tmp_1d_real, &
+                                            error_code, error_message=error_message, &
+                                            error_routine=error_routine)
+               END DO
 
-      DEALLOCATE(tmp_1d_real)
+               DEALLOCATE (tmp_1d_real)
 
-    END IF
-  END IF
-END IF
-
-
+            END IF
+         END IF
+      END IF
 
 ! Set environmental drivers in full-height grid group
 ! (Input values are 1D for the column model)
 
-IF (error_code <= 0 .AND. PRESENT(envgroup_fullht_real)) THEN
-  CALL ukca_get_envgroup_varlists(error_code,                                  &
-                                  varnames_fullht_real_ptr=varnames,           &
-                                  error_message=error_message,                 &
-                                  error_routine=error_routine)
-  IF (error_code <= 0) THEN
-    n = SIZE(envgroup_fullht_real,DIM=2)
-    IF (n /= SIZE(varnames)) THEN
-      error_code = errcode_env_field_mismatch
-      IF (PRESENT(error_message))                                              &
-        WRITE(error_message, '(A,I0,A,I0,A)')                                  &
-          'Wrong number of environment fields (', n,                           &
-          ') for real group on full height grid. Expecting ', SIZE(varnames)
-      IF (PRESENT(error_routine)) error_routine = RoutineName
-    ELSE IF (n > 0) THEN
+      IF (error_code <= 0 .AND. PRESENT(envgroup_fullht_real)) THEN
+         CALL ukca_get_envgroup_varlists(error_code, &
+                                         varnames_fullht_real_ptr=varnames, &
+                                         error_message=error_message, &
+                                         error_routine=error_routine)
+         IF (error_code <= 0) THEN
+            n = SIZE(envgroup_fullht_real, DIM=2)
+            IF (n /= SIZE(varnames)) THEN
+               error_code = errcode_env_field_mismatch
+               IF (PRESENT(error_message)) &
+                  WRITE (error_message, '(A,I0,A,I0,A)') &
+                  'Wrong number of environment fields (', n, &
+                  ') for real group on full height grid. Expecting ', SIZE(varnames)
+               IF (PRESENT(error_routine)) error_routine = RoutineName
+            ELSE IF (n > 0) THEN
 
-      ALLOCATE( tmp_1d_real( LBOUND( envgroup_fullht_real, DIM=1):             &
-                             UBOUND( envgroup_fullht_real, DIM=1) ) )
+               ALLOCATE (tmp_1d_real(LBOUND(envgroup_fullht_real, DIM=1): &
+                                     UBOUND(envgroup_fullht_real, DIM=1)))
 
-      DO i = 1, n
-        tmp_1d_real = envgroup_fullht_real(:,i)
-        CALL ukca_set_environment(varnames(i), tmp_1d_real,                    &
-                                  error_code, error_message=error_message,     &
-                                  error_routine=error_routine)
-      END DO
+               DO i = 1, n
+                  tmp_1d_real = envgroup_fullht_real(:, i)
+                  CALL ukca_set_environment(varnames(i), tmp_1d_real, &
+                                            error_code, error_message=error_message, &
+                                            error_routine=error_routine)
+               END DO
 
-      DEALLOCATE(tmp_1d_real)
+               DEALLOCATE (tmp_1d_real)
 
-    END IF
-  END IF
-END IF
+            END IF
+         END IF
+      END IF
 
 ! Set environmental drivers in full-height plus zeroth level grid group
 ! (Input values are 1D for the column model)
 
-IF (error_code <= 0 .AND. PRESENT(envgroup_fullht0_real)) THEN
-  CALL ukca_get_envgroup_varlists(error_code,                                  &
-                                  varnames_fullht0_real_ptr=varnames,          &
-                                  error_message=error_message,                 &
-                                  error_routine=error_routine)
-  IF (error_code <= 0) THEN
-    n = SIZE(envgroup_fullht0_real,DIM=2)
-    IF (n /= SIZE(varnames)) THEN
-      error_code = errcode_env_field_mismatch
-      IF (PRESENT(error_message))                                              &
-        WRITE(error_message, '(A,I0,A,I0,A)')                                  &
-          'Wrong number of environment fields (', n,                           &
-          ') for real group on full height plus zero level grid. Expecting ',  &
-          SIZE(varnames)
-      IF (PRESENT(error_routine)) error_routine = RoutineName
-    ELSE IF (n > 0) THEN
+      IF (error_code <= 0 .AND. PRESENT(envgroup_fullht0_real)) THEN
+         CALL ukca_get_envgroup_varlists(error_code, &
+                                         varnames_fullht0_real_ptr=varnames, &
+                                         error_message=error_message, &
+                                         error_routine=error_routine)
+         IF (error_code <= 0) THEN
+            n = SIZE(envgroup_fullht0_real, DIM=2)
+            IF (n /= SIZE(varnames)) THEN
+               error_code = errcode_env_field_mismatch
+               IF (PRESENT(error_message)) &
+                  WRITE (error_message, '(A,I0,A,I0,A)') &
+                  'Wrong number of environment fields (', n, &
+                  ') for real group on full height plus zero level grid. Expecting ', &
+                  SIZE(varnames)
+               IF (PRESENT(error_routine)) error_routine = RoutineName
+            ELSE IF (n > 0) THEN
 
-      ALLOCATE( tmp_1d_real( LBOUND( envgroup_fullht0_real, DIM=1):            &
-                             UBOUND( envgroup_fullht0_real, DIM=1) ) )
+               ALLOCATE (tmp_1d_real(LBOUND(envgroup_fullht0_real, DIM=1): &
+                                     UBOUND(envgroup_fullht0_real, DIM=1)))
 
-      DO i = 1, n
-        tmp_1d_real = envgroup_fullht0_real(:,i)
-        CALL ukca_set_environment(varnames(i), tmp_1d_real,                    &
-                                  error_code, error_message=error_message,     &
-                                  error_routine=error_routine)
-      END DO
+               DO i = 1, n
+                  tmp_1d_real = envgroup_fullht0_real(:, i)
+                  CALL ukca_set_environment(varnames(i), tmp_1d_real, &
+                                            error_code, error_message=error_message, &
+                                            error_routine=error_routine)
+               END DO
 
-      DEALLOCATE(tmp_1d_real)
+               DEALLOCATE (tmp_1d_real)
 
-    END IF
-  END IF
-END IF
-
-
+            END IF
+         END IF
+      END IF
 
 ! Set environmental drivers in full-height plus one grid group
 ! (Input values are 1D for the column model)
 
-IF (error_code <= 0 .AND. PRESENT(envgroup_fullhtp1_real)) THEN
-  CALL ukca_get_envgroup_varlists(error_code,                                  &
-                                  varnames_fullhtp1_real_ptr=varnames,         &
-                                  error_message=error_message,                 &
-                                  error_routine=error_routine)
-  IF (error_code <= 0) THEN
-    n = SIZE(envgroup_fullhtp1_real,DIM=2)
-    IF (n /= SIZE(varnames)) THEN
-      error_code = errcode_env_field_mismatch
-      IF (PRESENT(error_message))                                              &
-        WRITE(error_message, '(A,I0,A,I0,A)')                                  &
-          'Wrong number of environment fields (', n,                           &
-          ') for real group on full height plus one grid. Expecting ',         &
-          SIZE(varnames)
-      IF (PRESENT(error_routine)) error_routine = RoutineName
-    ELSE IF (n > 0) THEN
+      IF (error_code <= 0 .AND. PRESENT(envgroup_fullhtp1_real)) THEN
+         CALL ukca_get_envgroup_varlists(error_code, &
+                                         varnames_fullhtp1_real_ptr=varnames, &
+                                         error_message=error_message, &
+                                         error_routine=error_routine)
+         IF (error_code <= 0) THEN
+            n = SIZE(envgroup_fullhtp1_real, DIM=2)
+            IF (n /= SIZE(varnames)) THEN
+               error_code = errcode_env_field_mismatch
+               IF (PRESENT(error_message)) &
+                  WRITE (error_message, '(A,I0,A,I0,A)') &
+                  'Wrong number of environment fields (', n, &
+                  ') for real group on full height plus one grid. Expecting ', &
+                  SIZE(varnames)
+               IF (PRESENT(error_routine)) error_routine = RoutineName
+            ELSE IF (n > 0) THEN
 
-      ALLOCATE( tmp_1d_real( LBOUND( envgroup_fullhtp1_real, DIM=1):           &
-                             UBOUND( envgroup_fullhtp1_real, DIM=1) ) )
+               ALLOCATE (tmp_1d_real(LBOUND(envgroup_fullhtp1_real, DIM=1): &
+                                     UBOUND(envgroup_fullhtp1_real, DIM=1)))
 
-      DO i = 1, n
-        tmp_1d_real = envgroup_fullhtp1_real(:,i)
-        CALL ukca_set_environment(varnames(i), tmp_1d_real,                    &
-                                  error_code, error_message=error_message,     &
-                                  error_routine=error_routine)
-      END DO
+               DO i = 1, n
+                  tmp_1d_real = envgroup_fullhtp1_real(:, i)
+                  CALL ukca_set_environment(varnames(i), tmp_1d_real, &
+                                            error_code, error_message=error_message, &
+                                            error_routine=error_routine)
+               END DO
 
-      DEALLOCATE(tmp_1d_real)
+               DEALLOCATE (tmp_1d_real)
 
-    END IF
-  END IF
-END IF
+            END IF
+         END IF
+      END IF
 
 ! Set environmental drivers in boundary layer levels group
 ! (Input values are 1D for the column model)
 
-IF (error_code <= 0 .AND. PRESENT(envgroup_bllev_real)) THEN
-  CALL ukca_get_envgroup_varlists(error_code,                                  &
-                                  varnames_bllev_real_ptr=varnames,            &
-                                  error_message=error_message,                 &
-                                  error_routine=error_routine)
-  IF (error_code <= 0) THEN
-    n = SIZE(envgroup_bllev_real,DIM=2)
-    IF (n /= SIZE(varnames)) THEN
-      error_code = errcode_env_field_mismatch
-      IF (PRESENT(error_message))                                              &
-        WRITE(error_message, '(A,I0,A,I0,A)')                                  &
-          'Wrong number of environment fields (', n,                           &
-          ') for real group on boundary layer levels. Expecting ',             &
-          SIZE(varnames)
-      IF (PRESENT(error_routine)) error_routine = RoutineName
-    ELSE IF (n > 0) THEN
+      IF (error_code <= 0 .AND. PRESENT(envgroup_bllev_real)) THEN
+         CALL ukca_get_envgroup_varlists(error_code, &
+                                         varnames_bllev_real_ptr=varnames, &
+                                         error_message=error_message, &
+                                         error_routine=error_routine)
+         IF (error_code <= 0) THEN
+            n = SIZE(envgroup_bllev_real, DIM=2)
+            IF (n /= SIZE(varnames)) THEN
+               error_code = errcode_env_field_mismatch
+               IF (PRESENT(error_message)) &
+                  WRITE (error_message, '(A,I0,A,I0,A)') &
+                  'Wrong number of environment fields (', n, &
+                  ') for real group on boundary layer levels. Expecting ', &
+                  SIZE(varnames)
+               IF (PRESENT(error_routine)) error_routine = RoutineName
+            ELSE IF (n > 0) THEN
 
-      ALLOCATE( tmp_1d_real( LBOUND( envgroup_bllev_real, DIM=1):              &
-                             UBOUND( envgroup_bllev_real, DIM=1) ) )
+               ALLOCATE (tmp_1d_real(LBOUND(envgroup_bllev_real, DIM=1): &
+                                     UBOUND(envgroup_bllev_real, DIM=1)))
 
-      DO i = 1, n
-        tmp_1d_real = envgroup_bllev_real(:,i)
-        CALL ukca_set_environment(varnames(i), tmp_1d_real,                    &
-                                  error_code, error_message=error_message,     &
-                                  error_routine=error_routine)
-      END DO
+               DO i = 1, n
+                  tmp_1d_real = envgroup_bllev_real(:, i)
+                  CALL ukca_set_environment(varnames(i), tmp_1d_real, &
+                                            error_code, error_message=error_message, &
+                                            error_routine=error_routine)
+               END DO
 
-      DEALLOCATE(tmp_1d_real)
+               DEALLOCATE (tmp_1d_real)
 
-    END IF
-  END IF
-END IF
+            END IF
+         END IF
+      END IF
 
 ! Set environmental drivers in entrainment levels group
 ! (Input values are 1D for the column model)
 
-IF (error_code <= 0 .AND. PRESENT(envgroup_entlev_real)) THEN
-  CALL ukca_get_envgroup_varlists(error_code,                                  &
-                                  varnames_entlev_real_ptr=varnames,           &
-                                  error_message=error_message,                 &
-                                  error_routine=error_routine)
-  IF (error_code <= 0) THEN
-    n = SIZE(envgroup_entlev_real,DIM=2)
-    IF (n /= SIZE(varnames)) THEN
-      error_code = errcode_env_field_mismatch
-      IF (PRESENT(error_message))                                              &
-        WRITE(error_message, '(A,I0,A,I0,A)')                                  &
-          'Wrong number of environment fields (', n,                           &
-          ') for real group on entrainment levels. Expecting ', SIZE(varnames)
-      IF (PRESENT(error_routine)) error_routine = RoutineName
-    ELSE IF (n > 0) THEN
+      IF (error_code <= 0 .AND. PRESENT(envgroup_entlev_real)) THEN
+         CALL ukca_get_envgroup_varlists(error_code, &
+                                         varnames_entlev_real_ptr=varnames, &
+                                         error_message=error_message, &
+                                         error_routine=error_routine)
+         IF (error_code <= 0) THEN
+            n = SIZE(envgroup_entlev_real, DIM=2)
+            IF (n /= SIZE(varnames)) THEN
+               error_code = errcode_env_field_mismatch
+               IF (PRESENT(error_message)) &
+                  WRITE (error_message, '(A,I0,A,I0,A)') &
+                  'Wrong number of environment fields (', n, &
+                  ') for real group on entrainment levels. Expecting ', SIZE(varnames)
+               IF (PRESENT(error_routine)) error_routine = RoutineName
+            ELSE IF (n > 0) THEN
 
-      ALLOCATE( tmp_1d_real( LBOUND( envgroup_entlev_real, DIM=1):             &
-                             UBOUND( envgroup_entlev_real, DIM=1) ) )
+               ALLOCATE (tmp_1d_real(LBOUND(envgroup_entlev_real, DIM=1): &
+                                     UBOUND(envgroup_entlev_real, DIM=1)))
 
-      DO i = 1, n
-        tmp_1d_real = envgroup_entlev_real(:,i)
-        CALL ukca_set_environment(varnames(i), tmp_1d_real,                    &
-                                  error_code, error_message=error_message,     &
-                                  error_routine=error_routine)
-      END DO
+               DO i = 1, n
+                  tmp_1d_real = envgroup_entlev_real(:, i)
+                  CALL ukca_set_environment(varnames(i), tmp_1d_real, &
+                                            error_code, error_message=error_message, &
+                                            error_routine=error_routine)
+               END DO
 
-      DEALLOCATE(tmp_1d_real)
+               DEALLOCATE (tmp_1d_real)
 
-    END IF
-  END IF
-END IF
+            END IF
+         END IF
+      END IF
 
 ! Set environmental drivers in land point group
 ! (Input values are 1D for the column model, length 0 for sea or 1 for land)
 
-IF (error_code <= 0 .AND. PRESENT(envgroup_land_real)) THEN
-  CALL ukca_get_envgroup_varlists(error_code,                                  &
-                                  varnames_land_real_ptr=varnames,             &
-                                  error_message=error_message,                 &
-                                  error_routine=error_routine)
-  IF (error_code <= 0) THEN
-    n = SIZE(envgroup_land_real,DIM=2)
-    IF (n /= SIZE(varnames)) THEN
-      error_code = errcode_env_field_mismatch
-      IF (PRESENT(error_message))                                              &
-        WRITE(error_message, '(A,I0,A,I0,A)')                                  &
-          'Wrong number of environment fields (', n,                           &
-          ') for real group on land points. Expecting ', SIZE(varnames)
-      IF (PRESENT(error_routine)) error_routine = RoutineName
-    ELSE IF (n > 0) THEN
+      IF (error_code <= 0 .AND. PRESENT(envgroup_land_real)) THEN
+         CALL ukca_get_envgroup_varlists(error_code, &
+                                         varnames_land_real_ptr=varnames, &
+                                         error_message=error_message, &
+                                         error_routine=error_routine)
+         IF (error_code <= 0) THEN
+            n = SIZE(envgroup_land_real, DIM=2)
+            IF (n /= SIZE(varnames)) THEN
+               error_code = errcode_env_field_mismatch
+               IF (PRESENT(error_message)) &
+                  WRITE (error_message, '(A,I0,A,I0,A)') &
+                  'Wrong number of environment fields (', n, &
+                  ') for real group on land points. Expecting ', SIZE(varnames)
+               IF (PRESENT(error_routine)) error_routine = RoutineName
+            ELSE IF (n > 0) THEN
 
-      ALLOCATE( tmp_1d_real( LBOUND( envgroup_land_real, DIM=1):               &
-                             UBOUND( envgroup_land_real, DIM=1) ) )
+               ALLOCATE (tmp_1d_real(LBOUND(envgroup_land_real, DIM=1): &
+                                     UBOUND(envgroup_land_real, DIM=1)))
 
-      DO i = 1, n
-        tmp_1d_real = envgroup_land_real(:,i)
-        CALL ukca_set_environment(varnames(i), tmp_1d_real,                    &
-                                  error_code, error_message=error_message,     &
-                                  error_routine=error_routine)
-      END DO
+               DO i = 1, n
+                  tmp_1d_real = envgroup_land_real(:, i)
+                  CALL ukca_set_environment(varnames(i), tmp_1d_real, &
+                                            error_code, error_message=error_message, &
+                                            error_routine=error_routine)
+               END DO
 
-      DEALLOCATE(tmp_1d_real)
+               DEALLOCATE (tmp_1d_real)
 
-    END IF
-  END IF
-END IF
-
-
+            END IF
+         END IF
+      END IF
 
 ! Set environmental drivers in land-point tile groups
 ! (Input values are 2D for the column model, dim1 as for land point group)
 
-IF (error_code <= 0 .AND. PRESENT(envgroup_landtile_real)) THEN
-  CALL ukca_get_envgroup_varlists(error_code,                                  &
-                                  varnames_landtile_real_ptr=varnames,         &
-                                  error_message=error_message,                 &
-                                  error_routine=error_routine)
-  IF (error_code <= 0) THEN
-    n = SIZE(envgroup_landtile_real,DIM=3)
-    IF (n /= SIZE(varnames)) THEN
-      error_code = errcode_env_field_mismatch
-      IF (PRESENT(error_message))                                              &
-        WRITE(error_message, '(A,I0,A,I0,A)')                                  &
-          'Wrong number of environment fields (', n,                           &
-          ') for real group on land-point tiles. Expecting ', SIZE(varnames)
-      IF (PRESENT(error_routine)) error_routine = RoutineName
-    ELSE IF (n > 0) THEN
+      IF (error_code <= 0 .AND. PRESENT(envgroup_landtile_real)) THEN
+         CALL ukca_get_envgroup_varlists(error_code, &
+                                         varnames_landtile_real_ptr=varnames, &
+                                         error_message=error_message, &
+                                         error_routine=error_routine)
+         IF (error_code <= 0) THEN
+            n = SIZE(envgroup_landtile_real, DIM=3)
+            IF (n /= SIZE(varnames)) THEN
+               error_code = errcode_env_field_mismatch
+               IF (PRESENT(error_message)) &
+                  WRITE (error_message, '(A,I0,A,I0,A)') &
+                  'Wrong number of environment fields (', n, &
+                  ') for real group on land-point tiles. Expecting ', SIZE(varnames)
+               IF (PRESENT(error_routine)) error_routine = RoutineName
+            ELSE IF (n > 0) THEN
 
-      ALLOCATE( tmp_2d_real( LBOUND( envgroup_landtile_real, DIM=1):           &
-                             UBOUND( envgroup_landtile_real, DIM=1),           &
-                             LBOUND( envgroup_landtile_real, DIM=2):           &
-                             UBOUND( envgroup_landtile_real, DIM=2) ) )
+               ALLOCATE (tmp_2d_real(LBOUND(envgroup_landtile_real, DIM=1): &
+                                     UBOUND(envgroup_landtile_real, DIM=1), &
+                                     LBOUND(envgroup_landtile_real, DIM=2): &
+                                     UBOUND(envgroup_landtile_real, DIM=2)))
 
-      DO i = 1, n
-        tmp_2d_real = envgroup_landtile_real(:,:,i)
-        CALL ukca_set_environment(varnames(i), tmp_2d_real,                    &
-                                  error_code, error_message=error_message,     &
-                                  error_routine=error_routine)
-      END DO
+               DO i = 1, n
+                  tmp_2d_real = envgroup_landtile_real(:, :, i)
+                  CALL ukca_set_environment(varnames(i), tmp_2d_real, &
+                                            error_code, error_message=error_message, &
+                                            error_routine=error_routine)
+               END DO
 
-      DEALLOCATE(tmp_2d_real)
+               DEALLOCATE (tmp_2d_real)
 
-    END IF
-  END IF
-END IF
+            END IF
+         END IF
+      END IF
 
-IF (error_code <= 0 .AND. PRESENT(envgroup_landtile_logical)) THEN
-  CALL ukca_get_envgroup_varlists(error_code,                                  &
-                                  varnames_landtile_logical_ptr=varnames,      &
-                                  error_message=error_message,                 &
-                                  error_routine=error_routine)
-  IF (error_code <= 0) THEN
-    n = SIZE(envgroup_landtile_logical,DIM=3)
-    IF (n /= SIZE(varnames)) THEN
-      error_code = errcode_env_field_mismatch
-      IF (PRESENT(error_message))                                              &
-        WRITE(error_message, '(A,I0,A,I0,A)')                                  &
-          'Wrong number of environment fields (', n,                           &
-          ') for logical group on land-point tiles. Expecting ', SIZE(varnames)
-      IF (PRESENT(error_routine)) error_routine = RoutineName
-    ELSE IF (n > 0) THEN
+      IF (error_code <= 0 .AND. PRESENT(envgroup_landtile_logical)) THEN
+         CALL ukca_get_envgroup_varlists(error_code, &
+                                         varnames_landtile_logical_ptr=varnames, &
+                                         error_message=error_message, &
+                                         error_routine=error_routine)
+         IF (error_code <= 0) THEN
+            n = SIZE(envgroup_landtile_logical, DIM=3)
+            IF (n /= SIZE(varnames)) THEN
+               error_code = errcode_env_field_mismatch
+               IF (PRESENT(error_message)) &
+                  WRITE (error_message, '(A,I0,A,I0,A)') &
+                  'Wrong number of environment fields (', n, &
+                  ') for logical group on land-point tiles. Expecting ', SIZE(varnames)
+               IF (PRESENT(error_routine)) error_routine = RoutineName
+            ELSE IF (n > 0) THEN
 
-      ALLOCATE( tmp_2d_logical( LBOUND( envgroup_landtile_logical, DIM=1):     &
-                                UBOUND( envgroup_landtile_logical, DIM=1),     &
-                                LBOUND( envgroup_landtile_logical, DIM=2):     &
-                                UBOUND( envgroup_landtile_logical, DIM=2) ) )
+               ALLOCATE (tmp_2d_logical(LBOUND(envgroup_landtile_logical, DIM=1): &
+                                        UBOUND(envgroup_landtile_logical, DIM=1), &
+                                        LBOUND(envgroup_landtile_logical, DIM=2): &
+                                        UBOUND(envgroup_landtile_logical, DIM=2)))
 
-      DO i = 1, n
-        tmp_2d_logical = envgroup_landtile_logical(:,:,i)
-        CALL ukca_set_environment(varnames(i), tmp_2d_logical,                 &
-                                  error_code, error_message=error_message,     &
-                                  error_routine=error_routine)
-      END DO
+               DO i = 1, n
+                  tmp_2d_logical = envgroup_landtile_logical(:, :, i)
+                  CALL ukca_set_environment(varnames(i), tmp_2d_logical, &
+                                            error_code, error_message=error_message, &
+                                            error_routine=error_routine)
+               END DO
 
-      DEALLOCATE(tmp_2d_logical)
+               DEALLOCATE (tmp_2d_logical)
 
-    END IF
-  END IF
-END IF
-
-
+            END IF
+         END IF
+      END IF
 
 ! Set environmental drivers in land-point plant functional type tile group
 ! (Input values are 2D for the column model, dim1 as for land point group)
 
-IF (error_code <= 0 .AND. PRESENT(envgroup_landpft_real)) THEN
-  CALL ukca_get_envgroup_varlists(error_code,                                  &
-                                  varnames_landpft_real_ptr=varnames,          &
-                                  error_message=error_message,                 &
-                                  error_routine=error_routine)
-  IF (error_code <= 0) THEN
-    n = SIZE(envgroup_landpft_real,DIM=3)
-    IF (n /= SIZE(varnames)) THEN
-      error_code = errcode_env_field_mismatch
-      IF (PRESENT(error_message))                                              &
-        WRITE(error_message, '(A,I0,A,I0,A)')                                  &
-          'Wrong number of environment fields (', n,                           &
-          ') for real group on land-point PFT tiles. Expecting ', SIZE(varnames)
-      IF (PRESENT(error_routine)) error_routine = RoutineName
-    ELSE IF (n > 0) THEN
+      IF (error_code <= 0 .AND. PRESENT(envgroup_landpft_real)) THEN
+         CALL ukca_get_envgroup_varlists(error_code, &
+                                         varnames_landpft_real_ptr=varnames, &
+                                         error_message=error_message, &
+                                         error_routine=error_routine)
+         IF (error_code <= 0) THEN
+            n = SIZE(envgroup_landpft_real, DIM=3)
+            IF (n /= SIZE(varnames)) THEN
+               error_code = errcode_env_field_mismatch
+               IF (PRESENT(error_message)) &
+                  WRITE (error_message, '(A,I0,A,I0,A)') &
+                  'Wrong number of environment fields (', n, &
+                  ') for real group on land-point PFT tiles. Expecting ', SIZE(varnames)
+               IF (PRESENT(error_routine)) error_routine = RoutineName
+            ELSE IF (n > 0) THEN
 
-      ALLOCATE( tmp_2d_real( LBOUND( envgroup_landpft_real, DIM=1):            &
-                             UBOUND( envgroup_landpft_real, DIM=1),            &
-                             LBOUND( envgroup_landpft_real, DIM=2):            &
-                             UBOUND( envgroup_landpft_real, DIM=2) ) )
+               ALLOCATE (tmp_2d_real(LBOUND(envgroup_landpft_real, DIM=1): &
+                                     UBOUND(envgroup_landpft_real, DIM=1), &
+                                     LBOUND(envgroup_landpft_real, DIM=2): &
+                                     UBOUND(envgroup_landpft_real, DIM=2)))
 
-      DO i = 1, n
-        tmp_2d_real = envgroup_landpft_real(:,:,i)
-        CALL ukca_set_environment(varnames(i), tmp_2d_real,                    &
-                                  error_code, error_message=error_message,     &
-                                  error_routine=error_routine)
-      END DO
+               DO i = 1, n
+                  tmp_2d_real = envgroup_landpft_real(:, :, i)
+                  CALL ukca_set_environment(varnames(i), tmp_2d_real, &
+                                            error_code, error_message=error_message, &
+                                            error_routine=error_routine)
+               END DO
 
-      DEALLOCATE(tmp_2d_real)
+               DEALLOCATE (tmp_2d_real)
 
-    END IF
-  END IF
-END IF
-
-
+            END IF
+         END IF
+      END IF
 
 ! Set environmental field for photolysis rates - full-height grid+no. reactions
 ! (Input values are 1D spatially , 2nd dimension is no. of reactions)
 
-IF (error_code <= 0 .AND. PRESENT(envgroup_fullhtphot_real)) THEN
-  CALL ukca_get_envgroup_varlists(error_code,                                  &
-                                  varnames_fullhtphot_real_ptr=varnames,       &
-                                  error_message=error_message,                 &
-                                  error_routine=error_routine)
-  IF (error_code <= 0) THEN
-    n = SIZE(envgroup_fullhtphot_real,DIM=3)
-    IF (n /= SIZE(varnames)) THEN
-      error_code = errcode_env_field_mismatch
-      IF (PRESENT(error_message))                                              &
-        WRITE(error_message, '(A,I0,A,I0,A)')                                  &
-          'Wrong number of environment fields (', n,                           &
-          ') for real group on fullht photol. Expecting ', SIZE(varnames)
-      IF (PRESENT(error_routine)) error_routine = RoutineName
-    ELSE IF (n > 0) THEN
+      IF (error_code <= 0 .AND. PRESENT(envgroup_fullhtphot_real)) THEN
+         CALL ukca_get_envgroup_varlists(error_code, &
+                                         varnames_fullhtphot_real_ptr=varnames, &
+                                         error_message=error_message, &
+                                         error_routine=error_routine)
+         IF (error_code <= 0) THEN
+            n = SIZE(envgroup_fullhtphot_real, DIM=3)
+            IF (n /= SIZE(varnames)) THEN
+               error_code = errcode_env_field_mismatch
+               IF (PRESENT(error_message)) &
+                  WRITE (error_message, '(A,I0,A,I0,A)') &
+                  'Wrong number of environment fields (', n, &
+                  ') for real group on fullht photol. Expecting ', SIZE(varnames)
+               IF (PRESENT(error_routine)) error_routine = RoutineName
+            ELSE IF (n > 0) THEN
 
-      ALLOCATE( tmp_2d_real( LBOUND( envgroup_fullhtphot_real, DIM=1):         &
-                             UBOUND( envgroup_fullhtphot_real, DIM=1),         &
-                             LBOUND( envgroup_fullhtphot_real, DIM=2):         &
-                             UBOUND( envgroup_fullhtphot_real, DIM=2) ) )
+               ALLOCATE (tmp_2d_real(LBOUND(envgroup_fullhtphot_real, DIM=1): &
+                                     UBOUND(envgroup_fullhtphot_real, DIM=1), &
+                                     LBOUND(envgroup_fullhtphot_real, DIM=2): &
+                                     UBOUND(envgroup_fullhtphot_real, DIM=2)))
 
-      DO i = 1, n
-        tmp_2d_real = envgroup_fullhtphot_real(:,:,i)
-        CALL ukca_set_environment(varnames(i), tmp_2d_real,                    &
-                                  error_code, error_message=error_message,     &
-                                  error_routine=error_routine)
-      END DO
+               DO i = 1, n
+                  tmp_2d_real = envgroup_fullhtphot_real(:, :, i)
+                  CALL ukca_set_environment(varnames(i), tmp_2d_real, &
+                                            error_code, error_message=error_message, &
+                                            error_routine=error_routine)
+               END DO
 
-      DEALLOCATE( tmp_2d_real )
+               DEALLOCATE (tmp_2d_real)
 
-    END IF      ! n > 0
-  END IF        ! error_code
-END IF
-
-
+            END IF      ! n > 0
+         END IF        ! error_code
+      END IF
 
 ! Get information about registered emissions
 
-IF (error_code <= 0) THEN
+      IF (error_code <= 0) THEN
 
-  CALL get_registered_ems_info(n_flat_ems, n_fullht_ems, l_ndim_order)
+         CALL get_registered_ems_info(n_flat_ems, n_fullht_ems, l_ndim_order)
 
-  IF (.NOT. l_ndim_order) THEN
-    error_code = errcode_env_field_mismatch
-    IF (PRESENT(error_message))                                                &
-      error_message =                                                          &
-        'Emissions have not been registered in order of their dimensionality'
-    IF (PRESENT(error_routine)) error_routine = RoutineName
-  END IF
+         IF (.NOT. l_ndim_order) THEN
+            error_code = errcode_env_field_mismatch
+            IF (PRESENT(error_message)) &
+               error_message = &
+               'Emissions have not been registered in order of their dimensionality'
+            IF (PRESENT(error_routine)) error_routine = RoutineName
+         END IF
 
-  ! Initialise sequential emissions id
-  emiss_id = 0
+         ! Initialise sequential emissions id
+         emiss_id = 0
 
-END IF
-
+      END IF
 
 ! Set flat emissions fields
 ! (Input values are scalar for the column model but must be converted to 3D
 ! since 'ukca_set_emission' does not currently allow a scalar argument)
 
-IF (error_code <= 0 .AND. n_flat_ems > 0) THEN
-  IF (PRESENT(emissions_flat)) THEN
-    n = SIZE(emissions_flat)
-  ELSE
-    n = 0
-  END IF
-  IF (n /= n_flat_ems) THEN
-    error_code = errcode_env_field_mismatch
-    IF (PRESENT(error_message))                                                &
-      WRITE(error_message, '(A,I0,A,I0,A)')                                    &
-        'Wrong no. of flat emissions provided (', n, '). Expecting ',          &
-        n_flat_ems
-    IF (PRESENT(error_routine)) error_routine = RoutineName
-  ELSE
+      IF (error_code <= 0 .AND. n_flat_ems > 0) THEN
+         IF (PRESENT(emissions_flat)) THEN
+            n = SIZE(emissions_flat)
+         ELSE
+            n = 0
+         END IF
+         IF (n /= n_flat_ems) THEN
+            error_code = errcode_env_field_mismatch
+            IF (PRESENT(error_message)) &
+               WRITE (error_message, '(A,I0,A,I0,A)') &
+               'Wrong no. of flat emissions provided (', n, '). Expecting ', &
+               n_flat_ems
+            IF (PRESENT(error_routine)) error_routine = RoutineName
+         ELSE
 
-    ALLOCATE(tmp_3d_real(1,1,1))
+            ALLOCATE (tmp_3d_real(1, 1, 1))
 
-    DO i = 1, n
-      emiss_id = emiss_id + 1
-      tmp_3d_real(1,1,1) = emissions_flat(i)
-      CALL ukca_set_emission(emiss_id, tmp_3d_real)
-    END DO
+            DO i = 1, n
+               emiss_id = emiss_id + 1
+               tmp_3d_real(1, 1, 1) = emissions_flat(i)
+               CALL ukca_set_emission(emiss_id, tmp_3d_real)
+            END DO
 
-    DEALLOCATE(tmp_3d_real)
+            DEALLOCATE (tmp_3d_real)
 
-  END IF
-END IF
-
-
+         END IF
+      END IF
 
 ! Set full height emissions fields
 ! (Input values are 1D for the column model but must be converted to 3D since
 ! 'ukca_set_emission' does not currently allow a 1D argument)
 
-IF (error_code <= 0 .AND. n_fullht_ems > 0) THEN
-  IF (PRESENT(emissions_fullht)) THEN
-    n = SIZE(emissions_fullht,DIM=2)
-  ELSE
-    n = 0
-  END IF
-  IF (n /= n_fullht_ems) THEN
-    error_code = errcode_env_field_mismatch
-    IF (PRESENT(error_message))                                                &
-      WRITE(error_message, '(A,I0,A,I0,A)')                                    &
-        'Wrong no. of full height emissions provided (', n, '). Expecting ',   &
-        n_fullht_ems
-    IF (PRESENT(error_routine)) error_routine = RoutineName
-  ELSE
+      IF (error_code <= 0 .AND. n_fullht_ems > 0) THEN
+         IF (PRESENT(emissions_fullht)) THEN
+            n = SIZE(emissions_fullht, DIM=2)
+         ELSE
+            n = 0
+         END IF
+         IF (n /= n_fullht_ems) THEN
+            error_code = errcode_env_field_mismatch
+            IF (PRESENT(error_message)) &
+               WRITE (error_message, '(A,I0,A,I0,A)') &
+               'Wrong no. of full height emissions provided (', n, '). Expecting ', &
+               n_fullht_ems
+            IF (PRESENT(error_routine)) error_routine = RoutineName
+         ELSE
 
-    ALLOCATE(tmp_3d_real(1,1,SIZE(emissions_fullht,DIM=1)))
+            ALLOCATE (tmp_3d_real(1, 1, SIZE(emissions_fullht, DIM=1)))
 
-    DO i = 1, n
-      emiss_id = emiss_id + 1
-      tmp_3d_real(1,1,:) = emissions_fullht(:,i)
-      CALL ukca_set_emission(emiss_id, tmp_3d_real)
-    END DO
+            DO i = 1, n
+               emiss_id = emiss_id + 1
+               tmp_3d_real(1, 1, :) = emissions_fullht(:, i)
+               CALL ukca_set_emission(emiss_id, tmp_3d_real)
+            END DO
 
-    DEALLOCATE(tmp_3d_real)
+            DEALLOCATE (tmp_3d_real)
 
-  END IF
-END IF
+         END IF
+      END IF
 
 ! Do the time step
-IF (error_code <= 0) THEN
+      IF (error_code <= 0) THEN
 
-  CALL ukca_step(timestep_number, current_time,                                &
-                 tracer_data, ntp_data, r_theta_levels, r_rho_levels,          &
-                 error_code, previous_time=previous_time,                      &
-                 eta_theta_levels=eta_theta_levels,                            &
-                 diag_status_flat_real=diag_status_flat_real,                  &
-                 diag_status_fullht_real=diag_status_fullht_real,              &
-                 diag_data_flat_real=diag_data_flat_real,                      &
-                 diag_data_fullht_real=diag_data_fullht_real,                  &
-                 error_message=error_message, error_routine=error_routine)
+         CALL ukca_step(timestep_number, current_time, &
+                        tracer_data, ntp_data, r_theta_levels, r_rho_levels, &
+                        error_code, previous_time=previous_time, &
+                        eta_theta_levels=eta_theta_levels, &
+                        diag_status_flat_real=diag_status_flat_real, &
+                        diag_status_fullht_real=diag_status_fullht_real, &
+                        diag_data_flat_real=diag_data_flat_real, &
+                        diag_data_fullht_real=diag_data_fullht_real, &
+                        error_message=error_message, error_routine=error_routine)
 
-END IF
+      END IF
 
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
-RETURN
-END SUBROUTINE ukca_step_control_1d_domain
+      IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_out, zhook_handle)
+      RETURN
+   END SUBROUTINE ukca_step_control_1d_domain
 
 ! -----------------------------------------------------------------------------
 
-SUBROUTINE ukca_step_control_3d_domain( timestep_number,                       &
-                                        current_time,                          &
-                                        tracer_data,                           &
-                                        ntp_data,                              &
-                                        r_theta_levels,                        &
-                                        r_rho_levels,                          &
-                                        error_code,                            &
-                                        ! Optional input arguments
-                                        ! 1d
-                                        previous_time,                         &
-                                        envgroup_scalar_real,                  &
-                                        ! 2d
-                                        envgroup_land_real,                    &
-                                        ! 3d
-                                        envgroup_flat_integer,                 &
-                                        envgroup_landtile_real,                &
-                                        envgroup_landpft_real,                 &
-                                        envgroup_flat_real,                    &
-                                        emissions_flat,                        &
-                                        envgroup_landtile_logical,             &
-                                        envgroup_flat_logical,                 &
-                                        ! 4d
-                                        envgroup_flatpft_real,                 &
-                                        envgroup_fullht_real,                  &
-                                        envgroup_fullht0_real,                 &
-                                        envgroup_fullhtp1_real,                &
-                                        envgroup_bllev_real,                   &
-                                        envgroup_entlev_real,                  &
-                                        emissions_fullht,                      &
-                                        ! 5d
-                                        envgroup_fullhtphot_real,              &
-                                        ! Optional in out arguments
-                                        diag_status_flat_real,                 &
-                                        diag_status_fullht_real,               &
-                                        ! Optional output arguments
-                                        diag_data_flat_real,                   &
-                                        diag_data_fullht_real,                 &
-                                        error_message,                         &
-                                        error_routine )
+   SUBROUTINE ukca_step_control_3d_domain(timestep_number, &
+                                          current_time, &
+                                          tracer_data, &
+                                          ntp_data, &
+                                          r_theta_levels, &
+                                          r_rho_levels, &
+                                          error_code, &
+                                          ! Optional input arguments
+                                          ! 1d
+                                          previous_time, &
+                                          envgroup_scalar_real, &
+                                          ! 2d
+                                          envgroup_land_real, &
+                                          ! 3d
+                                          envgroup_flat_integer, &
+                                          envgroup_landtile_real, &
+                                          envgroup_landpft_real, &
+                                          envgroup_flat_real, &
+                                          emissions_flat, &
+                                          envgroup_landtile_logical, &
+                                          envgroup_flat_logical, &
+                                          ! 4d
+                                          envgroup_flatpft_real, &
+                                          envgroup_fullht_real, &
+                                          envgroup_fullht0_real, &
+                                          envgroup_fullhtp1_real, &
+                                          envgroup_bllev_real, &
+                                          envgroup_entlev_real, &
+                                          emissions_fullht, &
+                                          ! 5d
+                                          envgroup_fullhtphot_real, &
+                                          ! Optional in out arguments
+                                          diag_status_flat_real, &
+                                          diag_status_fullht_real, &
+                                          ! Optional output arguments
+                                          diag_data_flat_real, &
+                                          diag_data_fullht_real, &
+                                          error_message, &
+                                          error_routine)
 
 ! ----------------------------------------------------------------------
 ! Description:
@@ -932,813 +915,787 @@ SUBROUTINE ukca_step_control_3d_domain( timestep_number,                       &
 !   data will be required for thread-safe operation.
 ! ----------------------------------------------------------------------
 
-USE ukca_environment_req_mod, ONLY: ukca_get_envgroup_varlists
-USE ukca_environment_mod, ONLY: ukca_set_environment
-USE ukca_emiss_api_mod, ONLY: get_registered_ems_info, ukca_set_emission
-USE ukca_step_mod, ONLY: ukca_step
-USE ukca_fieldname_mod, ONLY: maxlen_fieldname, maxlen_diagname
-USE ukca_error_mod, ONLY: maxlen_message, maxlen_procname,                     &
-                          errcode_env_field_mismatch
-USE ukca_config_specification_mod, ONLY: ukca_config
+      USE ukca_environment_req_mod, ONLY: ukca_get_envgroup_varlists
+      USE ukca_environment_mod, ONLY: ukca_set_environment
+      USE ukca_emiss_api_mod, ONLY: get_registered_ems_info, ukca_set_emission
+      USE ukca_step_mod, ONLY: ukca_step
+      USE ukca_fieldname_mod, ONLY: maxlen_fieldname, maxlen_diagname
+      USE ukca_error_mod, ONLY: maxlen_message, maxlen_procname, &
+                                errcode_env_field_mismatch
+      USE ukca_config_specification_mod, ONLY: ukca_config
 
-IMPLICIT NONE
+      IMPLICIT NONE
 
 ! Subroutine arguments
 
 ! Model timestep number (counted from basis time at start of run)
-INTEGER, INTENT(IN) :: timestep_number
+      INTEGER, INTENT(IN) :: timestep_number
 
 ! Current model time (year, month, day, hour, minute, second, day of year)
-INTEGER, INTENT(IN) :: current_time(7)
+      INTEGER, INTENT(IN) :: current_time(7)
 
 ! UKCA tracers. Dimensions: X,Y,Z,N
 ! where X is row length of tracer field (= no. of columns)
 !       Y is no. of rows in tracer field
 !       Z is no. of levels in tracer fields
 !       N is number of tracers
-REAL, ALLOCATABLE, INTENT(IN OUT) :: tracer_data(:,:,:,:)
+      REAL, ALLOCATABLE, INTENT(IN OUT) :: tracer_data(:, :, :, :)
 
 ! Non-transported prognostics. Dimensions: X,Y,Z,N
-REAL, ALLOCATABLE, INTENT(IN OUT) :: ntp_data(:,:,:,:)
+      REAL, ALLOCATABLE, INTENT(IN OUT) :: ntp_data(:, :, :, :)
 
 ! Height of theta and rho levels from Earth centre
-REAL, INTENT(IN) :: r_theta_levels(:,:,0:), r_rho_levels(:,:,:)
+      REAL, INTENT(IN) :: r_theta_levels(:, :, 0:), r_rho_levels(:, :, :)
 
 ! Error code for status reporting
-INTEGER, INTENT(OUT) :: error_code
+      INTEGER, INTENT(OUT) :: error_code
 
 ! Model time at previous timestep (required for chemistry)
-INTEGER, OPTIONAL, INTENT(IN) :: previous_time(7)
+      INTEGER, OPTIONAL, INTENT(IN) :: previous_time(7)
 
 ! Environmental driver field groups (ordered by dimension and type)
 ! Outer dimension is field index determined with reference to list of
 ! required variables from the group
 
-REAL, ALLOCATABLE, OPTIONAL, INTENT(IN) :: envgroup_scalar_real(:)
+      REAL, ALLOCATABLE, OPTIONAL, INTENT(IN) :: envgroup_scalar_real(:)
 
-REAL, ALLOCATABLE, OPTIONAL, INTENT(IN) :: envgroup_land_real(:,:)
+      REAL, ALLOCATABLE, OPTIONAL, INTENT(IN) :: envgroup_land_real(:, :)
 
-INTEGER, ALLOCATABLE, OPTIONAL, INTENT(IN) :: envgroup_flat_integer(:,:,:)
+      INTEGER, ALLOCATABLE, OPTIONAL, INTENT(IN) :: envgroup_flat_integer(:, :, :)
 
-REAL, ALLOCATABLE, OPTIONAL, INTENT(IN) :: envgroup_landtile_real(:,:,:)
-REAL, ALLOCATABLE, OPTIONAL, INTENT(IN) :: envgroup_landpft_real(:,:,:)
-REAL, ALLOCATABLE, OPTIONAL, INTENT(IN) :: envgroup_flat_real(:,:,:)
-REAL, ALLOCATABLE, OPTIONAL, INTENT(IN) :: emissions_flat(:,:,:)
+      REAL, ALLOCATABLE, OPTIONAL, INTENT(IN) :: envgroup_landtile_real(:, :, :)
+      REAL, ALLOCATABLE, OPTIONAL, INTENT(IN) :: envgroup_landpft_real(:, :, :)
+      REAL, ALLOCATABLE, OPTIONAL, INTENT(IN) :: envgroup_flat_real(:, :, :)
+      REAL, ALLOCATABLE, OPTIONAL, INTENT(IN) :: emissions_flat(:, :, :)
 
-LOGICAL, ALLOCATABLE, OPTIONAL, INTENT(IN) :: envgroup_landtile_logical(:,:,:)
-LOGICAL, ALLOCATABLE, OPTIONAL, INTENT(IN) :: envgroup_flat_logical(:,:,:)
+      LOGICAL, ALLOCATABLE, OPTIONAL, INTENT(IN) :: envgroup_landtile_logical(:, :, :)
+      LOGICAL, ALLOCATABLE, OPTIONAL, INTENT(IN) :: envgroup_flat_logical(:, :, :)
 
-REAL, ALLOCATABLE, OPTIONAL, INTENT(IN) :: envgroup_flatpft_real(:,:,:,:)
-REAL, ALLOCATABLE, OPTIONAL, INTENT(IN) :: envgroup_fullht_real(:,:,:,:)
-REAL, ALLOCATABLE, OPTIONAL, INTENT(IN) :: envgroup_fullht0_real(:,:,:,:)
-REAL, ALLOCATABLE, OPTIONAL, INTENT(IN) :: envgroup_fullhtp1_real(:,:,:,:)
-REAL, ALLOCATABLE, OPTIONAL, INTENT(IN) :: envgroup_bllev_real(:,:,:,:)
-REAL, ALLOCATABLE, OPTIONAL, INTENT(IN) :: envgroup_entlev_real(:,:,:,:)
-REAL, ALLOCATABLE, OPTIONAL, INTENT(IN) :: emissions_fullht(:,:,:,:)
+      REAL, ALLOCATABLE, OPTIONAL, INTENT(IN) :: envgroup_flatpft_real(:, :, :, :)
+      REAL, ALLOCATABLE, OPTIONAL, INTENT(IN) :: envgroup_fullht_real(:, :, :, :)
+      REAL, ALLOCATABLE, OPTIONAL, INTENT(IN) :: envgroup_fullht0_real(:, :, :, :)
+      REAL, ALLOCATABLE, OPTIONAL, INTENT(IN) :: envgroup_fullhtp1_real(:, :, :, :)
+      REAL, ALLOCATABLE, OPTIONAL, INTENT(IN) :: envgroup_bllev_real(:, :, :, :)
+      REAL, ALLOCATABLE, OPTIONAL, INTENT(IN) :: envgroup_entlev_real(:, :, :, :)
+      REAL, ALLOCATABLE, OPTIONAL, INTENT(IN) :: emissions_fullht(:, :, :, :)
 
-REAL, ALLOCATABLE, OPTIONAL, INTENT(IN) :: envgroup_fullhtphot_real(:,:,:,:,:)
+      REAL, ALLOCATABLE, OPTIONAL, INTENT(IN) :: envgroup_fullhtphot_real(:, :, :, :, :)
 
 ! Diagnostic status flags
-INTEGER, OPTIONAL, INTENT(IN OUT) :: diag_status_flat_real(:)
-INTEGER, OPTIONAL, INTENT(IN OUT) :: diag_status_fullht_real(:)
+      INTEGER, OPTIONAL, INTENT(IN OUT) :: diag_status_flat_real(:)
+      INTEGER, OPTIONAL, INTENT(IN OUT) :: diag_status_fullht_real(:)
 
 ! Diagnostic data
-REAL, OPTIONAL, INTENT(OUT) :: diag_data_flat_real(:,:,:)
-REAL, OPTIONAL, INTENT(OUT) :: diag_data_fullht_real(:,:,:,:)
+      REAL, OPTIONAL, INTENT(OUT) :: diag_data_flat_real(:, :, :)
+      REAL, OPTIONAL, INTENT(OUT) :: diag_data_fullht_real(:, :, :, :)
 
 ! Further arguments for status reporting
-CHARACTER(LEN=maxlen_message), OPTIONAL, INTENT(OUT) :: error_message
-CHARACTER(LEN=maxlen_procname), OPTIONAL, INTENT(OUT) :: error_routine
+      CHARACTER(LEN=maxlen_message), OPTIONAL, INTENT(OUT) :: error_message
+      CHARACTER(LEN=maxlen_procname), OPTIONAL, INTENT(OUT) :: error_routine
 
 ! Local variables
 
-INTEGER :: i
-INTEGER :: n
-INTEGER :: n_flat_ems
-INTEGER :: n_fullht_ems
-INTEGER :: emiss_id
-INTEGER, ALLOCATABLE :: tmp_2d_integer(:,:)
+      INTEGER :: i
+      INTEGER :: n
+      INTEGER :: n_flat_ems
+      INTEGER :: n_fullht_ems
+      INTEGER :: emiss_id
+      INTEGER, ALLOCATABLE :: tmp_2d_integer(:, :)
 
-REAL, ALLOCATABLE :: tmp_1d_real(:)
-REAL, ALLOCATABLE :: tmp_2d_real(:,:)
-REAL, ALLOCATABLE :: tmp_3d_real(:,:,:)
-REAL, ALLOCATABLE :: tmp_4d_real(:,:,:,:)
+      REAL, ALLOCATABLE :: tmp_1d_real(:)
+      REAL, ALLOCATABLE :: tmp_2d_real(:, :)
+      REAL, ALLOCATABLE :: tmp_3d_real(:, :, :)
+      REAL, ALLOCATABLE :: tmp_4d_real(:, :, :, :)
 
-LOGICAL :: l_ndim_order
-LOGICAL, ALLOCATABLE :: tmp_2d_logical(:,:)
+      LOGICAL :: l_ndim_order
+      LOGICAL, ALLOCATABLE :: tmp_2d_logical(:, :)
 
-CHARACTER(LEN=maxlen_fieldname), POINTER :: varnames(:)
+      CHARACTER(LEN=maxlen_fieldname), POINTER :: varnames(:)
 
 ! Dr Hook data
-REAL(KIND=jprb) :: zhook_handle
-CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_STEP_CONTROL_3D_DOMAIN'
+      REAL(KIND=jprb) :: zhook_handle
+      CHARACTER(LEN=*), PARAMETER :: RoutineName = 'UKCA_STEP_CONTROL_3D_DOMAIN'
 
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+      IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_in, zhook_handle)
 
-error_code = 0
-IF (PRESENT(error_message)) error_message = ''
-IF (PRESENT(error_routine)) error_routine = ''
+      error_code = 0
+      IF (PRESENT(error_message)) error_message = ''
+      IF (PRESENT(error_routine)) error_routine = ''
 
 ! Note - envgroup_flat_logical is processed first because of the dependency of
 !        the land-point only fields on the land sea mask
 
-IF (PRESENT(envgroup_flat_logical)) THEN
-  CALL ukca_get_envgroup_varlists( error_code,                                 &
-                                   varnames_flat_logical_ptr=varnames,         &
-                                   error_message=error_message,                &
-                                   error_routine=error_routine)
-  IF (error_code <= 0) THEN
-    n = SIZE( envgroup_flat_logical, DIM=3 )
-    IF (n /= SIZE(varnames)) THEN
-      error_code = errcode_env_field_mismatch
-      IF (PRESENT(error_message))                                              &
-        WRITE(error_message, '(A,I0,A,I0,A)')                                  &
-          'Wrong number of environment fields (', n,                           &
-          ') for logical group on flat grid. Expecting ', SIZE(varnames)
-      IF (PRESENT(error_routine)) error_routine = RoutineName
-    ELSE
+      IF (PRESENT(envgroup_flat_logical)) THEN
+         CALL ukca_get_envgroup_varlists(error_code, &
+                                         varnames_flat_logical_ptr=varnames, &
+                                         error_message=error_message, &
+                                         error_routine=error_routine)
+         IF (error_code <= 0) THEN
+            n = SIZE(envgroup_flat_logical, DIM=3)
+            IF (n /= SIZE(varnames)) THEN
+               error_code = errcode_env_field_mismatch
+               IF (PRESENT(error_message)) &
+                  WRITE (error_message, '(A,I0,A,I0,A)') &
+                  'Wrong number of environment fields (', n, &
+                  ') for logical group on flat grid. Expecting ', SIZE(varnames)
+               IF (PRESENT(error_routine)) error_routine = RoutineName
+            ELSE
 
-      ALLOCATE( tmp_2d_logical( LBOUND( envgroup_flat_logical, DIM=1):         &
-                                UBOUND( envgroup_flat_logical, DIM=1),         &
-                                LBOUND( envgroup_flat_logical, DIM=2):         &
-                                UBOUND( envgroup_flat_logical, DIM=2) ) )
+               ALLOCATE (tmp_2d_logical(LBOUND(envgroup_flat_logical, DIM=1): &
+                                        UBOUND(envgroup_flat_logical, DIM=1), &
+                                        LBOUND(envgroup_flat_logical, DIM=2): &
+                                        UBOUND(envgroup_flat_logical, DIM=2)))
 
-      DO i = 1, n
+               DO i = 1, n
 
-        tmp_2d_logical(:,:) = envgroup_flat_logical(:,:,i)
+                  tmp_2d_logical(:, :) = envgroup_flat_logical(:, :, i)
 
-        CALL ukca_set_environment(varnames(i), tmp_2d_logical,                 &
-                                  error_code, error_message=error_message,     &
-                                  error_routine=error_routine)
-      END DO
+                  CALL ukca_set_environment(varnames(i), tmp_2d_logical, &
+                                            error_code, error_message=error_message, &
+                                            error_routine=error_routine)
+               END DO
 
-      DEALLOCATE( tmp_2d_logical )
+               DEALLOCATE (tmp_2d_logical)
 
-    END IF
-  END IF
-END IF
-
-
+            END IF
+         END IF
+      END IF
 
 ! Set environmental drivers in scalar group
 
-IF (error_code <= 0 .AND. PRESENT(envgroup_scalar_real)) THEN
-  CALL ukca_get_envgroup_varlists( error_code,                                 &
-                                   varnames_scalar_real_ptr=varnames,          &
-                                   error_message=error_message,                &
-                                   error_routine=error_routine)
-  IF (error_code <= 0) THEN
-    n = SIZE(envgroup_scalar_real)
-    IF (n /= SIZE(varnames)) THEN
-      error_code = errcode_env_field_mismatch
-      IF (PRESENT(error_message))                                              &
-        WRITE(error_message, '(A,I0,A,I0,A)')                                  &
-          'Wrong number of environment fields (', n,                           &
-          ') for scalar real group. Expecting ', SIZE(varnames)
-      IF (PRESENT(error_routine)) error_routine = RoutineName
-    ELSE
-      DO i = 1, n
-        CALL ukca_set_environment( varnames(i), envgroup_scalar_real(i),       &
-                                   error_code, error_message=error_message,    &
-                                   error_routine=error_routine)
-      END DO
-    END IF
-  END IF
-END IF
-
-
+      IF (error_code <= 0 .AND. PRESENT(envgroup_scalar_real)) THEN
+         CALL ukca_get_envgroup_varlists(error_code, &
+                                         varnames_scalar_real_ptr=varnames, &
+                                         error_message=error_message, &
+                                         error_routine=error_routine)
+         IF (error_code <= 0) THEN
+            n = SIZE(envgroup_scalar_real)
+            IF (n /= SIZE(varnames)) THEN
+               error_code = errcode_env_field_mismatch
+               IF (PRESENT(error_message)) &
+                  WRITE (error_message, '(A,I0,A,I0,A)') &
+                  'Wrong number of environment fields (', n, &
+                  ') for scalar real group. Expecting ', SIZE(varnames)
+               IF (PRESENT(error_routine)) error_routine = RoutineName
+            ELSE
+               DO i = 1, n
+                  CALL ukca_set_environment(varnames(i), envgroup_scalar_real(i), &
+                                            error_code, error_message=error_message, &
+                                            error_routine=error_routine)
+               END DO
+            END IF
+         END IF
+      END IF
 
 ! Now the rest of the flat groups
 
-IF (error_code <= 0 .AND. PRESENT(envgroup_flat_integer)) THEN
-  CALL ukca_get_envgroup_varlists(error_code,                                  &
-                                  varnames_flat_integer_ptr=varnames,          &
-                                  error_message=error_message,                 &
-                                  error_routine=error_routine)
-  IF (error_code <= 0) THEN
-    n = SIZE( envgroup_flat_integer, DIM=3 )
-    IF (n /= SIZE(varnames)) THEN
-      error_code = errcode_env_field_mismatch
-      IF (PRESENT(error_message))                                              &
-        WRITE(error_message, '(A,I0,A,I0,A)')                                  &
-          'Wrong number of environment fields (', n,                           &
-          ') for integer group on flat grid. Expecting ', SIZE(varnames)
-      IF (PRESENT(error_routine)) error_routine = RoutineName
-    ELSE
+      IF (error_code <= 0 .AND. PRESENT(envgroup_flat_integer)) THEN
+         CALL ukca_get_envgroup_varlists(error_code, &
+                                         varnames_flat_integer_ptr=varnames, &
+                                         error_message=error_message, &
+                                         error_routine=error_routine)
+         IF (error_code <= 0) THEN
+            n = SIZE(envgroup_flat_integer, DIM=3)
+            IF (n /= SIZE(varnames)) THEN
+               error_code = errcode_env_field_mismatch
+               IF (PRESENT(error_message)) &
+                  WRITE (error_message, '(A,I0,A,I0,A)') &
+                  'Wrong number of environment fields (', n, &
+                  ') for integer group on flat grid. Expecting ', SIZE(varnames)
+               IF (PRESENT(error_routine)) error_routine = RoutineName
+            ELSE
 
-      ALLOCATE( tmp_2d_integer( LBOUND( envgroup_flat_integer, DIM=1):         &
-                                UBOUND( envgroup_flat_integer, DIM=1),         &
-                                LBOUND( envgroup_flat_integer, DIM=2):         &
-                                UBOUND( envgroup_flat_integer, DIM=2) ) )
+               ALLOCATE (tmp_2d_integer(LBOUND(envgroup_flat_integer, DIM=1): &
+                                        UBOUND(envgroup_flat_integer, DIM=1), &
+                                        LBOUND(envgroup_flat_integer, DIM=2): &
+                                        UBOUND(envgroup_flat_integer, DIM=2)))
 
-      DO i = 1, n
+               DO i = 1, n
 
-        tmp_2d_integer(:,:) = envgroup_flat_integer(:,:,i)
+                  tmp_2d_integer(:, :) = envgroup_flat_integer(:, :, i)
 
-        CALL ukca_set_environment( varnames(i), tmp_2d_integer,                &
-                                   error_code, error_message=error_message,    &
-                                   error_routine=error_routine)
-      END DO
+                  CALL ukca_set_environment(varnames(i), tmp_2d_integer, &
+                                            error_code, error_message=error_message, &
+                                            error_routine=error_routine)
+               END DO
 
-      DEALLOCATE( tmp_2d_integer )
+               DEALLOCATE (tmp_2d_integer)
 
-    END IF
-  END IF
-END IF
+            END IF
+         END IF
+      END IF
 
-IF (error_code <= 0 .AND. PRESENT(envgroup_flat_real)) THEN
-  CALL ukca_get_envgroup_varlists(error_code,                                  &
-                                  varnames_flat_real_ptr=varnames,             &
-                                  error_message=error_message,                 &
-                                  error_routine=error_routine)
-  IF (error_code <= 0) THEN
-    n = SIZE( envgroup_flat_real, DIM=3 )
-    IF (n /= SIZE(varnames)) THEN
-      error_code = errcode_env_field_mismatch
-      IF (PRESENT(error_message))                                              &
-        WRITE(error_message, '(A,I0,A,I0,A)')                                  &
-          'Wrong number of environment fields (', n,                           &
-          ') for real group on flat grid. Expecting ', SIZE(varnames)
-      IF (PRESENT(error_routine)) error_routine = RoutineName
-    ELSE
+      IF (error_code <= 0 .AND. PRESENT(envgroup_flat_real)) THEN
+         CALL ukca_get_envgroup_varlists(error_code, &
+                                         varnames_flat_real_ptr=varnames, &
+                                         error_message=error_message, &
+                                         error_routine=error_routine)
+         IF (error_code <= 0) THEN
+            n = SIZE(envgroup_flat_real, DIM=3)
+            IF (n /= SIZE(varnames)) THEN
+               error_code = errcode_env_field_mismatch
+               IF (PRESENT(error_message)) &
+                  WRITE (error_message, '(A,I0,A,I0,A)') &
+                  'Wrong number of environment fields (', n, &
+                  ') for real group on flat grid. Expecting ', SIZE(varnames)
+               IF (PRESENT(error_routine)) error_routine = RoutineName
+            ELSE
 
-      ALLOCATE( tmp_2d_real( LBOUND( envgroup_flat_real, DIM=1):               &
-                             UBOUND( envgroup_flat_real, DIM=1),               &
-                             LBOUND( envgroup_flat_real, DIM=2):               &
-                             UBOUND( envgroup_flat_real, DIM=2) ) )
+               ALLOCATE (tmp_2d_real(LBOUND(envgroup_flat_real, DIM=1): &
+                                     UBOUND(envgroup_flat_real, DIM=1), &
+                                     LBOUND(envgroup_flat_real, DIM=2): &
+                                     UBOUND(envgroup_flat_real, DIM=2)))
 
-      DO i = 1, n
+               DO i = 1, n
 
-        tmp_2d_real(:,:) = envgroup_flat_real(:,:,i)
+                  tmp_2d_real(:, :) = envgroup_flat_real(:, :, i)
 
-        CALL ukca_set_environment( varnames(i), tmp_2d_real,                   &
-                                   error_code, error_message=error_message,    &
-                                   error_routine=error_routine)
-      END DO
+                  CALL ukca_set_environment(varnames(i), tmp_2d_real, &
+                                            error_code, error_message=error_message, &
+                                            error_routine=error_routine)
+               END DO
 
-      DEALLOCATE( tmp_2d_real )
+               DEALLOCATE (tmp_2d_real)
 
-    END IF
-  END IF
-END IF
+            END IF
+         END IF
+      END IF
 
-IF (error_code <= 0 .AND. PRESENT(envgroup_flatpft_real)) THEN
-  CALL ukca_get_envgroup_varlists(error_code,                                  &
-                                  varnames_flatpft_real_ptr=varnames,          &
-                                  error_message=error_message,                 &
-                                  error_routine=error_routine)
-  IF (error_code <= 0) THEN
-    n = SIZE( envgroup_flatpft_real, DIM=4 )
-    IF (n /= SIZE(varnames)) THEN
-      error_code = errcode_env_field_mismatch
-      IF (PRESENT(error_message))                                              &
-        WRITE(error_message, '(A,I0,A,I0,A)')                                  &
-          'Wrong number of environment fields (', n,                           &
-          ') for real group on flat grid PFT tiles. Expecting ', SIZE(varnames)
-      IF (PRESENT(error_routine)) error_routine = RoutineName
-    ELSE IF (n > 0) THEN
+      IF (error_code <= 0 .AND. PRESENT(envgroup_flatpft_real)) THEN
+         CALL ukca_get_envgroup_varlists(error_code, &
+                                         varnames_flatpft_real_ptr=varnames, &
+                                         error_message=error_message, &
+                                         error_routine=error_routine)
+         IF (error_code <= 0) THEN
+            n = SIZE(envgroup_flatpft_real, DIM=4)
+            IF (n /= SIZE(varnames)) THEN
+               error_code = errcode_env_field_mismatch
+               IF (PRESENT(error_message)) &
+                  WRITE (error_message, '(A,I0,A,I0,A)') &
+                  'Wrong number of environment fields (', n, &
+                  ') for real group on flat grid PFT tiles. Expecting ', SIZE(varnames)
+               IF (PRESENT(error_routine)) error_routine = RoutineName
+            ELSE IF (n > 0) THEN
 
-      ALLOCATE( tmp_3d_real( LBOUND( envgroup_flatpft_real, DIM=1):            &
-                             UBOUND( envgroup_flatpft_real, DIM=1),            &
-                             LBOUND( envgroup_flatpft_real, DIM=2):            &
-                             UBOUND( envgroup_flatpft_real, DIM=2),            &
-                             LBOUND( envgroup_flatpft_real, DIM=3):            &
-                             UBOUND( envgroup_flatpft_real, DIM=3) ) )
+               ALLOCATE (tmp_3d_real(LBOUND(envgroup_flatpft_real, DIM=1): &
+                                     UBOUND(envgroup_flatpft_real, DIM=1), &
+                                     LBOUND(envgroup_flatpft_real, DIM=2): &
+                                     UBOUND(envgroup_flatpft_real, DIM=2), &
+                                     LBOUND(envgroup_flatpft_real, DIM=3): &
+                                     UBOUND(envgroup_flatpft_real, DIM=3)))
 
+               DO i = 1, n
 
-      DO i = 1, n
+                  tmp_3d_real(:, :, :) = envgroup_flatpft_real(:, :, :, i)
 
-        tmp_3d_real(:,:,:) = envgroup_flatpft_real(:,:,:,i)
+                  CALL ukca_set_environment(varnames(i), tmp_3d_real, &
+                                            error_code, error_message=error_message, &
+                                            error_routine=error_routine)
 
-        CALL ukca_set_environment(varnames(i), tmp_3d_real,                    &
-                                  error_code, error_message=error_message,     &
-                                  error_routine=error_routine)
+               END DO
 
-      END DO
+               DEALLOCATE (tmp_3d_real)
 
-      DEALLOCATE(tmp_3d_real)
-
-    END IF
-  END IF
-END IF
-
-
+            END IF
+         END IF
+      END IF
 
 ! Set environmental drivers in full-height grid group
 
-IF (error_code <= 0 .AND. PRESENT(envgroup_fullht_real)) THEN
-  CALL ukca_get_envgroup_varlists( error_code,                                 &
-                                   varnames_fullht_real_ptr=varnames,          &
-                                   error_message=error_message,                &
-                                   error_routine=error_routine)
-  IF (error_code <= 0) THEN
-    n = SIZE(envgroup_fullht_real,DIM=4)
-    IF (n /= SIZE(varnames)) THEN
-      error_code = errcode_env_field_mismatch
-      IF (PRESENT(error_message))                                              &
-        WRITE(error_message, '(A,I0,A,I0,A)')                                  &
-          'Wrong number of environment fields (', n,                           &
-          ') for real group on full height grid. Expecting ', SIZE(varnames)
-      IF (PRESENT(error_routine)) error_routine = RoutineName
-    ELSE IF (n > 0) THEN
+      IF (error_code <= 0 .AND. PRESENT(envgroup_fullht_real)) THEN
+         CALL ukca_get_envgroup_varlists(error_code, &
+                                         varnames_fullht_real_ptr=varnames, &
+                                         error_message=error_message, &
+                                         error_routine=error_routine)
+         IF (error_code <= 0) THEN
+            n = SIZE(envgroup_fullht_real, DIM=4)
+            IF (n /= SIZE(varnames)) THEN
+               error_code = errcode_env_field_mismatch
+               IF (PRESENT(error_message)) &
+                  WRITE (error_message, '(A,I0,A,I0,A)') &
+                  'Wrong number of environment fields (', n, &
+                  ') for real group on full height grid. Expecting ', SIZE(varnames)
+               IF (PRESENT(error_routine)) error_routine = RoutineName
+            ELSE IF (n > 0) THEN
 
-      ALLOCATE( tmp_3d_real( LBOUND( envgroup_fullht_real, DIM=1):             &
-                             UBOUND( envgroup_fullht_real, DIM=1),             &
-                             LBOUND( envgroup_fullht_real, DIM=2):             &
-                             UBOUND( envgroup_fullht_real, DIM=2),             &
-                             LBOUND( envgroup_fullht_real, DIM=3):             &
-                             UBOUND( envgroup_fullht_real, DIM=3) ) )
+               ALLOCATE (tmp_3d_real(LBOUND(envgroup_fullht_real, DIM=1): &
+                                     UBOUND(envgroup_fullht_real, DIM=1), &
+                                     LBOUND(envgroup_fullht_real, DIM=2): &
+                                     UBOUND(envgroup_fullht_real, DIM=2), &
+                                     LBOUND(envgroup_fullht_real, DIM=3): &
+                                     UBOUND(envgroup_fullht_real, DIM=3)))
 
-      DO i = 1, n
+               DO i = 1, n
 
-        tmp_3d_real(:,:,:) = envgroup_fullht_real(:,:,:,i)
+                  tmp_3d_real(:, :, :) = envgroup_fullht_real(:, :, :, i)
 
-        CALL ukca_set_environment( varnames(i), tmp_3d_real,                   &
-                                   error_code, error_message=error_message,    &
-                                   error_routine=error_routine)
+                  CALL ukca_set_environment(varnames(i), tmp_3d_real, &
+                                            error_code, error_message=error_message, &
+                                            error_routine=error_routine)
 
-      END DO
+               END DO
 
-      DEALLOCATE(tmp_3d_real)
+               DEALLOCATE (tmp_3d_real)
 
-    END IF
-  END IF
-END IF
-
-
+            END IF
+         END IF
+      END IF
 
 ! Set environmental drivers in full-height plus zeroth level grid group
 
-IF (error_code <= 0 .AND. PRESENT(envgroup_fullht0_real)) THEN
-  CALL ukca_get_envgroup_varlists( error_code,                                 &
-                                   varnames_fullht0_real_ptr=varnames,         &
-                                   error_message=error_message,                &
-                                   error_routine=error_routine)
-  IF (error_code <= 0) THEN
-    n = SIZE( envgroup_fullht0_real, DIM=4 )
-    IF (n /= SIZE(varnames)) THEN
-      error_code = errcode_env_field_mismatch
-      IF (PRESENT(error_message))                                              &
-        WRITE(error_message, '(A,I0,A,I0,A)')                                  &
-          'Wrong number of environment fields (', n,                           &
-          ') for real group on full height plus zero level grid. Expecting ',  &
-          SIZE(varnames)
-      IF (PRESENT(error_routine)) error_routine = RoutineName
-    ELSE IF (n > 0) THEN
+      IF (error_code <= 0 .AND. PRESENT(envgroup_fullht0_real)) THEN
+         CALL ukca_get_envgroup_varlists(error_code, &
+                                         varnames_fullht0_real_ptr=varnames, &
+                                         error_message=error_message, &
+                                         error_routine=error_routine)
+         IF (error_code <= 0) THEN
+            n = SIZE(envgroup_fullht0_real, DIM=4)
+            IF (n /= SIZE(varnames)) THEN
+               error_code = errcode_env_field_mismatch
+               IF (PRESENT(error_message)) &
+                  WRITE (error_message, '(A,I0,A,I0,A)') &
+                  'Wrong number of environment fields (', n, &
+                  ') for real group on full height plus zero level grid. Expecting ', &
+                  SIZE(varnames)
+               IF (PRESENT(error_routine)) error_routine = RoutineName
+            ELSE IF (n > 0) THEN
 
-      ALLOCATE( tmp_3d_real( LBOUND( envgroup_fullht0_real, DIM=1 ):           &
-                             UBOUND( envgroup_fullht0_real, DIM=1 ),           &
-                             LBOUND( envgroup_fullht0_real, DIM=2 ):           &
-                             UBOUND( envgroup_fullht0_real, DIM=2 ),           &
-                             LBOUND( envgroup_fullht0_real, DIM=3 ):           &
-                             UBOUND( envgroup_fullht0_real, DIM=3 ) ) )
+               ALLOCATE (tmp_3d_real(LBOUND(envgroup_fullht0_real, DIM=1): &
+                                     UBOUND(envgroup_fullht0_real, DIM=1), &
+                                     LBOUND(envgroup_fullht0_real, DIM=2): &
+                                     UBOUND(envgroup_fullht0_real, DIM=2), &
+                                     LBOUND(envgroup_fullht0_real, DIM=3): &
+                                     UBOUND(envgroup_fullht0_real, DIM=3)))
 
-      DO i = 1, n
+               DO i = 1, n
 
-        tmp_3d_real(:,:,:) = envgroup_fullht0_real(:,:,:,i)
+                  tmp_3d_real(:, :, :) = envgroup_fullht0_real(:, :, :, i)
 
-        CALL ukca_set_environment(varnames(i), tmp_3d_real,                    &
-                                  error_code, error_message=error_message,     &
-                                  error_routine=error_routine)
+                  CALL ukca_set_environment(varnames(i), tmp_3d_real, &
+                                            error_code, error_message=error_message, &
+                                            error_routine=error_routine)
 
-      END DO
+               END DO
 
-      DEALLOCATE(tmp_3d_real)
+               DEALLOCATE (tmp_3d_real)
 
-    END IF
-  END IF
-END IF
-
-
+            END IF
+         END IF
+      END IF
 
 ! Set environmental drivers in full-height plus one grid group
 
-IF (error_code <= 0 .AND. PRESENT(envgroup_fullhtp1_real)) THEN
-  CALL ukca_get_envgroup_varlists( error_code,                                 &
-                                   varnames_fullhtp1_real_ptr=varnames,        &
-                                   error_message=error_message,                &
-                                   error_routine=error_routine)
-  IF (error_code <= 0) THEN
-    n = SIZE( envgroup_fullhtp1_real, DIM=4 )
-    IF (n /= SIZE(varnames)) THEN
-      error_code = errcode_env_field_mismatch
-      IF (PRESENT(error_message))                                              &
-        WRITE(error_message, '(A,I0,A,I0,A)')                                  &
-          'Wrong number of environment fields (', n,                           &
-          ') for real group on full height plus one grid. Expecting ',         &
-          SIZE(varnames)
-      IF (PRESENT(error_routine)) error_routine = RoutineName
-    ELSE IF (n > 0) THEN
+      IF (error_code <= 0 .AND. PRESENT(envgroup_fullhtp1_real)) THEN
+         CALL ukca_get_envgroup_varlists(error_code, &
+                                         varnames_fullhtp1_real_ptr=varnames, &
+                                         error_message=error_message, &
+                                         error_routine=error_routine)
+         IF (error_code <= 0) THEN
+            n = SIZE(envgroup_fullhtp1_real, DIM=4)
+            IF (n /= SIZE(varnames)) THEN
+               error_code = errcode_env_field_mismatch
+               IF (PRESENT(error_message)) &
+                  WRITE (error_message, '(A,I0,A,I0,A)') &
+                  'Wrong number of environment fields (', n, &
+                  ') for real group on full height plus one grid. Expecting ', &
+                  SIZE(varnames)
+               IF (PRESENT(error_routine)) error_routine = RoutineName
+            ELSE IF (n > 0) THEN
 
-      ALLOCATE( tmp_3d_real( LBOUND( envgroup_fullhtp1_real, DIM=1 ):          &
-                             UBOUND( envgroup_fullhtp1_real, DIM=1 ),          &
-                             LBOUND( envgroup_fullhtp1_real, DIM=2 ):          &
-                             UBOUND( envgroup_fullhtp1_real, DIM=2 ),          &
-                             LBOUND( envgroup_fullhtp1_real, DIM=3 ):          &
-                             UBOUND( envgroup_fullhtp1_real, DIM=3 ) ) )
+               ALLOCATE (tmp_3d_real(LBOUND(envgroup_fullhtp1_real, DIM=1): &
+                                     UBOUND(envgroup_fullhtp1_real, DIM=1), &
+                                     LBOUND(envgroup_fullhtp1_real, DIM=2): &
+                                     UBOUND(envgroup_fullhtp1_real, DIM=2), &
+                                     LBOUND(envgroup_fullhtp1_real, DIM=3): &
+                                     UBOUND(envgroup_fullhtp1_real, DIM=3)))
 
-      DO i = 1, n
+               DO i = 1, n
 
-        tmp_3d_real(:,:,:) = envgroup_fullhtp1_real(:,:,:,i)
+                  tmp_3d_real(:, :, :) = envgroup_fullhtp1_real(:, :, :, i)
 
-        CALL ukca_set_environment(varnames(i), tmp_3d_real,                    &
-                                  error_code, error_message=error_message,     &
-                                  error_routine=error_routine)
+                  CALL ukca_set_environment(varnames(i), tmp_3d_real, &
+                                            error_code, error_message=error_message, &
+                                            error_routine=error_routine)
 
-      END DO
+               END DO
 
-      DEALLOCATE(tmp_3d_real)
+               DEALLOCATE (tmp_3d_real)
 
-    END IF
-  END IF
-END IF
+            END IF
+         END IF
+      END IF
 
 ! Set environmental drivers in boundary layer levels group
 
-IF (error_code <= 0 .AND. PRESENT(envgroup_bllev_real)) THEN
-  CALL ukca_get_envgroup_varlists(error_code,                                  &
-                                  varnames_bllev_real_ptr=varnames,            &
-                                  error_message=error_message,                 &
-                                  error_routine=error_routine)
-  IF (error_code <= 0) THEN
-    n = SIZE( envgroup_bllev_real, DIM=4 )
-    IF (n /= SIZE(varnames)) THEN
-      error_code = errcode_env_field_mismatch
-      IF (PRESENT(error_message))                                              &
-        WRITE(error_message, '(A,I0,A,I0,A)')                                  &
-          'Wrong number of environment fields (', n,                           &
-          ') for real group on boundary layer levels. Expecting ',             &
-          SIZE(varnames)
-      IF (PRESENT(error_routine)) error_routine = RoutineName
-    ELSE IF (n > 0) THEN
+      IF (error_code <= 0 .AND. PRESENT(envgroup_bllev_real)) THEN
+         CALL ukca_get_envgroup_varlists(error_code, &
+                                         varnames_bllev_real_ptr=varnames, &
+                                         error_message=error_message, &
+                                         error_routine=error_routine)
+         IF (error_code <= 0) THEN
+            n = SIZE(envgroup_bllev_real, DIM=4)
+            IF (n /= SIZE(varnames)) THEN
+               error_code = errcode_env_field_mismatch
+               IF (PRESENT(error_message)) &
+                  WRITE (error_message, '(A,I0,A,I0,A)') &
+                  'Wrong number of environment fields (', n, &
+                  ') for real group on boundary layer levels. Expecting ', &
+                  SIZE(varnames)
+               IF (PRESENT(error_routine)) error_routine = RoutineName
+            ELSE IF (n > 0) THEN
 
-      ALLOCATE( tmp_3d_real( LBOUND( envgroup_bllev_real, DIM=1 ):             &
-                             UBOUND( envgroup_bllev_real, DIM=1 ),             &
-                             LBOUND( envgroup_bllev_real, DIM=2 ):             &
-                             UBOUND( envgroup_bllev_real, DIM=2 ),             &
-                             LBOUND( envgroup_bllev_real, DIM=3 ):             &
-                             UBOUND( envgroup_bllev_real, DIM=3 ) ) )
+               ALLOCATE (tmp_3d_real(LBOUND(envgroup_bllev_real, DIM=1): &
+                                     UBOUND(envgroup_bllev_real, DIM=1), &
+                                     LBOUND(envgroup_bllev_real, DIM=2): &
+                                     UBOUND(envgroup_bllev_real, DIM=2), &
+                                     LBOUND(envgroup_bllev_real, DIM=3): &
+                                     UBOUND(envgroup_bllev_real, DIM=3)))
 
-      DO i = 1, n
+               DO i = 1, n
 
-        tmp_3d_real(:,:,:) = envgroup_bllev_real(:,:,:,i)
+                  tmp_3d_real(:, :, :) = envgroup_bllev_real(:, :, :, i)
 
-        CALL ukca_set_environment( varnames(i), tmp_3d_real,                   &
-                                   error_code, error_message=error_message,    &
-                                   error_routine=error_routine)
-      END DO
+                  CALL ukca_set_environment(varnames(i), tmp_3d_real, &
+                                            error_code, error_message=error_message, &
+                                            error_routine=error_routine)
+               END DO
 
-      DEALLOCATE(tmp_3d_real)
+               DEALLOCATE (tmp_3d_real)
 
-    END IF
-  END IF
-END IF
+            END IF
+         END IF
+      END IF
 
 ! Set environmental drivers in entrainment levels group
 
-IF (error_code <= 0 .AND. PRESENT(envgroup_entlev_real)) THEN
-  CALL ukca_get_envgroup_varlists( error_code,                                 &
-                                   varnames_entlev_real_ptr=varnames,          &
-                                   error_message=error_message,                &
-                                   error_routine=error_routine)
-  IF (error_code <= 0) THEN
-    n = SIZE( envgroup_entlev_real, DIM=4 )
-    IF (n /= SIZE(varnames)) THEN
-      error_code = errcode_env_field_mismatch
-      IF (PRESENT(error_message))                                              &
-        WRITE(error_message, '(A,I0,A,I0,A)')                                  &
-          'Wrong number of environment fields (', n,                           &
-          ') for real group on entrainment levels. Expecting ', SIZE(varnames)
-      IF (PRESENT(error_routine)) error_routine = RoutineName
-    ELSE IF (n > 0) THEN
+      IF (error_code <= 0 .AND. PRESENT(envgroup_entlev_real)) THEN
+         CALL ukca_get_envgroup_varlists(error_code, &
+                                         varnames_entlev_real_ptr=varnames, &
+                                         error_message=error_message, &
+                                         error_routine=error_routine)
+         IF (error_code <= 0) THEN
+            n = SIZE(envgroup_entlev_real, DIM=4)
+            IF (n /= SIZE(varnames)) THEN
+               error_code = errcode_env_field_mismatch
+               IF (PRESENT(error_message)) &
+                  WRITE (error_message, '(A,I0,A,I0,A)') &
+                  'Wrong number of environment fields (', n, &
+                  ') for real group on entrainment levels. Expecting ', SIZE(varnames)
+               IF (PRESENT(error_routine)) error_routine = RoutineName
+            ELSE IF (n > 0) THEN
 
-      ALLOCATE( tmp_3d_real( LBOUND( envgroup_entlev_real, DIM=1 ):            &
-                             UBOUND( envgroup_entlev_real, DIM=1 ),            &
-                             LBOUND( envgroup_entlev_real, DIM=2 ):            &
-                             UBOUND( envgroup_entlev_real, DIM=2 ),            &
-                             LBOUND( envgroup_entlev_real, DIM=3 ):            &
-                             UBOUND( envgroup_entlev_real, DIM=3 ) ) )
+               ALLOCATE (tmp_3d_real(LBOUND(envgroup_entlev_real, DIM=1): &
+                                     UBOUND(envgroup_entlev_real, DIM=1), &
+                                     LBOUND(envgroup_entlev_real, DIM=2): &
+                                     UBOUND(envgroup_entlev_real, DIM=2), &
+                                     LBOUND(envgroup_entlev_real, DIM=3): &
+                                     UBOUND(envgroup_entlev_real, DIM=3)))
 
-      DO i = 1, n
+               DO i = 1, n
 
-        tmp_3d_real(:,:,:) = envgroup_entlev_real(:,:,:,i)
+                  tmp_3d_real(:, :, :) = envgroup_entlev_real(:, :, :, i)
 
-        CALL ukca_set_environment( varnames(i), tmp_3d_real,                   &
-                                   error_code, error_message=error_message,    &
-                                   error_routine=error_routine)
-      END DO
+                  CALL ukca_set_environment(varnames(i), tmp_3d_real, &
+                                            error_code, error_message=error_message, &
+                                            error_routine=error_routine)
+               END DO
 
-      DEALLOCATE(tmp_3d_real)
+               DEALLOCATE (tmp_3d_real)
 
-    END IF
-  END IF
-END IF
+            END IF
+         END IF
+      END IF
 
 ! Set environmental drivers in land point group
 
-IF (error_code <= 0 .AND. PRESENT(envgroup_land_real)) THEN
-  CALL ukca_get_envgroup_varlists(error_code,                                  &
-                                  varnames_land_real_ptr=varnames,             &
-                                  error_message=error_message,                 &
-                                  error_routine=error_routine)
-  IF (error_code <= 0) THEN
-    n = SIZE( envgroup_land_real, DIM=2 )
-    IF (n /= SIZE(varnames)) THEN
-      error_code = errcode_env_field_mismatch
-      IF (PRESENT(error_message))                                              &
-        WRITE(error_message, '(A,I0,A,I0,A)')                                  &
-          'Wrong number of environment fields (', n,                           &
-          ') for real group on land points. Expecting ', SIZE(varnames)
-      IF (PRESENT(error_routine)) error_routine = RoutineName
-    ELSE IF (n > 0) THEN
+      IF (error_code <= 0 .AND. PRESENT(envgroup_land_real)) THEN
+         CALL ukca_get_envgroup_varlists(error_code, &
+                                         varnames_land_real_ptr=varnames, &
+                                         error_message=error_message, &
+                                         error_routine=error_routine)
+         IF (error_code <= 0) THEN
+            n = SIZE(envgroup_land_real, DIM=2)
+            IF (n /= SIZE(varnames)) THEN
+               error_code = errcode_env_field_mismatch
+               IF (PRESENT(error_message)) &
+                  WRITE (error_message, '(A,I0,A,I0,A)') &
+                  'Wrong number of environment fields (', n, &
+                  ') for real group on land points. Expecting ', SIZE(varnames)
+               IF (PRESENT(error_routine)) error_routine = RoutineName
+            ELSE IF (n > 0) THEN
 
-      ALLOCATE( tmp_1d_real( LBOUND( envgroup_land_real, DIM=1 ):              &
-                             UBOUND( envgroup_land_real, DIM=1 ) ) )
+               ALLOCATE (tmp_1d_real(LBOUND(envgroup_land_real, DIM=1): &
+                                     UBOUND(envgroup_land_real, DIM=1)))
 
-      DO i = 1, n
+               DO i = 1, n
 
-        tmp_1d_real(:) = envgroup_land_real(:,i)
+                  tmp_1d_real(:) = envgroup_land_real(:, i)
 
-        CALL ukca_set_environment( varnames(i), tmp_1d_real,                   &
-                                   error_code, error_message=error_message,    &
-                                   error_routine=error_routine)
-      END DO
+                  CALL ukca_set_environment(varnames(i), tmp_1d_real, &
+                                            error_code, error_message=error_message, &
+                                            error_routine=error_routine)
+               END DO
 
-      DEALLOCATE(tmp_1d_real)
+               DEALLOCATE (tmp_1d_real)
 
-    END IF
-  END IF
-END IF
-
-
+            END IF
+         END IF
+      END IF
 
 ! Set environmental drivers in land-point tile groups
 
-IF (error_code <= 0 .AND. PRESENT(envgroup_landtile_real)) THEN
-  CALL ukca_get_envgroup_varlists(error_code,                                  &
-                                  varnames_landtile_real_ptr=varnames,         &
-                                  error_message=error_message,                 &
-                                  error_routine=error_routine)
-  IF (error_code <= 0) THEN
-    n = SIZE( envgroup_landtile_real, DIM=3 )
-    IF (n /= SIZE(varnames)) THEN
-      error_code = errcode_env_field_mismatch
-      IF (PRESENT(error_message))                                              &
-        WRITE(error_message, '(A,I0,A,I0,A)')                                  &
-          'Wrong number of environment fields (', n,                           &
-          ') for real group on land-point tiles. Expecting ', SIZE(varnames)
-      IF (PRESENT(error_routine)) error_routine = RoutineName
-    ELSE IF (n > 0) THEN
+      IF (error_code <= 0 .AND. PRESENT(envgroup_landtile_real)) THEN
+         CALL ukca_get_envgroup_varlists(error_code, &
+                                         varnames_landtile_real_ptr=varnames, &
+                                         error_message=error_message, &
+                                         error_routine=error_routine)
+         IF (error_code <= 0) THEN
+            n = SIZE(envgroup_landtile_real, DIM=3)
+            IF (n /= SIZE(varnames)) THEN
+               error_code = errcode_env_field_mismatch
+               IF (PRESENT(error_message)) &
+                  WRITE (error_message, '(A,I0,A,I0,A)') &
+                  'Wrong number of environment fields (', n, &
+                  ') for real group on land-point tiles. Expecting ', SIZE(varnames)
+               IF (PRESENT(error_routine)) error_routine = RoutineName
+            ELSE IF (n > 0) THEN
 
-      ALLOCATE( tmp_2d_real( LBOUND( envgroup_landtile_real, DIM=1 ):          &
-                             UBOUND( envgroup_landtile_real, DIM=1 ),          &
-                             LBOUND( envgroup_landtile_real, DIM=2 ):          &
-                             UBOUND( envgroup_landtile_real, DIM=2 ) ) )
+               ALLOCATE (tmp_2d_real(LBOUND(envgroup_landtile_real, DIM=1): &
+                                     UBOUND(envgroup_landtile_real, DIM=1), &
+                                     LBOUND(envgroup_landtile_real, DIM=2): &
+                                     UBOUND(envgroup_landtile_real, DIM=2)))
 
-      DO i = 1, n
+               DO i = 1, n
 
-        tmp_2d_real(:,:) = envgroup_landtile_real(:,:,i)
+                  tmp_2d_real(:, :) = envgroup_landtile_real(:, :, i)
 
-        CALL ukca_set_environment( varnames(i), tmp_2d_real,                   &
-                                   error_code, error_message=error_message,    &
-                                   error_routine=error_routine)
-      END DO
+                  CALL ukca_set_environment(varnames(i), tmp_2d_real, &
+                                            error_code, error_message=error_message, &
+                                            error_routine=error_routine)
+               END DO
 
-      DEALLOCATE(tmp_2d_real)
+               DEALLOCATE (tmp_2d_real)
 
-    END IF
-  END IF
-END IF
+            END IF
+         END IF
+      END IF
 
+      IF (error_code <= 0 .AND. PRESENT(envgroup_landtile_logical)) THEN
+         CALL ukca_get_envgroup_varlists(error_code, &
+                                         varnames_landtile_logical_ptr=varnames, &
+                                         error_message=error_message, &
+                                         error_routine=error_routine)
+         IF (error_code <= 0) THEN
+            n = SIZE(envgroup_landtile_logical, DIM=3)
+            IF (n /= SIZE(varnames)) THEN
+               error_code = errcode_env_field_mismatch
+               IF (PRESENT(error_message)) &
+                  WRITE (error_message, '(A,I0,A,I0,A)') &
+                  'Wrong number of environment fields (', n, &
+                  ') for logical group on land-point tiles. Expecting ', SIZE(varnames)
+               IF (PRESENT(error_routine)) error_routine = RoutineName
+            ELSE IF (n > 0) THEN
 
+               ALLOCATE (tmp_2d_logical(LBOUND(envgroup_landtile_logical, DIM=1): &
+                                        UBOUND(envgroup_landtile_logical, DIM=1), &
+                                        LBOUND(envgroup_landtile_logical, DIM=2): &
+                                        UBOUND(envgroup_landtile_logical, DIM=2)))
 
-IF (error_code <= 0 .AND. PRESENT(envgroup_landtile_logical)) THEN
-  CALL ukca_get_envgroup_varlists(error_code,                                  &
-                                  varnames_landtile_logical_ptr=varnames,      &
-                                  error_message=error_message,                 &
-                                  error_routine=error_routine)
-  IF (error_code <= 0) THEN
-    n = SIZE( envgroup_landtile_logical, DIM=3 )
-    IF (n /= SIZE(varnames)) THEN
-      error_code = errcode_env_field_mismatch
-      IF (PRESENT(error_message))                                              &
-        WRITE(error_message, '(A,I0,A,I0,A)')                                  &
-          'Wrong number of environment fields (', n,                           &
-          ') for logical group on land-point tiles. Expecting ', SIZE(varnames)
-      IF (PRESENT(error_routine)) error_routine = RoutineName
-    ELSE IF (n > 0) THEN
+               DO i = 1, n
 
-      ALLOCATE( tmp_2d_logical( LBOUND( envgroup_landtile_logical, DIM=1 ):    &
-                                UBOUND( envgroup_landtile_logical, DIM=1 ),    &
-                                LBOUND( envgroup_landtile_logical, DIM=2 ):    &
-                                UBOUND( envgroup_landtile_logical, DIM=2 ) ) )
+                  tmp_2d_logical(:, :) = envgroup_landtile_logical(:, :, i)
 
-      DO i = 1, n
+                  CALL ukca_set_environment(varnames(i), tmp_2d_logical, &
+                                            error_code, error_message=error_message, &
+                                            error_routine=error_routine)
+               END DO
 
-        tmp_2d_logical(:,:) =  envgroup_landtile_logical(:,:,i)
+               DEALLOCATE (tmp_2d_logical)
 
-        CALL ukca_set_environment( varnames(i), tmp_2d_logical,                &
-                                   error_code, error_message=error_message,    &
-                                   error_routine=error_routine)
-      END DO
-
-      DEALLOCATE(tmp_2d_logical)
-
-    END IF
-  END IF
-END IF
-
-
+            END IF
+         END IF
+      END IF
 
 ! Set environmental drivers in land-point plant functional type tile group
 
-IF (error_code <= 0 .AND. PRESENT(envgroup_landpft_real)) THEN
-  CALL ukca_get_envgroup_varlists(error_code,                                  &
-                                  varnames_landpft_real_ptr=varnames,          &
-                                  error_message=error_message,                 &
-                                  error_routine=error_routine)
-  IF (error_code <= 0) THEN
-    n = SIZE( envgroup_landpft_real, DIM=3 )
-    IF (n /= SIZE(varnames)) THEN
-      error_code = errcode_env_field_mismatch
-      IF (PRESENT(error_message))                                              &
-        WRITE(error_message, '(A,I0,A,I0,A)')                                  &
-          'Wrong number of environment fields (', n,                           &
-          ') for real group on land-point PFT tiles. Expecting ', SIZE(varnames)
-      IF (PRESENT(error_routine)) error_routine = RoutineName
-    ELSE IF (n > 0) THEN
+      IF (error_code <= 0 .AND. PRESENT(envgroup_landpft_real)) THEN
+         CALL ukca_get_envgroup_varlists(error_code, &
+                                         varnames_landpft_real_ptr=varnames, &
+                                         error_message=error_message, &
+                                         error_routine=error_routine)
+         IF (error_code <= 0) THEN
+            n = SIZE(envgroup_landpft_real, DIM=3)
+            IF (n /= SIZE(varnames)) THEN
+               error_code = errcode_env_field_mismatch
+               IF (PRESENT(error_message)) &
+                  WRITE (error_message, '(A,I0,A,I0,A)') &
+                  'Wrong number of environment fields (', n, &
+                  ') for real group on land-point PFT tiles. Expecting ', SIZE(varnames)
+               IF (PRESENT(error_routine)) error_routine = RoutineName
+            ELSE IF (n > 0) THEN
 
-      ALLOCATE( tmp_2d_real( LBOUND( envgroup_landpft_real, DIM=1 ):           &
-                             UBOUND( envgroup_landpft_real, DIM=1 ),           &
-                             LBOUND( envgroup_landpft_real, DIM=2 ):           &
-                             UBOUND( envgroup_landpft_real, DIM=2 ) ) )
+               ALLOCATE (tmp_2d_real(LBOUND(envgroup_landpft_real, DIM=1): &
+                                     UBOUND(envgroup_landpft_real, DIM=1), &
+                                     LBOUND(envgroup_landpft_real, DIM=2): &
+                                     UBOUND(envgroup_landpft_real, DIM=2)))
 
-      DO i = 1, n
+               DO i = 1, n
 
-        tmp_2d_real(:,:) =  envgroup_landpft_real(:,:,i)
+                  tmp_2d_real(:, :) = envgroup_landpft_real(:, :, i)
 
-        CALL ukca_set_environment(varnames(i), tmp_2d_real,                    &
-                                  error_code, error_message=error_message,     &
-                                  error_routine=error_routine)
+                  CALL ukca_set_environment(varnames(i), tmp_2d_real, &
+                                            error_code, error_message=error_message, &
+                                            error_routine=error_routine)
 
-      END DO
+               END DO
 
-      DEALLOCATE(tmp_2d_real)
+               DEALLOCATE (tmp_2d_real)
 
-    END IF
-  END IF
-END IF
-
-
+            END IF
+         END IF
+      END IF
 
 ! Set environmental field for photolysis rates - full-height grid+no. reactions
 ! (Input values are 3D spatially , 4th dimension is no. of reactions)
 
-IF (error_code <= 0 .AND. PRESENT(envgroup_fullhtphot_real)) THEN
-  CALL ukca_get_envgroup_varlists(error_code,                                  &
-                                  varnames_fullhtphot_real_ptr=varnames,       &
-                                  error_message=error_message,                 &
-                                  error_routine=error_routine)
-  IF (error_code <= 0) THEN
-    n = SIZE( envgroup_fullhtphot_real, DIM=5 )
-    IF (n /= SIZE(varnames)) THEN
-      error_code = errcode_env_field_mismatch
-      IF (PRESENT(error_message))                                              &
-        WRITE(error_message, '(A,I0,A,I0,A)')                                  &
-          'Wrong number of environment fields (', n,                           &
-          ') for real group on fullht photol. Expecting ', SIZE(varnames)
-      IF (PRESENT(error_routine)) error_routine = RoutineName
-    ELSE IF (n > 0) THEN
+      IF (error_code <= 0 .AND. PRESENT(envgroup_fullhtphot_real)) THEN
+         CALL ukca_get_envgroup_varlists(error_code, &
+                                         varnames_fullhtphot_real_ptr=varnames, &
+                                         error_message=error_message, &
+                                         error_routine=error_routine)
+         IF (error_code <= 0) THEN
+            n = SIZE(envgroup_fullhtphot_real, DIM=5)
+            IF (n /= SIZE(varnames)) THEN
+               error_code = errcode_env_field_mismatch
+               IF (PRESENT(error_message)) &
+                  WRITE (error_message, '(A,I0,A,I0,A)') &
+                  'Wrong number of environment fields (', n, &
+                  ') for real group on fullht photol. Expecting ', SIZE(varnames)
+               IF (PRESENT(error_routine)) error_routine = RoutineName
+            ELSE IF (n > 0) THEN
 
-      ALLOCATE( tmp_4d_real( LBOUND( envgroup_fullhtphot_real, DIM=1 ):        &
-                             UBOUND( envgroup_fullhtphot_real, DIM=1 ),        &
-                             LBOUND( envgroup_fullhtphot_real, DIM=2 ):        &
-                             UBOUND( envgroup_fullhtphot_real, DIM=2 ),        &
-                             LBOUND( envgroup_fullhtphot_real, DIM=3 ):        &
-                             UBOUND( envgroup_fullhtphot_real, DIM=3 ),        &
-                             LBOUND( envgroup_fullhtphot_real, DIM=4 ):        &
-                             UBOUND( envgroup_fullhtphot_real, DIM=4 ) ) )
+               ALLOCATE (tmp_4d_real(LBOUND(envgroup_fullhtphot_real, DIM=1): &
+                                     UBOUND(envgroup_fullhtphot_real, DIM=1), &
+                                     LBOUND(envgroup_fullhtphot_real, DIM=2): &
+                                     UBOUND(envgroup_fullhtphot_real, DIM=2), &
+                                     LBOUND(envgroup_fullhtphot_real, DIM=3): &
+                                     UBOUND(envgroup_fullhtphot_real, DIM=3), &
+                                     LBOUND(envgroup_fullhtphot_real, DIM=4): &
+                                     UBOUND(envgroup_fullhtphot_real, DIM=4)))
 
-      DO i = 1, n
+               DO i = 1, n
 
-        tmp_4d_real(:,:,:,:) = envgroup_fullhtphot_real(:,:,:,:,i)
+                  tmp_4d_real(:, :, :, :) = envgroup_fullhtphot_real(:, :, :, :, i)
 
-        CALL ukca_set_environment( varnames(i), tmp_4d_real,                   &
-                                   error_code, error_message=error_message,    &
-                                   error_routine=error_routine)
-      END DO
+                  CALL ukca_set_environment(varnames(i), tmp_4d_real, &
+                                            error_code, error_message=error_message, &
+                                            error_routine=error_routine)
+               END DO
 
-      DEALLOCATE(tmp_4d_real)
+               DEALLOCATE (tmp_4d_real)
 
-    END IF
-  END IF
-END IF
-
-
+            END IF
+         END IF
+      END IF
 
 ! Get information about registered emissions
 
-IF (error_code <= 0) THEN
+      IF (error_code <= 0) THEN
 
-  CALL get_registered_ems_info(n_flat_ems, n_fullht_ems, l_ndim_order)
+         CALL get_registered_ems_info(n_flat_ems, n_fullht_ems, l_ndim_order)
 
-  IF (.NOT. l_ndim_order) THEN
-    error_code = errcode_env_field_mismatch
-    IF (PRESENT(error_message))                                                &
-      error_message =                                                          &
-        'Emissions have not been registered in order of their dimensionality'
-    IF (PRESENT(error_routine)) error_routine = RoutineName
-  END IF
+         IF (.NOT. l_ndim_order) THEN
+            error_code = errcode_env_field_mismatch
+            IF (PRESENT(error_message)) &
+               error_message = &
+               'Emissions have not been registered in order of their dimensionality'
+            IF (PRESENT(error_routine)) error_routine = RoutineName
+         END IF
 
-  ! Initialise sequential emissions id
-  emiss_id = 0
+         ! Initialise sequential emissions id
+         emiss_id = 0
 
-END IF
-
-
+      END IF
 
 ! Set flat emissions fields
-IF (error_code <= 0 .AND. n_flat_ems > 0) THEN
-  IF (PRESENT(emissions_flat)) THEN
-    n = SIZE( emissions_flat, DIM=3 ) ! 3rd dimension is number of
-                                      ! flat emission fields
-  ELSE
-    n = 0
-  END IF
-  IF (n /= n_flat_ems) THEN
-    error_code = errcode_env_field_mismatch
-    IF (PRESENT(error_message))                                                &
-      WRITE(error_message, '(A,I0,A,I0,A)')                                    &
-        'Wrong no. of flat emissions provided (', n, '). Expecting ',          &
-        n_flat_ems
-    IF (PRESENT(error_routine)) error_routine = RoutineName
-  ELSE
+      IF (error_code <= 0 .AND. n_flat_ems > 0) THEN
+         IF (PRESENT(emissions_flat)) THEN
+            n = SIZE(emissions_flat, DIM=3) ! 3rd dimension is number of
+            ! flat emission fields
+         ELSE
+            n = 0
+         END IF
+         IF (n /= n_flat_ems) THEN
+            error_code = errcode_env_field_mismatch
+            IF (PRESENT(error_message)) &
+               WRITE (error_message, '(A,I0,A,I0,A)') &
+               'Wrong no. of flat emissions provided (', n, '). Expecting ', &
+               n_flat_ems
+            IF (PRESENT(error_routine)) error_routine = RoutineName
+         ELSE
 
-    ALLOCATE( tmp_3d_real( SIZE( emissions_flat, DIM=1 ), 1, 1 ) )
+            ALLOCATE (tmp_3d_real(SIZE(emissions_flat, DIM=1), 1, 1))
 
-    DO i = 1, n
+            DO i = 1, n
 
-      emiss_id = emiss_id + 1
+               emiss_id = emiss_id + 1
 
-      tmp_3d_real(:,1,1) = emissions_flat(:,1,i)
+               tmp_3d_real(:, 1, 1) = emissions_flat(:, 1, i)
 
-      CALL ukca_set_emission( emiss_id, tmp_3d_real )
+               CALL ukca_set_emission(emiss_id, tmp_3d_real)
 
-    END DO
+            END DO
 
-    DEALLOCATE(tmp_3d_real)
+            DEALLOCATE (tmp_3d_real)
 
-  END IF
-END IF
-
-
+         END IF
+      END IF
 
 ! Set full height emissions fields
-IF (error_code <= 0 .AND. n_fullht_ems > 0) THEN
-  IF (PRESENT(emissions_fullht)) THEN
-    n = SIZE(emissions_fullht,DIM=4) !4th dimension is number of emission fields
-  ELSE
-    n = 0
-  END IF
-  IF (n /= n_fullht_ems) THEN
-    error_code = errcode_env_field_mismatch
-    IF (PRESENT(error_message))                                                &
-      WRITE(error_message, '(A,I0,A,I0,A)')                                    &
-        'Wrong no. of full height emissions provided (', n, '). Expecting ',   &
-        n_fullht_ems
-    IF (PRESENT(error_routine)) error_routine = RoutineName
-  ELSE
+      IF (error_code <= 0 .AND. n_fullht_ems > 0) THEN
+         IF (PRESENT(emissions_fullht)) THEN
+            n = SIZE(emissions_fullht, DIM=4) !4th dimension is number of emission fields
+         ELSE
+            n = 0
+         END IF
+         IF (n /= n_fullht_ems) THEN
+            error_code = errcode_env_field_mismatch
+            IF (PRESENT(error_message)) &
+               WRITE (error_message, '(A,I0,A,I0,A)') &
+               'Wrong no. of full height emissions provided (', n, '). Expecting ', &
+               n_fullht_ems
+            IF (PRESENT(error_routine)) error_routine = RoutineName
+         ELSE
 
-    ! Note - No need to create a temporary array here
+            ! Note - No need to create a temporary array here
 
-    DO i = 1, n
+            DO i = 1, n
 
-      emiss_id = emiss_id + 1
+               emiss_id = emiss_id + 1
 
-      CALL ukca_set_emission(emiss_id, emissions_fullht(:,:,:,i) )
+               CALL ukca_set_emission(emiss_id, emissions_fullht(:, :, :, i))
 
-    END DO
+            END DO
 
-  END IF
-END IF
+         END IF
+      END IF
 
 ! Do the time step
-IF (error_code <= 0) THEN
+      IF (error_code <= 0) THEN
 
-  CALL ukca_step(timestep_number, current_time,                                &
-                 tracer_data, ntp_data, r_theta_levels, r_rho_levels,          &
-                 error_code,  previous_time=previous_time,                     &
-                 diag_status_flat_real=diag_status_flat_real,                  &
-                 diag_status_fullht_real=diag_status_fullht_real,              &
-                 diag_data_flat_real=diag_data_flat_real,                      &
-                 diag_data_fullht_real=diag_data_fullht_real,                  &
-                 error_message=error_message, error_routine=error_routine)
+         CALL ukca_step(timestep_number, current_time, &
+                        tracer_data, ntp_data, r_theta_levels, r_rho_levels, &
+                        error_code, previous_time=previous_time, &
+                        diag_status_flat_real=diag_status_flat_real, &
+                        diag_status_fullht_real=diag_status_fullht_real, &
+                        diag_data_flat_real=diag_data_flat_real, &
+                        diag_data_fullht_real=diag_data_fullht_real, &
+                        error_message=error_message, error_routine=error_routine)
 
-END IF
+      END IF
 
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
-RETURN
-END SUBROUTINE ukca_step_control_3d_domain
+      IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_out, zhook_handle)
+      RETURN
+   END SUBROUTINE ukca_step_control_3d_domain
 
 END MODULE ukca_step_control_mod
-

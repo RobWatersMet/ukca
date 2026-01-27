@@ -31,59 +31,59 @@
 ! ----------------------------------------------------------------------
 MODULE photol_fieldname_mod
 
-IMPLICIT NONE
+   IMPLICIT NONE
 
-PUBLIC
+   PUBLIC
 
-INTEGER, PARAMETER :: fieldname_len = 20       ! Length of env field names and
-INTEGER, PARAMETER :: photol_varname_len = 10  ! names of photolysis species.
-INTEGER, PARAMETER :: photol_jlabel_len = 7    ! names of photolysis species
-                                               ! as defined in spectral files
+   INTEGER, PARAMETER :: fieldname_len = 20       ! Length of env field names and
+   INTEGER, PARAMETER :: photol_varname_len = 10  ! names of photolysis species.
+   INTEGER, PARAMETER :: photol_jlabel_len = 7    ! names of photolysis species
+   ! as defined in spectral files
 
 ! Photolysis environment fields (driving fields), arranged by type
 ! Scalar - real
-CHARACTER(LEN=*), PARAMETER :: fldname_equation_of_time = 'equation_of_time'
-CHARACTER(LEN=*), PARAMETER :: fldname_sec_since_midnight =                    &
-                                                      'sec_since_midnight'
-CHARACTER(LEN=*), PARAMETER :: fldname_sin_declination = 'sin_declination'
-CHARACTER(LEN=*), PARAMETER :: fldname_z_top_of_model = 'z_top_of_model'
+   CHARACTER(LEN=*), PARAMETER :: fldname_equation_of_time = 'equation_of_time'
+   CHARACTER(LEN=*), PARAMETER :: fldname_sec_since_midnight = &
+                                  'sec_since_midnight'
+   CHARACTER(LEN=*), PARAMETER :: fldname_sin_declination = 'sin_declination'
+   CHARACTER(LEN=*), PARAMETER :: fldname_z_top_of_model = 'z_top_of_model'
 
 ! Flat - integer
-CHARACTER(LEN=*), PARAMETER :: fldname_conv_cloud_base = 'conv_cloud_base'
-CHARACTER(LEN=*), PARAMETER :: fldname_conv_cloud_top = 'conv_cloud_top'
+   CHARACTER(LEN=*), PARAMETER :: fldname_conv_cloud_base = 'conv_cloud_base'
+   CHARACTER(LEN=*), PARAMETER :: fldname_conv_cloud_top = 'conv_cloud_top'
 
 ! Flat - real
-CHARACTER(LEN=*), PARAMETER :: fldname_conv_cloud_lwp = 'conv_cloud_lwp'
-CHARACTER(LEN=*), PARAMETER :: fldname_cos_latitude = 'cos_latitude'
-CHARACTER(LEN=*), PARAMETER :: fldname_land_fraction = 'land_fraction'
-CHARACTER(LEN=*), PARAMETER :: fldname_longitude = 'longitude'
-CHARACTER(LEN=*), PARAMETER :: fldname_sin_latitude = 'sin_latitude'
-CHARACTER(LEN=*), PARAMETER :: fldname_surf_albedo = 'surf_albedo'
-CHARACTER(LEN=*), PARAMETER :: fldname_tan_latitude = 'tan_latitude'
+   CHARACTER(LEN=*), PARAMETER :: fldname_conv_cloud_lwp = 'conv_cloud_lwp'
+   CHARACTER(LEN=*), PARAMETER :: fldname_cos_latitude = 'cos_latitude'
+   CHARACTER(LEN=*), PARAMETER :: fldname_land_fraction = 'land_fraction'
+   CHARACTER(LEN=*), PARAMETER :: fldname_longitude = 'longitude'
+   CHARACTER(LEN=*), PARAMETER :: fldname_sin_latitude = 'sin_latitude'
+   CHARACTER(LEN=*), PARAMETER :: fldname_surf_albedo = 'surf_albedo'
+   CHARACTER(LEN=*), PARAMETER :: fldname_tan_latitude = 'tan_latitude'
 
 ! Full height - real
-CHARACTER(LEN=*), PARAMETER :: fldname_aod_sulph_aitk = 'aod_sulph_aitk'
-CHARACTER(LEN=*), PARAMETER :: fldname_aod_sulph_accum = 'aod_sulph_accum'
-CHARACTER(LEN=*), PARAMETER :: fldname_area_cloud_fraction =                   &
-                                                   'area_cloud_fraction'
-CHARACTER(LEN=*), PARAMETER :: fldname_conv_cloud_amount = 'conv_cloud_amount'
-CHARACTER(LEN=*), PARAMETER :: fldname_ozone_mmr = 'ozone_mmr'
-CHARACTER(LEN=*), PARAMETER :: fldname_p_theta_levels = 'p_theta_levels'
-CHARACTER(LEN=*), PARAMETER :: fldname_qcf = 'qcf'
-CHARACTER(LEN=*), PARAMETER :: fldname_qcl = 'qcl'
-CHARACTER(LEN=*), PARAMETER :: fldname_rad_ctl_jo2 = 'rad_ctl_jo2'
-CHARACTER(LEN=*), PARAMETER :: fldname_rad_ctl_jo2b = 'rad_ctl_jo2b'
-CHARACTER(LEN=*), PARAMETER :: fldname_r_rho_levels = 'r_rho_levels'
-CHARACTER(LEN=*), PARAMETER :: fldname_so4_aitken = 'so4_aitken'
-CHARACTER(LEN=*), PARAMETER :: fldname_so4_accum = 'so4_accum'
-CHARACTER(LEN=*), PARAMETER :: fldname_t_theta_levels = 't_theta_levels'
+   CHARACTER(LEN=*), PARAMETER :: fldname_aod_sulph_aitk = 'aod_sulph_aitk'
+   CHARACTER(LEN=*), PARAMETER :: fldname_aod_sulph_accum = 'aod_sulph_accum'
+   CHARACTER(LEN=*), PARAMETER :: fldname_area_cloud_fraction = &
+                                  'area_cloud_fraction'
+   CHARACTER(LEN=*), PARAMETER :: fldname_conv_cloud_amount = 'conv_cloud_amount'
+   CHARACTER(LEN=*), PARAMETER :: fldname_ozone_mmr = 'ozone_mmr'
+   CHARACTER(LEN=*), PARAMETER :: fldname_p_theta_levels = 'p_theta_levels'
+   CHARACTER(LEN=*), PARAMETER :: fldname_qcf = 'qcf'
+   CHARACTER(LEN=*), PARAMETER :: fldname_qcl = 'qcl'
+   CHARACTER(LEN=*), PARAMETER :: fldname_rad_ctl_jo2 = 'rad_ctl_jo2'
+   CHARACTER(LEN=*), PARAMETER :: fldname_rad_ctl_jo2b = 'rad_ctl_jo2b'
+   CHARACTER(LEN=*), PARAMETER :: fldname_r_rho_levels = 'r_rho_levels'
+   CHARACTER(LEN=*), PARAMETER :: fldname_so4_aitken = 'so4_aitken'
+   CHARACTER(LEN=*), PARAMETER :: fldname_so4_accum = 'so4_accum'
+   CHARACTER(LEN=*), PARAMETER :: fldname_t_theta_levels = 't_theta_levels'
 
 ! Fullht plus level=0 -real
-CHARACTER(LEN=*), PARAMETER :: fldname_p_layer_boundaries =                    &
-                                                    'p_layer_boundaries'
-CHARACTER(LEN=*), PARAMETER :: fldname_r_theta_levels = 'r_theta_levels'
+   CHARACTER(LEN=*), PARAMETER :: fldname_p_layer_boundaries = &
+                                  'p_layer_boundaries'
+   CHARACTER(LEN=*), PARAMETER :: fldname_r_theta_levels = 'r_theta_levels'
 
 ! Fullht_phot real
-CHARACTER(LEN=*), PARAMETER :: fldname_photol_rates_2d = 'photol_rates_2d'
+   CHARACTER(LEN=*), PARAMETER :: fldname_photol_rates_2d = 'photol_rates_2d'
 
 END MODULE photol_fieldname_mod

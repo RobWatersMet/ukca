@@ -30,14 +30,14 @@
 ! Subroutine Interface:
 MODULE ukca_dcoff_par_av_k_mod
 
-IMPLICIT NONE
+   IMPLICIT NONE
 
-CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName = 'UKCA_DCOFF_PAR_AV_K_MOD'
+   CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName = 'UKCA_DCOFF_PAR_AV_K_MOD'
 
 CONTAINS
 
-SUBROUTINE ukca_dcoff_par_av_k(nbox,k,dp,sigma,t,dvisc,mfpa,                   &
-                               dcoff_par_av_k)
+   SUBROUTINE ukca_dcoff_par_av_k(nbox, k, dp, sigma, t, dvisc, mfpa, &
+                                  dcoff_par_av_k)
 !--------------------------------------------------------------------
 !
 ! Purpose
@@ -80,50 +80,50 @@ SUBROUTINE ukca_dcoff_par_av_k(nbox,k,dp,sigma,t,dvisc,mfpa,                   &
 ! BOLTZMANN      : Boltzmann's constant (kg m2 s-2 K-1 molec-1)
 !
 !--------------------------------------------------------------------
-USE ukca_constants,   ONLY: pi
-USE ukca_config_constants_mod, ONLY: boltzmann
-USE yomhook,          ONLY: lhook, dr_hook
-USE parkind1,         ONLY: jprb, jpim
-IMPLICIT NONE
+      USE ukca_constants, ONLY: pi
+      USE ukca_config_constants_mod, ONLY: boltzmann
+      USE yomhook, ONLY: lhook, dr_hook
+      USE parkind1, ONLY: jprb, jpim
+      IMPLICIT NONE
 !
 ! Subroutine interface
-INTEGER, INTENT(IN) :: k
-INTEGER, INTENT(IN) :: nbox
-REAL, INTENT(IN)    :: dp(nbox)
-REAL, INTENT(IN)    :: sigma
-REAL, INTENT(IN)    :: t(nbox)
-REAL, INTENT(IN)    :: dvisc(nbox)
-REAL, INTENT(IN)    :: mfpa(nbox)
-REAL, INTENT(OUT)   :: dcoff_par_av_k(nbox)
+      INTEGER, INTENT(IN) :: k
+      INTEGER, INTENT(IN) :: nbox
+      REAL, INTENT(IN)    :: dp(nbox)
+      REAL, INTENT(IN)    :: sigma
+      REAL, INTENT(IN)    :: t(nbox)
+      REAL, INTENT(IN)    :: dvisc(nbox)
+      REAL, INTENT(IN)    :: mfpa(nbox)
+      REAL, INTENT(OUT)   :: dcoff_par_av_k(nbox)
 
 ! Local variables
-REAL    :: lnsqsg
-REAL    :: term1
-REAL    :: term2
-REAL    :: term3
-REAL    :: term4
-REAL    :: kng(nbox)
-REAL    :: pref(nbox)
+      REAL    :: lnsqsg
+      REAL    :: term1
+      REAL    :: term2
+      REAL    :: term3
+      REAL    :: term4
+      REAL    :: kng(nbox)
+      REAL    :: pref(nbox)
 
-INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
-INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
-REAL(KIND=jprb)               :: zhook_handle
+      INTEGER(KIND=jpim), PARAMETER :: zhook_in = 0
+      INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+      REAL(KIND=jprb)               :: zhook_handle
 
-CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_DCOFF_PAR_AV_K'
+      CHARACTER(LEN=*), PARAMETER :: RoutineName = 'UKCA_DCOFF_PAR_AV_K'
 
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+      IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_in, zhook_handle)
 
-lnsqsg=LOG(sigma)*LOG(sigma)
-term1=(-2.0*REAL(k)+1.0)/2.0
-term2=(-4.0*REAL(k)+4.0)/2.0
-term3=EXP(term1*lnsqsg)
-term4=1.246*EXP(term2*lnsqsg)
+      lnsqsg = LOG(sigma)*LOG(sigma)
+      term1 = (-2.0*REAL(k) + 1.0)/2.0
+      term2 = (-4.0*REAL(k) + 4.0)/2.0
+      term3 = EXP(term1*lnsqsg)
+      term4 = 1.246*EXP(term2*lnsqsg)
 
-kng(:)=2.0*mfpa(:)/dp(:)
-pref(:)=boltzmann*t(:)/(3.0*pi*dvisc(:)*dp(:))
-dcoff_par_av_k(:)=pref(:)*(term3+term4*kng(:))
+      kng(:) = 2.0*mfpa(:)/dp(:)
+      pref(:) = boltzmann*t(:)/(3.0*pi*dvisc(:)*dp(:))
+      dcoff_par_av_k(:) = pref(:)*(term3 + term4*kng(:))
 
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
-RETURN
-END SUBROUTINE ukca_dcoff_par_av_k
+      IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_out, zhook_handle)
+      RETURN
+   END SUBROUTINE ukca_dcoff_par_av_k
 END MODULE ukca_dcoff_par_av_k_mod

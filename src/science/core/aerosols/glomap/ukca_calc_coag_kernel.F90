@@ -28,15 +28,15 @@
 ! Subroutine Interface:
 MODULE ukca_calc_coag_kernel_mod
 
-IMPLICIT NONE
+   IMPLICIT NONE
 
-CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName = 'UKCA_CALC_COAG_KERNEL_MOD'
+   CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName = 'UKCA_CALC_COAG_KERNEL_MOD'
 
 CONTAINS
 
-SUBROUTINE ukca_calc_coag_kernel(nbox,kii_arr,kij_arr,                         &
- drydp,dvol,wetdp,wvol,rhopar,mfpa,dvisc,t,                                    &
- coag_on,icoag)
+   SUBROUTINE ukca_calc_coag_kernel(nbox, kii_arr, kij_arr, &
+                                    drydp, dvol, wetdp, wvol, rhopar, mfpa, dvisc, t, &
+                                    coag_on, icoag)
 !-------------------------------------------------------------------
 !
 ! Purpose
@@ -152,178 +152,178 @@ SUBROUTINE ukca_calc_coag_kernel(nbox,kii_arr,kij_arr,                         &
 !
 !-------------------------------------------------------------------
 
-USE ukca_config_specification_mod, ONLY:                                       &
-    glomap_variables
+      USE ukca_config_specification_mod, ONLY: &
+         glomap_variables
 
-USE ukca_mode_setup, ONLY:                                                     &
-    nmodes,                                                                    &
-    mode_nuc_sol,                                                              &
-    mode_cor_sol,                                                              &
-    mode_ait_insol,                                                            &
-    mode_cor_insol,                                                            &
-    mode_sup_insol
+      USE ukca_mode_setup, ONLY: &
+         nmodes, &
+         mode_nuc_sol, &
+         mode_cor_sol, &
+         mode_ait_insol, &
+         mode_cor_insol, &
+         mode_sup_insol
 
-USE parkind1, ONLY: jprb, jpim
-USE yomhook, ONLY: lhook, dr_hook
-USE ukca_types_mod, ONLY: log_small
-USE ukca_coag_coff_v_mod, ONLY: ukca_coag_coff_v
+      USE parkind1, ONLY: jprb, jpim
+      USE yomhook, ONLY: lhook, dr_hook
+      USE ukca_types_mod, ONLY: log_small
+      USE ukca_coag_coff_v_mod, ONLY: ukca_coag_coff_v
 
-IMPLICIT NONE
+      IMPLICIT NONE
 !
 ! Arguments
-INTEGER, INTENT(IN) :: nbox
-INTEGER, INTENT(IN) :: coag_on
-INTEGER, INTENT(IN) :: icoag
-REAL, INTENT(IN)    :: drydp(nbox,nmodes)
-REAL, INTENT(IN)    :: dvol(nbox,nmodes)
-REAL, INTENT(IN)    :: wetdp(nbox,nmodes)
-REAL, INTENT(IN)    :: wvol(nbox,nmodes)
-REAL, INTENT(IN)    :: rhopar(nbox,nmodes)
-REAL, INTENT(IN)    :: mfpa(nbox)
-REAL, INTENT(IN)    :: dvisc(nbox)
-REAL, INTENT(IN)    :: t(nbox)
-REAL, INTENT(OUT)   :: kii_arr(nbox,nmodes)
-REAL, INTENT(OUT)   :: kij_arr(nbox,nmodes,nmodes)
+      INTEGER, INTENT(IN) :: nbox
+      INTEGER, INTENT(IN) :: coag_on
+      INTEGER, INTENT(IN) :: icoag
+      REAL, INTENT(IN)    :: drydp(nbox, nmodes)
+      REAL, INTENT(IN)    :: dvol(nbox, nmodes)
+      REAL, INTENT(IN)    :: wetdp(nbox, nmodes)
+      REAL, INTENT(IN)    :: wvol(nbox, nmodes)
+      REAL, INTENT(IN)    :: rhopar(nbox, nmodes)
+      REAL, INTENT(IN)    :: mfpa(nbox)
+      REAL, INTENT(IN)    :: dvisc(nbox)
+      REAL, INTENT(IN)    :: t(nbox)
+      REAL, INTENT(OUT)   :: kii_arr(nbox, nmodes)
+      REAL, INTENT(OUT)   :: kij_arr(nbox, nmodes, nmodes)
 !
 ! Local variables
 
 ! Caution - pointers to TYPE glomap_variables%
 !           have been included here to make the code easier to read
 !           take care when making changes involving pointers
-LOGICAL, POINTER :: mode(:)
-INTEGER, POINTER :: modesol(:)
+      LOGICAL, POINTER :: mode(:)
+      INTEGER, POINTER :: modesol(:)
 
-INTEGER :: imode
-INTEGER :: jmode
-INTEGER :: jl
-REAL    :: kii(nbox)
-REAL    :: kij(nbox)
-REAL    :: vpi(nbox)
-REAL    :: rpi(nbox)
-REAL    :: rhoi(nbox)
-REAL    :: vpj(nbox)
-REAL    :: rpj(nbox)
-REAL    :: rhoj(nbox)
-LOGICAL (KIND=log_small) :: mask1(nbox)
-LOGICAL (KIND=log_small) :: mask2(nbox)
+      INTEGER :: imode
+      INTEGER :: jmode
+      INTEGER :: jl
+      REAL    :: kii(nbox)
+      REAL    :: kij(nbox)
+      REAL    :: vpi(nbox)
+      REAL    :: rpi(nbox)
+      REAL    :: rhoi(nbox)
+      REAL    :: vpj(nbox)
+      REAL    :: rpj(nbox)
+      REAL    :: rhoj(nbox)
+      LOGICAL(KIND=log_small) :: mask1(nbox)
+      LOGICAL(KIND=log_small) :: mask2(nbox)
 
-INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
-INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
-REAL(KIND=jprb)               :: zhook_handle
+      INTEGER(KIND=jpim), PARAMETER :: zhook_in = 0
+      INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+      REAL(KIND=jprb)               :: zhook_handle
 
-CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_CALC_COAG_KERNEL'
+      CHARACTER(LEN=*), PARAMETER :: RoutineName = 'UKCA_CALC_COAG_KERNEL'
 
 !
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+      IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_in, zhook_handle)
 
 ! Caution - pointers to TYPE glomap_variables%
 !           have been included here to make the code easier to read
 !           take care when making changes involving pointers
-mode        => glomap_variables%mode
-modesol     => glomap_variables%modesol
+      mode => glomap_variables%mode
+      modesol => glomap_variables%modesol
 
-mask1(:) = .TRUE. ! set to calculate kernels for all boxes
-mask2(:) = .TRUE. ! set to calculate kernels for all boxes
+      mask1(:) = .TRUE. ! set to calculate kernels for all boxes
+      mask2(:) = .TRUE. ! set to calculate kernels for all boxes
 
 ! Initialise kii and kij arrays to zero (no coagulation)
-DO imode=1,nmodes
-  DO jl=1,nbox
-    kii_arr(jl,imode) = 0.0
-  END DO
-END DO
-DO jmode=1,nmodes
-  DO imode=1,nmodes
-    DO jl=1,nbox
-      kij_arr(jl,imode,jmode) = 0.0
-    END DO
-  END DO
-END DO
-!
-DO imode=mode_nuc_sol,mode_cor_sol ! KII for intra-coag over soluble modes
-  IF (mode(imode)) THEN
-    !
-    vpi(:)=wvol(:,imode)
-    rpi(:)=wetdp(:,imode)/2.0
-    rhoi(:)=rhopar(:,imode)
-
-    CALL ukca_coag_coff_v(nbox,mask1,rpi,rpi,vpi,vpi,rhoi,rhoi,                &
-         mfpa,dvisc,t,kii,coag_on,icoag)
-    !
-    kii_arr(:,imode)=kii(:) ! copy to KII_ARR
-    !
-    DO jmode=(imode+1),mode_cor_sol ! KIJ for coag with larger soluble modes
-
-      IF (mode(jmode)) THEN
-        !
-        vpj(:)=wvol(:,jmode)
-        rpj(:)=wetdp(:,jmode)/2.0
-        rhoj(:)=rhopar(:,jmode)
-
-        CALL ukca_coag_coff_v(nbox,mask2,rpi,rpj,vpi,vpj,rhoi,rhoj,            &
-             mfpa,dvisc,t,kij,coag_on,icoag)
-        !
-        kij_arr(:,imode,jmode)=kij(:) ! copy to KIJ_ARR
-        !
-      END IF
-    END DO ! loop over larger soluble modes
-    !
-    DO jmode=(imode+4),mode_sup_insol
-                                     ! KIJ for coag with larger insoluble modes
-
-      IF (mode(jmode)) THEN
-        !
-        IF (modesol(jmode) == 1) THEN
-          rpj(:)=wetdp(:,jmode)/2.0
-          vpj(:)=wvol(:,jmode)
-        ELSE
-          rpj(:)=drydp(:,jmode)/2.0
-          vpj(:)=dvol(:,jmode)
-        END IF
-        rhoj(:)=rhopar(:,jmode)
-
-        CALL ukca_coag_coff_v(nbox,mask2,rpi,rpj,vpi,vpj,rhoi,rhoj,            &
-             mfpa,dvisc,t,kij,coag_on,icoag)
-        !
-        kij_arr(:,imode,jmode)=kij(:) ! copy to KIJ_ARR
-        !
-      END IF
-    END DO ! loop over larger insoluble modes
-    !
-  END IF
-END DO ! loop over soluble modes
-!
-DO imode=mode_ait_insol,mode_sup_insol ! loop over insoluble modes
-  IF (mode(imode)) THEN
-    !
-    vpi(:)=wvol(:,imode)
-    rpi(:)=wetdp(:,imode)/2.0
-    rhoi(:)=rhopar(:,imode)
-    CALL ukca_coag_coff_v(nbox,mask1,rpi,rpi,vpi,vpi,rhoi,rhoi,                &
-         mfpa,dvisc,t,kii,coag_on,icoag)
-    !
-    kii_arr(:,imode)=kii(:) ! copy to KII_ARR
-    !
-    IF (imode < mode_cor_insol) THEN
-      ! ins. mode coag with larger soluble modes
-      DO jmode=(imode-2),mode_cor_sol
-        IF (mode(jmode)) THEN
-
-          vpj(:)=wvol(:,jmode)
-          rpj(:)=wetdp(:,jmode)/2.0
-          rhoj(:)=rhopar(:,jmode)
-          CALL ukca_coag_coff_v(nbox,mask2,rpi,rpj,vpi,vpj,rhoi,rhoj,          &
-               mfpa,dvisc,t,kij,coag_on,icoag)
-          !
-          kij_arr(:,imode,jmode)=kij(:) ! copy to KIJ_ARR
-          !
-        END IF
+      DO imode = 1, nmodes
+         DO jl = 1, nbox
+            kii_arr(jl, imode) = 0.0
+         END DO
       END DO
-      !
-    END IF
-  END IF
-END DO
+      DO jmode = 1, nmodes
+         DO imode = 1, nmodes
+            DO jl = 1, nbox
+               kij_arr(jl, imode, jmode) = 0.0
+            END DO
+         END DO
+      END DO
+!
+      DO imode = mode_nuc_sol, mode_cor_sol ! KII for intra-coag over soluble modes
+         IF (mode(imode)) THEN
+            !
+            vpi(:) = wvol(:, imode)
+            rpi(:) = wetdp(:, imode)/2.0
+            rhoi(:) = rhopar(:, imode)
 
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
-RETURN
-END SUBROUTINE ukca_calc_coag_kernel
+            CALL ukca_coag_coff_v(nbox, mask1, rpi, rpi, vpi, vpi, rhoi, rhoi, &
+                                  mfpa, dvisc, t, kii, coag_on, icoag)
+            !
+            kii_arr(:, imode) = kii(:) ! copy to KII_ARR
+            !
+            DO jmode = (imode + 1), mode_cor_sol ! KIJ for coag with larger soluble modes
+
+               IF (mode(jmode)) THEN
+                  !
+                  vpj(:) = wvol(:, jmode)
+                  rpj(:) = wetdp(:, jmode)/2.0
+                  rhoj(:) = rhopar(:, jmode)
+
+                  CALL ukca_coag_coff_v(nbox, mask2, rpi, rpj, vpi, vpj, rhoi, rhoj, &
+                                        mfpa, dvisc, t, kij, coag_on, icoag)
+                  !
+                  kij_arr(:, imode, jmode) = kij(:) ! copy to KIJ_ARR
+                  !
+               END IF
+            END DO ! loop over larger soluble modes
+            !
+            DO jmode = (imode + 4), mode_sup_insol
+               ! KIJ for coag with larger insoluble modes
+
+               IF (mode(jmode)) THEN
+                  !
+                  IF (modesol(jmode) == 1) THEN
+                     rpj(:) = wetdp(:, jmode)/2.0
+                     vpj(:) = wvol(:, jmode)
+                  ELSE
+                     rpj(:) = drydp(:, jmode)/2.0
+                     vpj(:) = dvol(:, jmode)
+                  END IF
+                  rhoj(:) = rhopar(:, jmode)
+
+                  CALL ukca_coag_coff_v(nbox, mask2, rpi, rpj, vpi, vpj, rhoi, rhoj, &
+                                        mfpa, dvisc, t, kij, coag_on, icoag)
+                  !
+                  kij_arr(:, imode, jmode) = kij(:) ! copy to KIJ_ARR
+                  !
+               END IF
+            END DO ! loop over larger insoluble modes
+            !
+         END IF
+      END DO ! loop over soluble modes
+!
+      DO imode = mode_ait_insol, mode_sup_insol ! loop over insoluble modes
+         IF (mode(imode)) THEN
+            !
+            vpi(:) = wvol(:, imode)
+            rpi(:) = wetdp(:, imode)/2.0
+            rhoi(:) = rhopar(:, imode)
+            CALL ukca_coag_coff_v(nbox, mask1, rpi, rpi, vpi, vpi, rhoi, rhoi, &
+                                  mfpa, dvisc, t, kii, coag_on, icoag)
+            !
+            kii_arr(:, imode) = kii(:) ! copy to KII_ARR
+            !
+            IF (imode < mode_cor_insol) THEN
+               ! ins. mode coag with larger soluble modes
+               DO jmode = (imode - 2), mode_cor_sol
+                  IF (mode(jmode)) THEN
+
+                     vpj(:) = wvol(:, jmode)
+                     rpj(:) = wetdp(:, jmode)/2.0
+                     rhoj(:) = rhopar(:, jmode)
+                     CALL ukca_coag_coff_v(nbox, mask2, rpi, rpj, vpi, vpj, rhoi, rhoj, &
+                                           mfpa, dvisc, t, kij, coag_on, icoag)
+                     !
+                     kij_arr(:, imode, jmode) = kij(:) ! copy to KIJ_ARR
+                     !
+                  END IF
+               END DO
+               !
+            END IF
+         END IF
+      END DO
+
+      IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_out, zhook_handle)
+      RETURN
+   END SUBROUTINE ukca_calc_coag_kernel
 END MODULE ukca_calc_coag_kernel_mod

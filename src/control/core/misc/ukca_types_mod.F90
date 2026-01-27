@@ -24,24 +24,24 @@
 
 MODULE ukca_types_mod
 
-IMPLICIT NONE
+   IMPLICIT NONE
 
-PRIVATE
+   PRIVATE
 
 ! The definitions below are replicated from the UM module um_types
 ! (at UM vn12.2)
 
 ! Range for 32 bit integer
-INTEGER, PARAMETER :: irange32 = 9
+   INTEGER, PARAMETER :: irange32 = 9
 ! Kind for 32 bit integer
-INTEGER, PARAMETER, PUBLIC :: integer_32 = SELECTED_INT_KIND(irange32)
+   INTEGER, PARAMETER, PUBLIC :: integer_32 = SELECTED_INT_KIND(irange32)
 ! Range for small logicals
-INTEGER, PARAMETER :: lrange1=1
+   INTEGER, PARAMETER :: lrange1 = 1
 ! Kind for 32 bit logicals. Note that there is no
 ! "selected_logical_kind", but using the equivalent integer kind is a
 ! workaround that works on every platform tested.
-INTEGER, PARAMETER, PUBLIC :: logical_32 = integer_32
+   INTEGER, PARAMETER, PUBLIC :: logical_32 = integer_32
 ! Kind for small logicals
-INTEGER, PARAMETER, PUBLIC :: log_small = SELECTED_INT_KIND(lrange1)
+   INTEGER, PARAMETER, PUBLIC :: log_small = SELECTED_INT_KIND(lrange1)
 
 END MODULE ukca_types_mod

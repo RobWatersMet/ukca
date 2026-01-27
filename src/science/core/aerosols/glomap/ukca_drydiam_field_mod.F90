@@ -16,9 +16,9 @@
 
 MODULE ukca_drydiam_field_mod
 
-IMPLICIT NONE
+   IMPLICIT NONE
 
-REAL, ALLOCATABLE :: drydiam(:,:,:,:)
+   REAL, ALLOCATABLE :: drydiam(:, :, :, :)
 ! Geometric mean dry diameter of particles in each mode (m)
 
 END MODULE ukca_drydiam_field_mod

@@ -61,72 +61,68 @@
 ! ######################################################################
 !
 MODULE fastjx_solar2_mod
-IMPLICIT NONE
-CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName='FASTJX_SOLAR2_MOD'
+   IMPLICIT NONE
+   CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName = 'FASTJX_SOLAR2_MOD'
 
 CONTAINS
-SUBROUTINE fastjx_solar2(timej,sinlat,longitude,lcal360)
+   SUBROUTINE fastjx_solar2(timej, sinlat, longitude, lcal360)
 
-USE   fastjx_data,    ONLY: daynumber,tau,szamax,                              &
-                            sza_2d,SZAFAC_2d
-USE photol_constants_mod, ONLY: pi => const_pi,                                &
-                                pi_over_180 => const_pi_over_180
+      USE fastjx_data, ONLY: daynumber, tau, szamax, &
+                             sza_2d, SZAFAC_2d
+      USE photol_constants_mod, ONLY: pi => const_pi, &
+                                      pi_over_180 => const_pi_over_180
 
-USE yomhook,          ONLY: lhook, dr_hook
-USE parkind1,         ONLY: jprb, jpim
-IMPLICIT  NONE
+      USE yomhook, ONLY: lhook, dr_hook
+      USE parkind1, ONLY: jprb, jpim
+      IMPLICIT NONE
 
+      LOGICAL, INTENT(IN) :: lcal360            ! T for 360 day calendar
 
-LOGICAL, INTENT(IN) :: lcal360            ! T for 360 day calendar
-
-REAL, INTENT(IN)    :: timej              ! time offset in hours
-REAL, INTENT(IN)    :: sinlat(:,:)        ! sine of latitude
-REAL, INTENT(IN)    :: longitude(:,:)     ! longitude (radians E)
-
-
+      REAL, INTENT(IN)    :: timej              ! time offset in hours
+      REAL, INTENT(IN)    :: sinlat(:, :)        ! sine of latitude
+      REAL, INTENT(IN)    :: longitude(:, :)     ! longitude (radians E)
 
 !     Local variables
 
-REAL         :: sindec                                ! sine declination
-REAL         :: soldek                                ! declination
-REAL         :: cosdec                                ! cos(declination)
-REAL         :: sollat(SIZE(sinlat,1),SIZE(sinlat,2))
-REAL         :: coslat(SIZE(sinlat,1),SIZE(sinlat,2))
-REAL         :: cosz(SIZE(sinlat,1),SIZE(sinlat,2))
-REAL         :: loct(SIZE(sinlat,1),SIZE(sinlat,2))
-INTEGER(KIND=jpim), PARAMETER  :: zhook_in  = 0
-INTEGER(KIND=jpim), PARAMETER  :: zhook_out = 1
-REAL(KIND=jprb)                :: zhook_handle
+      REAL         :: sindec                                ! sine declination
+      REAL         :: soldek                                ! declination
+      REAL         :: cosdec                                ! cos(declination)
+      REAL         :: sollat(SIZE(sinlat, 1), SIZE(sinlat, 2))
+      REAL         :: coslat(SIZE(sinlat, 1), SIZE(sinlat, 2))
+      REAL         :: cosz(SIZE(sinlat, 1), SIZE(sinlat, 2))
+      REAL         :: loct(SIZE(sinlat, 1), SIZE(sinlat, 2))
+      INTEGER(KIND=jpim), PARAMETER  :: zhook_in = 0
+      INTEGER(KIND=jpim), PARAMETER  :: zhook_out = 1
+      REAL(KIND=jprb)                :: zhook_handle
 
-CHARACTER(LEN=*), PARAMETER :: RoutineName='FASTJX_SOLAR2'
+      CHARACTER(LEN=*), PARAMETER :: RoutineName = 'FASTJX_SOLAR2'
 
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+      IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_in, zhook_handle)
 
-IF (lcal360) THEN
-  sindec = 0.3978*SIN(2* pi *(REAL(daynumber)-80.0)/360.0)
-ELSE
-  sindec = 0.3978*SIN(2* pi *(REAL(daynumber)-80.0)/365.0)
-END IF
+      IF (lcal360) THEN
+         sindec = 0.3978*SIN(2*pi*(REAL(daynumber) - 80.0)/360.0)
+      ELSE
+         sindec = 0.3978*SIN(2*pi*(REAL(daynumber) - 80.0)/365.0)
+      END IF
 
-soldek = ASIN(sindec)
-cosdec = COS(soldek)
-sollat = ASIN(sinlat)
-coslat = COS(sollat)
+      soldek = ASIN(sindec)
+      cosdec = COS(soldek)
+      sollat = ASIN(sinlat)
+      coslat = COS(sollat)
 
-loct   = 2*pi*(tau+timej)/24.0-pi + longitude
-cosz   = cosdec*coslat*COS(loct) + sindec*sinlat
-sza_2d = ACOS(cosz)/pi_over_180
+      loct = 2*pi*(tau + timej)/24.0 - pi + longitude
+      cosz = cosdec*coslat*COS(loct) + sindec*sinlat
+      sza_2d = ACOS(cosz)/pi_over_180
 
 ! Filter for Large-SZA columns
-WHERE (sza_2d <= szamax)
-  szafac_2d = 1.0e0
-ELSE WHERE
-  szafac_2d = 0.0e0
-  sza_2d    = szamax   ! Reduce SZA to avoid airmass problems
-END WHERE
+      WHERE (sza_2d <= szamax)
+         szafac_2d = 1.0E0
+      ELSE WHERE
+         szafac_2d = 0.0E0
+         sza_2d = szamax   ! Reduce SZA to avoid airmass problems
+      END WHERE
 
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
-RETURN
-END SUBROUTINE fastjx_solar2
+      IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_out, zhook_handle)
+      RETURN
+   END SUBROUTINE fastjx_solar2
 END MODULE fastjx_solar2_mod
-

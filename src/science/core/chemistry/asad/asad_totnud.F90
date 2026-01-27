@@ -34,48 +34,46 @@
 !
 MODULE asad_totnud_mod
 
-IMPLICIT NONE
+   IMPLICIT NONE
 
-CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName = 'ASAD_TOTNUD_MOD'
+   CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName = 'ASAD_TOTNUD_MOD'
 
 CONTAINS
 
-SUBROUTINE asad_totnud(n_points)
+   SUBROUTINE asad_totnud(n_points)
 
-USE asad_mod, ONLY: tnd, p, t, pmintnd, pmin
-USE ukca_config_constants_mod, ONLY: boltzmann
-USE parkind1, ONLY: jprb, jpim
-USE yomhook, ONLY: lhook, dr_hook
-IMPLICIT NONE
+      USE asad_mod, ONLY: tnd, p, t, pmintnd, pmin
+      USE ukca_config_constants_mod, ONLY: boltzmann
+      USE parkind1, ONLY: jprb, jpim
+      USE yomhook, ONLY: lhook, dr_hook
+      IMPLICIT NONE
 
-
-INTEGER, INTENT(IN) :: n_points
+      INTEGER, INTENT(IN) :: n_points
 
 !       Local variables
 
-INTEGER :: jl
+      INTEGER :: jl
 
-REAL :: zb
+      REAL :: zb
 
-INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
-INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
-REAL(KIND=jprb)               :: zhook_handle
+      INTEGER(KIND=jpim), PARAMETER :: zhook_in = 0
+      INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+      REAL(KIND=jprb)               :: zhook_handle
 
-CHARACTER(LEN=*), PARAMETER :: RoutineName='ASAD_TOTNUD'
+      CHARACTER(LEN=*), PARAMETER :: RoutineName = 'ASAD_TOTNUD'
 
-
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-zb = boltzmann*1.0e6
+      IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_in, zhook_handle)
+      zb = boltzmann*1.0E6
 
 !       1. Total number density (1e6 converts numbers to /cm**3).
 !          ----- ------ ------- ---- -------- ------- -- --------
 
-DO jl = 1, n_points
-  tnd(jl)     = p(jl) / ( zb * t(jl) )
-  pmintnd(jl) = pmin * tnd(jl)
-END DO
+      DO jl = 1, n_points
+         tnd(jl) = p(jl)/(zb*t(jl))
+         pmintnd(jl) = pmin*tnd(jl)
+      END DO
 
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
-RETURN
-END SUBROUTINE asad_totnud
+      IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_out, zhook_handle)
+      RETURN
+   END SUBROUTINE asad_totnud
 END MODULE asad_totnud_mod

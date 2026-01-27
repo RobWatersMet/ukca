@@ -22,24 +22,24 @@
 
 MODULE yomhook
 
-USE parkind1, ONLY: jpim, jprb
+   USE parkind1, ONLY: jpim, jprb
 
-IMPLICIT NONE
+   IMPLICIT NONE
 
-LOGICAL, PARAMETER :: lhook = .FALSE.
+   LOGICAL, PARAMETER :: lhook = .FALSE.
 
 CONTAINS
 
-SUBROUTINE dr_hook(routine_name, code, handle)
+   SUBROUTINE dr_hook(routine_name, code, handle)
 
-IMPLICIT NONE
+      IMPLICIT NONE
 
 ! Subroutine arguments
-CHARACTER(LEN=*),   INTENT(IN)    :: routine_name
-INTEGER(KIND=jpim), INTENT(IN)    :: code
-REAL(KIND=jprb),    INTENT(IN OUT) :: handle
+      CHARACTER(LEN=*), INTENT(IN)    :: routine_name
+      INTEGER(KIND=jpim), INTENT(IN)    :: code
+      REAL(KIND=jprb), INTENT(IN OUT) :: handle
 
-RETURN
-END SUBROUTINE dr_hook
+      RETURN
+   END SUBROUTINE dr_hook
 
 END MODULE yomhook

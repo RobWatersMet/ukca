@@ -27,13 +27,13 @@
 ! Subroutine Interface:
 MODULE ukca_ingridg_mod
 
-IMPLICIT NONE
+   IMPLICIT NONE
 
-CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName = 'UKCA_INGRIDG_MOD'
+   CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName = 'UKCA_INGRIDG_MOD'
 
 CONTAINS
 
-SUBROUTINE ukca_ingridg(nbins,mbsmall,mblarge,mbmid,mblo,mbhi)
+   SUBROUTINE ukca_ingridg(nbins, mbsmall, mblarge, mbmid, mblo, mbhi)
 !-----------------------------------------------------------------------
 !
 !     Purpose
@@ -56,42 +56,42 @@ SUBROUTINE ukca_ingridg(nbins,mbsmall,mblarge,mbmid,mblo,mbhi)
 !     LGMGRID  : Diff. in logarithms of masses of limits of each bin
 !-----------------------------------------------------------------------
 
-USE yomhook, ONLY: lhook, dr_hook
-USE parkind1, ONLY: jprb, jpim
-IMPLICIT NONE
+      USE yomhook, ONLY: lhook, dr_hook
+      USE parkind1, ONLY: jprb, jpim
+      IMPLICIT NONE
 
 ! Subroutine interface
-INTEGER, INTENT(IN)  :: nbins
-REAL, INTENT(IN)     :: mbsmall
-REAL, INTENT(IN)     :: mblarge
-REAL, INTENT(OUT)    :: mbmid(nbins)
-REAL, INTENT(OUT)    :: mblo(nbins)
-REAL, INTENT(OUT)    :: mbhi(nbins)
+      INTEGER, INTENT(IN)  :: nbins
+      REAL, INTENT(IN)     :: mbsmall
+      REAL, INTENT(IN)     :: mblarge
+      REAL, INTENT(OUT)    :: mbmid(nbins)
+      REAL, INTENT(OUT)    :: mblo(nbins)
+      REAL, INTENT(OUT)    :: mbhi(nbins)
 
 ! Local variables
-INTEGER :: jv
-REAL    :: lgmrange
-REAL    :: lgmgrid
+      INTEGER :: jv
+      REAL    :: lgmrange
+      REAL    :: lgmgrid
 
-INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
-INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
-REAL(KIND=jprb)               :: zhook_handle
+      INTEGER(KIND=jpim), PARAMETER :: zhook_in = 0
+      INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+      REAL(KIND=jprb)               :: zhook_handle
 
-CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_INGRIDG'
+      CHARACTER(LEN=*), PARAMETER :: RoutineName = 'UKCA_INGRIDG'
 
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+      IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_in, zhook_handle)
 
-lgmrange=LOG(mblarge)-LOG(mbsmall)
-DO jv=1,nbins+1
-  lgmgrid=LOG(mbsmall)+lgmrange*REAL(jv-1)/REAL(nbins)
-  IF (jv < (nbins+1)) mblo(jv)=EXP(lgmgrid)
-  IF (jv > 1) mbhi(jv-1)=EXP(lgmgrid)
-END DO
-DO jv=1,nbins
-  mbmid(jv)=EXP(0.5*LOG(mblo(jv)*mbhi(jv))) ! geometric mean
-END DO
+      lgmrange = LOG(mblarge) - LOG(mbsmall)
+      DO jv = 1, nbins + 1
+         lgmgrid = LOG(mbsmall) + lgmrange*REAL(jv - 1)/REAL(nbins)
+         IF (jv < (nbins + 1)) mblo(jv) = EXP(lgmgrid)
+         IF (jv > 1) mbhi(jv - 1) = EXP(lgmgrid)
+      END DO
+      DO jv = 1, nbins
+         mbmid(jv) = EXP(0.5*LOG(mblo(jv)*mbhi(jv))) ! geometric mean
+      END DO
 
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
-RETURN
-END SUBROUTINE ukca_ingridg
+      IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_out, zhook_handle)
+      RETURN
+   END SUBROUTINE ukca_ingridg
 END MODULE ukca_ingridg_mod

@@ -82,79 +82,78 @@
 !
 MODULE asad_jac_mod
 
-IMPLICIT NONE
+   IMPLICIT NONE
 
-CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName = 'ASAD_JAC_MOD'
+   CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName = 'ASAD_JAC_MOD'
 
 CONTAINS
 
-SUBROUTINE asad_jac(n_points)
+   SUBROUTINE asad_jac(n_points)
 
-USE asad_mod, ONLY: ctype, dpd, dpw, ej, f, jpcspf, jpif, jpfm,                &
-                    jpmsp, jpnr, jpspec, linfam, madvtr, moffam,               &
-                    ndepd, ndepw, njacx1, njacx2, njacx3, njcgrp,              &
-                    nltr3, nltrf, nmpjac, nodd, npjac1, nspi,                  &
-                    ntr3, ntrf, peps, prk, y
-USE parkind1, ONLY: jprb, jpim
-USE yomhook, ONLY: lhook, dr_hook
-IMPLICIT NONE
+      USE asad_mod, ONLY: ctype, dpd, dpw, ej, f, jpcspf, jpif, jpfm, &
+                          jpmsp, jpnr, jpspec, linfam, madvtr, moffam, &
+                          ndepd, ndepw, njacx1, njacx2, njacx3, njcgrp, &
+                          nltr3, nltrf, nmpjac, nodd, npjac1, nspi, &
+                          ntr3, ntrf, peps, prk, y
+      USE parkind1, ONLY: jprb, jpim
+      USE yomhook, ONLY: lhook, dr_hook
+      IMPLICIT NONE
 
-INTEGER, INTENT(IN) :: n_points
+      INTEGER, INTENT(IN) :: n_points
 
 !       Local variables
 
-INTEGER :: ifam(jpmsp)
-INTEGER :: itr(jpmsp)
-INTEGER :: j            ! Loop variable
-INTEGER :: jc           ! Loop variable
-INTEGER :: j1           ! Loop variable
-INTEGER :: j2           ! Loop variable
-INTEGER :: j3           ! Loop variable
-INTEGER :: jl           ! Loop variable
-INTEGER :: jp           ! Loop variable
-INTEGER :: jr           ! Loop variable
-INTEGER :: js           ! Loop variable
-INTEGER :: jtr          ! Loop variable
-INTEGER :: ip1          ! Index
-INTEGER :: ip2          ! Index
-INTEGER :: ip3          ! Index
-INTEGER :: i1           ! Index
-INTEGER :: i2           ! Index
-INTEGER :: i3           ! Index
-INTEGER :: ir1          ! Index
-INTEGER :: ir2          ! Index
-INTEGER :: itrcr        ! Index
-INTEGER :: ks
-INTEGER :: ifamd
-INTEGER :: itrd
+      INTEGER :: ifam(jpmsp)
+      INTEGER :: itr(jpmsp)
+      INTEGER :: j            ! Loop variable
+      INTEGER :: jc           ! Loop variable
+      INTEGER :: j1           ! Loop variable
+      INTEGER :: j2           ! Loop variable
+      INTEGER :: j3           ! Loop variable
+      INTEGER :: jl           ! Loop variable
+      INTEGER :: jp           ! Loop variable
+      INTEGER :: jr           ! Loop variable
+      INTEGER :: js           ! Loop variable
+      INTEGER :: jtr          ! Loop variable
+      INTEGER :: ip1          ! Index
+      INTEGER :: ip2          ! Index
+      INTEGER :: ip3          ! Index
+      INTEGER :: i1           ! Index
+      INTEGER :: i2           ! Index
+      INTEGER :: i3           ! Index
+      INTEGER :: ir1          ! Index
+      INTEGER :: ir2          ! Index
+      INTEGER :: itrcr        ! Index
+      INTEGER :: ks
+      INTEGER :: ifamd
+      INTEGER :: itrd
 
-LOGICAL :: gif(jpmsp)
-LOGICAL :: gtype(jpmsp)
-LOGICAL :: gir1
-LOGICAL :: gir2
-LOGICAL :: ginclude2
-LOGICAL :: ginclude3
-LOGICAL :: ginclude4
-LOGICAL :: ginclude5
+      LOGICAL :: gif(jpmsp)
+      LOGICAL :: gtype(jpmsp)
+      LOGICAL :: gir1
+      LOGICAL :: gir2
+      LOGICAL :: ginclude2
+      LOGICAL :: ginclude3
+      LOGICAL :: ginclude4
+      LOGICAL :: ginclude5
 
-CHARACTER :: ityped*2
+      CHARACTER :: ityped*2
 
-INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
-INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
-REAL(KIND=jprb)               :: zhook_handle
+      INTEGER(KIND=jpim), PARAMETER :: zhook_in = 0
+      INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+      REAL(KIND=jprb)               :: zhook_handle
 
-CHARACTER(LEN=*), PARAMETER :: RoutineName='ASAD_JAC'
-
+      CHARACTER(LEN=*), PARAMETER :: RoutineName = 'ASAD_JAC'
 
 !       1.  Initialise local variables.
 !           ---------- ----- ----------
 
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-DO jtr = 1, jpcspf
-  DO jl = 1, n_points
-    ej(jl,jtr) = 0.0
-  END DO
-END DO
+      IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_in, zhook_handle)
+      DO jtr = 1, jpcspf
+         DO jl = 1, n_points
+            ej(jl, jtr) = 0.0
+         END DO
+      END DO
 
 !       2.  Calc. main diagonal of Jacobian matrix.
 !           ----- ---- -------- -- -------- -------
@@ -163,57 +162,57 @@ END DO
 !           that don't have species that swap in and out of
 !           the family we can unroll the Jacobian summation.
 
-DO jc = 1, ntrf
-  itrcr = nltrf(jc)
-  ip3   = njcgrp(itrcr,3)
-  ip2   = njcgrp(itrcr,2)
-  ip1   = njcgrp(itrcr,1)
+      DO jc = 1, ntrf
+         itrcr = nltrf(jc)
+         ip3 = njcgrp(itrcr, 3)
+         ip2 = njcgrp(itrcr, 2)
+         ip1 = njcgrp(itrcr, 1)
 
-  !         2.1  Terms in groups of 3 (negative contrib.)
+         !         2.1  Terms in groups of 3 (negative contrib.)
 
-  DO j3 = 1, ip3
-    i1 = njacx3(1,j3,itrcr)
-    i2 = njacx3(2,j3,itrcr)
-    i3 = njacx3(3,j3,itrcr)
+         DO j3 = 1, ip3
+            i1 = njacx3(1, j3, itrcr)
+            i2 = njacx3(2, j3, itrcr)
+            i3 = njacx3(3, j3, itrcr)
 
-    DO jl = 1, n_points
-      ej(jl,itrcr) = ej(jl,itrcr)                                              &
-                   - prk(jl,i1) - prk(jl,i2) - prk(jl,i3)
-    END DO
-  END DO
+            DO jl = 1, n_points
+               ej(jl, itrcr) = ej(jl, itrcr) &
+                               - prk(jl, i1) - prk(jl, i2) - prk(jl, i3)
+            END DO
+         END DO
 
-  !         2.2 Terms in groups of 2; this loop is either
-  !             0 or 1.
+         !         2.2 Terms in groups of 2; this loop is either
+         !             0 or 1.
 
-  DO j2 = 1, ip2
-    i1 = njacx2(1,itrcr)
-    i2 = njacx2(2,itrcr)
-    DO jl = 1, n_points
-      ej(jl,itrcr) = ej(jl,itrcr) - prk(jl,i1) - prk(jl,i2)
-    END DO
-  END DO
+         DO j2 = 1, ip2
+            i1 = njacx2(1, itrcr)
+            i2 = njacx2(2, itrcr)
+            DO jl = 1, n_points
+               ej(jl, itrcr) = ej(jl, itrcr) - prk(jl, i1) - prk(jl, i2)
+            END DO
+         END DO
 
-  !         2.3  Terms in groups of 3; either 0 or 1.
+         !         2.3  Terms in groups of 3; either 0 or 1.
 
-  DO j1 = 1, ip1
-    i1 = njacx1(itrcr)
-    DO jl = 1, n_points
-      ej(jl,itrcr) = ej(jl,itrcr) - prk(jl,i1)
-    END DO
-  END DO
+         DO j1 = 1, ip1
+            i1 = njacx1(itrcr)
+            DO jl = 1, n_points
+               ej(jl, itrcr) = ej(jl, itrcr) - prk(jl, i1)
+            END DO
+         END DO
 
-  !         2.4  Terms that make a positive contribution to the
-  !              Jacobian. This isn't unrolled as there are not
-  !              likely to be many of them.
+         !         2.4  Terms that make a positive contribution to the
+         !              Jacobian. This isn't unrolled as there are not
+         !              likely to be many of them.
 
-  DO jp = 1, nmpjac(itrcr)
-    i1 = npjac1(jp,itrcr)
-    DO jl = 1, n_points
-      ej(jl,itrcr) = ej(jl,itrcr) + prk(jl,i1)
-    END DO
-  END DO
+         DO jp = 1, nmpjac(itrcr)
+            i1 = npjac1(jp, itrcr)
+            DO jl = 1, n_points
+               ej(jl, itrcr) = ej(jl, itrcr) + prk(jl, i1)
+            END DO
+         END DO
 
-END DO
+      END DO
 
 !       3.  For families with in/out species.
 !           --- -------- ---- ------ --------
@@ -223,156 +222,156 @@ END DO
 !           this now varies with gridpoint. Duplicates the code in
 !           inijac.f
 
-IF ( ntr3 /= 0 ) THEN
-  DO jr = 1, jpnr
-    ir1 = nspi(jr,1)
-    ir2 = nspi(jr,2)
-    ip1 = nspi(jr,3)
-    ip2 = nspi(jr,4)
-    ip3 = nspi(jr,5)
+      IF (ntr3 /= 0) THEN
+         DO jr = 1, jpnr
+            ir1 = nspi(jr, 1)
+            ir2 = nspi(jr, 2)
+            ip1 = nspi(jr, 3)
+            ip2 = nspi(jr, 4)
+            ip3 = nspi(jr, 5)
 
-    DO j = 1, jpmsp
-      gif(j)   = .FALSE.
-      gtype(j) = .FALSE.
-      ifam(j)  = 0
-      itr(j)   = 0
-    END DO
-    IF ( ir1 /= 0 ) THEN
-      ifam(1) = moffam(ir1)
-      itr(1)  = madvtr(ir1)
-    END IF
-    IF ( ir2 /= 0 ) THEN
-      ifam(2) = moffam(ir2)
-      itr(2)  = madvtr(ir2)
-    END IF
+            DO j = 1, jpmsp
+               gif(j) = .FALSE.
+               gtype(j) = .FALSE.
+               ifam(j) = 0
+               itr(j) = 0
+            END DO
+            IF (ir1 /= 0) THEN
+               ifam(1) = moffam(ir1)
+               itr(1) = madvtr(ir1)
+            END IF
+            IF (ir2 /= 0) THEN
+               ifam(2) = moffam(ir2)
+               itr(2) = madvtr(ir2)
+            END IF
 
-    gir1 = .FALSE.
-    gir2 = .FALSE.
-    DO j3 = 1, ntr3
-      gir1 = gir1 .OR. ifam(1) == nltr3(j3)
-      gir2 = gir2 .OR. ifam(2) == nltr3(j3)
-    END DO
+            gir1 = .FALSE.
+            gir2 = .FALSE.
+            DO j3 = 1, ntr3
+               gir1 = gir1 .OR. ifam(1) == nltr3(j3)
+               gir2 = gir2 .OR. ifam(2) == nltr3(j3)
+            END DO
 
-    IF ( gir1 .OR. gir2 ) THEN
+            IF (gir1 .OR. gir2) THEN
 
-      !             3.1  Set indices to determine species type.
+               !             3.1  Set indices to determine species type.
 
-      IF ( ir1 /= 0 ) THEN
-        gtype(1) = ctype(ir1)  ==  jpfm
-        gif(1) = ctype(ir1)  ==  jpif
-      END IF
-      IF ( ir2 /= 0 ) THEN
-        gtype(2) = ctype(ir2)  ==  jpfm
-        gif(2) = ctype(ir2)  ==  jpif
-      END IF
-      IF ( ip1 /= 0 ) THEN
-        ifam(3) = moffam(ip1)
-        gtype(3) = ctype(ip1)  ==  jpfm
-        gif(3) = ctype(ip1)  ==  jpif
-        itr(3) = madvtr(ip1)
-      END IF
-      IF ( ip2 /= 0 ) THEN
-        ifam(4) = moffam(ip2)
-        gtype(4) = ctype(ip2)  ==  jpfm
-        gif(4) = ctype(ip2)  ==  jpif
-        itr(4) = madvtr(ip2)
-      END IF
-      IF ( ip3 /= 0 ) THEN
-        ifam(5) = moffam(ip3)
-        gtype(5) = ctype(ip3)  ==  jpfm
-        gif(5) = ctype(ip3)  ==  jpif
-        itr(5) = madvtr(ip3)
-      END IF
-    END IF
+               IF (ir1 /= 0) THEN
+                  gtype(1) = ctype(ir1) == jpfm
+                  gif(1) = ctype(ir1) == jpif
+               END IF
+               IF (ir2 /= 0) THEN
+                  gtype(2) = ctype(ir2) == jpfm
+                  gif(2) = ctype(ir2) == jpif
+               END IF
+               IF (ip1 /= 0) THEN
+                  ifam(3) = moffam(ip1)
+                  gtype(3) = ctype(ip1) == jpfm
+                  gif(3) = ctype(ip1) == jpif
+                  itr(3) = madvtr(ip1)
+               END IF
+               IF (ip2 /= 0) THEN
+                  ifam(4) = moffam(ip2)
+                  gtype(4) = ctype(ip2) == jpfm
+                  gif(4) = ctype(ip2) == jpif
+                  itr(4) = madvtr(ip2)
+               END IF
+               IF (ip3 /= 0) THEN
+                  ifam(5) = moffam(ip3)
+                  gtype(5) = ctype(ip3) == jpfm
+                  gif(5) = ctype(ip3) == jpif
+                  itr(5) = madvtr(ip3)
+               END IF
+            END IF
 
-    !           3.2  If first reactant is a family member.
+            !           3.2  If first reactant is a family member.
 
-    IF ( gir1 ) THEN
-      DO jl = 1, n_points
-        ginclude2 = (gif(2) .AND. linfam(jl,itr(2)) .OR. gtype(2))
-        ginclude3 = (gif(3) .AND. linfam(jl,itr(3)) .OR. gtype(3))
-        ginclude4 = (gif(4) .AND. linfam(jl,itr(4)) .OR. gtype(4))
-        ginclude5 = (gif(5) .AND. linfam(jl,itr(5)) .OR. gtype(5))
-        IF ( gif(1) .AND. .NOT. linfam(jl,itr(1)) ) THEN
-          ks = 0
-        ELSE
-          ks = -nodd(ir1)
-          IF (ifam(2)==ifam(1) .AND. ginclude2) ks = ks-nodd(ir2)
-          IF (ifam(3)==ifam(1) .AND. ginclude3) ks = ks+nodd(ip1)
-          IF (ifam(4)==ifam(1) .AND. ginclude4) ks = ks+nodd(ip2)
-          IF (ifam(5)==ifam(1) .AND. ginclude5) ks = ks+nodd(ip3)
-        END IF
-        IF ( ks  /=  0 )                                                       &
-          ej(jl,ifam(1)) = ej(jl,ifam(1)) + prk(jl,jr) * ks
-      END DO
-    END IF
+            IF (gir1) THEN
+               DO jl = 1, n_points
+                  ginclude2 = (gif(2) .AND. linfam(jl, itr(2)) .OR. gtype(2))
+                  ginclude3 = (gif(3) .AND. linfam(jl, itr(3)) .OR. gtype(3))
+                  ginclude4 = (gif(4) .AND. linfam(jl, itr(4)) .OR. gtype(4))
+                  ginclude5 = (gif(5) .AND. linfam(jl, itr(5)) .OR. gtype(5))
+                  IF (gif(1) .AND. .NOT. linfam(jl, itr(1))) THEN
+                     ks = 0
+                  ELSE
+                     ks = -nodd(ir1)
+                     IF (ifam(2) == ifam(1) .AND. ginclude2) ks = ks - nodd(ir2)
+                     IF (ifam(3) == ifam(1) .AND. ginclude3) ks = ks + nodd(ip1)
+                     IF (ifam(4) == ifam(1) .AND. ginclude4) ks = ks + nodd(ip2)
+                     IF (ifam(5) == ifam(1) .AND. ginclude5) ks = ks + nodd(ip3)
+                  END IF
+                  IF (ks /= 0) &
+                     ej(jl, ifam(1)) = ej(jl, ifam(1)) + prk(jl, jr)*ks
+               END DO
+            END IF
 
-    !           3.3  If second reactant is a family member.
+            !           3.3  If second reactant is a family member.
 
-    IF ( gir2 ) THEN
-      DO jl = 1, n_points
-        ginclude2 = (gif(2) .AND. linfam(jl,itr(2)) .OR. gtype(2))
-        ginclude3 = (gif(3) .AND. linfam(jl,itr(3)) .OR. gtype(3))
-        ginclude4 = (gif(4) .AND. linfam(jl,itr(4)) .OR. gtype(4))
-        ginclude5 = (gif(5) .AND. linfam(jl,itr(5)) .OR. gtype(5))
-        IF ( gif(2) .AND. .NOT. linfam(jl,itr(2)) ) THEN
-          ks = 0
-        ELSE
-          ks = -nodd(ir2)
-          IF (ifam(1)==ifam(2) .AND. ginclude2) ks = ks-nodd(ir1)
-          IF (ifam(3)==ifam(2) .AND. ginclude3) ks = ks+nodd(ip1)
-          IF (ifam(4)==ifam(2) .AND. ginclude4) ks = ks+nodd(ip2)
-          IF (ifam(5)==ifam(2) .AND. ginclude5) ks = ks+nodd(ip3)
-        END IF
-        IF ( ks  /=  0 )                                                       &
-          ej(jl,ifam(2)) = ej(jl,ifam(2)) + prk(jl,jr) * ks
-      END DO
-    END IF
+            IF (gir2) THEN
+               DO jl = 1, n_points
+                  ginclude2 = (gif(2) .AND. linfam(jl, itr(2)) .OR. gtype(2))
+                  ginclude3 = (gif(3) .AND. linfam(jl, itr(3)) .OR. gtype(3))
+                  ginclude4 = (gif(4) .AND. linfam(jl, itr(4)) .OR. gtype(4))
+                  ginclude5 = (gif(5) .AND. linfam(jl, itr(5)) .OR. gtype(5))
+                  IF (gif(2) .AND. .NOT. linfam(jl, itr(2))) THEN
+                     ks = 0
+                  ELSE
+                     ks = -nodd(ir2)
+                     IF (ifam(1) == ifam(2) .AND. ginclude2) ks = ks - nodd(ir1)
+                     IF (ifam(3) == ifam(2) .AND. ginclude3) ks = ks + nodd(ip1)
+                     IF (ifam(4) == ifam(2) .AND. ginclude4) ks = ks + nodd(ip2)
+                     IF (ifam(5) == ifam(2) .AND. ginclude5) ks = ks + nodd(ip3)
+                  END IF
+                  IF (ks /= 0) &
+                     ej(jl, ifam(2)) = ej(jl, ifam(2)) + prk(jl, jr)*ks
+               END DO
+            END IF
 
-  END DO
+         END DO
 
-END IF           ! End of IF ( ntr3 /= 0 ) statement
+      END IF           ! End of IF ( ntr3 /= 0 ) statement
 
 !       4.  Add deposition terms to Jacobian diagonal.
 !           --- ---------- ----- -- -------- ---------
 
-IF ( ndepw /= 0 .OR. ndepd /= 0 ) THEN
-  DO js = 1, jpspec
-    ifamd = moffam(js)
-    itrd = madvtr(js)
-    ityped = ctype(js)
+      IF (ndepw /= 0 .OR. ndepd /= 0) THEN
+         DO js = 1, jpspec
+            ifamd = moffam(js)
+            itrd = madvtr(js)
+            ityped = ctype(js)
 
-    IF ( ifamd /= 0 ) THEN
-      DO jl = 1, n_points
-        IF ((ityped == jpfm) .OR.                                              &
-           (ityped == jpif .AND. linfam(jl,itrd)))                             &
-          ej(jl,ifamd) = ej(jl,ifamd) - nodd(js) *                             &
-                    ( dpd(jl,js)+dpw(jl,js)) * y(jl,js)
-      END DO
-    END IF
-    IF ( itrd /= 0 ) THEN
-      DO jl = 1, n_points
-        ej(jl,itrd) = ej(jl,itrd)                                              &
-                    - (dpd(jl,js)+dpw(jl,js))*y(jl,js)
-      END DO
-    END IF
-  END DO
-END IF
+            IF (ifamd /= 0) THEN
+               DO jl = 1, n_points
+                  IF ((ityped == jpfm) .OR. &
+                      (ityped == jpif .AND. linfam(jl, itrd))) &
+                     ej(jl, ifamd) = ej(jl, ifamd) - nodd(js)* &
+                                     (dpd(jl, js) + dpw(jl, js))*y(jl, js)
+               END DO
+            END IF
+            IF (itrd /= 0) THEN
+               DO jl = 1, n_points
+                  ej(jl, itrd) = ej(jl, itrd) &
+                                 - (dpd(jl, js) + dpw(jl, js))*y(jl, js)
+               END DO
+            END IF
+         END DO
+      END IF
 
 !       5.  Jacobian elements in final form
 !           -------- -------- -- ----- ----
 
-DO jtr = 1, jpcspf
-  DO jl = 1, n_points
-    IF ( f(jl,jtr)  >   peps ) THEN
-      ej(jl,jtr) = ej(jl,jtr) / f(jl,jtr)
-    ELSE
-      ej(jl,jtr) = 0.0
-    END IF
-  END DO
-END DO
+      DO jtr = 1, jpcspf
+         DO jl = 1, n_points
+            IF (f(jl, jtr) > peps) THEN
+               ej(jl, jtr) = ej(jl, jtr)/f(jl, jtr)
+            ELSE
+               ej(jl, jtr) = 0.0
+            END IF
+         END DO
+      END DO
 
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
-RETURN
-END SUBROUTINE asad_jac
+      IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_out, zhook_handle)
+      RETURN
+   END SUBROUTINE asad_jac
 END MODULE asad_jac_mod

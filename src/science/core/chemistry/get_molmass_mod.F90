@@ -31,299 +31,299 @@
 !
 MODULE get_molmass_mod
 
-IMPLICIT NONE
+   IMPLICIT NONE
 
-CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName='GET_MOLMASS_MOD'
+   CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName = 'GET_MOLMASS_MOD'
 
 CONTAINS
 
-FUNCTION get_molmass (species_name)
+   FUNCTION get_molmass(species_name)
 
-USE ukca_constants,  ONLY: m_br, m_brcl, m_bro, m_brono2, m_c, m_c2h4,         &
-                           m_c2h6, m_c3h6, m_c3h8, m_c4h10, m_ccl4,            &
-                           m_cf2cl2, m_cf2clbr, m_cf2clcfcl2, m_cfcl3,         &
-                           m_ch2br2, m_ch4, m_chf2cl, m_cl, m_cl2o2,           &
-                           m_clo, m_clono2, m_co, m_cs2, m_dms, m_h2,          &
-                           m_h2s, m_hbr, m_hcho, m_hcl, m_hobr, m_hocl,        &
-                           m_isop, m_me2co, m_me2s, m_mebr, m_meccl3,          &
-                           m_mecho, m_mecl, m_meoh, m_monoterp, m_n2o,         &
-                           m_nh3, m_no, m_no2, m_oclo, m_ocs, m_oxylene,       &
-                           m_so2, m_so4, m_toluene, m_c2h2, m_tbut2ene,        &
-                           m_benzene, m_etoh, m_etcho, m_mek, m_hcooh,         &
-                           m_meco2h, m_hoch2cho, m_mp
+      USE ukca_constants, ONLY: m_br, m_brcl, m_bro, m_brono2, m_c, m_c2h4, &
+                                m_c2h6, m_c3h6, m_c3h8, m_c4h10, m_ccl4, &
+                                m_cf2cl2, m_cf2clbr, m_cf2clcfcl2, m_cfcl3, &
+                                m_ch2br2, m_ch4, m_chf2cl, m_cl, m_cl2o2, &
+                                m_clo, m_clono2, m_co, m_cs2, m_dms, m_h2, &
+                                m_h2s, m_hbr, m_hcho, m_hcl, m_hobr, m_hocl, &
+                                m_isop, m_me2co, m_me2s, m_mebr, m_meccl3, &
+                                m_mecho, m_mecl, m_meoh, m_monoterp, m_n2o, &
+                                m_nh3, m_no, m_no2, m_oclo, m_ocs, m_oxylene, &
+                                m_so2, m_so4, m_toluene, m_c2h2, m_tbut2ene, &
+                                m_benzene, m_etoh, m_etcho, m_mek, m_hcooh, &
+                                m_meco2h, m_hoch2cho, m_mp
 
-USE ereport_mod,     ONLY: ereport
-USE parkind1,        ONLY: jpim,  jprb     ! DrHook
-USE yomhook,         ONLY: lhook, dr_hook  ! DrHook
-USE errormessagelength_mod, ONLY: errormessagelength
+      USE ereport_mod, ONLY: ereport
+      USE parkind1, ONLY: jpim, jprb     ! DrHook
+      USE yomhook, ONLY: lhook, dr_hook  ! DrHook
+      USE errormessagelength_mod, ONLY: errormessagelength
 
-IMPLICIT NONE
+      IMPLICIT NONE
 
 ! Function arguments
-CHARACTER (LEN=10), INTENT(IN) :: species_name ! name of a chemical species,
-                                               ! emission field, etc
+      CHARACTER(LEN=10), INTENT(IN) :: species_name ! name of a chemical species,
+      ! emission field, etc
 ! Function return value
-REAL :: get_molmass
+      REAL :: get_molmass
 
 ! Local variables
-INTEGER                        :: ierr
-CHARACTER (LEN=errormessagelength)             :: cmessage
+      INTEGER                        :: ierr
+      CHARACTER(LEN=errormessagelength)             :: cmessage
 
-INTEGER (KIND=jpim), PARAMETER :: zhook_in  = 0  ! DrHook tracing entry
-INTEGER (KIND=jpim), PARAMETER :: zhook_out = 1  ! DrHook tracing exit
-REAL    (KIND=jprb)            :: zhook_handle   ! DrHook tracing
+      INTEGER(KIND=jpim), PARAMETER :: zhook_in = 0  ! DrHook tracing entry
+      INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1  ! DrHook tracing exit
+      REAL(KIND=jprb)            :: zhook_handle   ! DrHook tracing
 
-CHARACTER(LEN=*), PARAMETER :: RoutineName='GET_MOLMASS'
+      CHARACTER(LEN=*), PARAMETER :: RoutineName = 'GET_MOLMASS'
 
 ! End of header
 
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_in, zhook_handle)
+      IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_in, zhook_handle)
 
-ierr = 0
+      ierr = 0
 
 ! Use values from the module ukca_constants to return the
 ! molar mass of a given chemical species
-SELECT CASE ( species_name )
+      SELECT CASE (species_name)
 
-CASE ('NO2       ', 'NOx       ')
-  !  Fields reported in kg of NO2
-  get_molmass = m_no2
+      CASE ('NO2       ', 'NOx       ')
+         !  Fields reported in kg of NO2
+         get_molmass = m_no2
 
-CASE ('NO        ', 'NO_aircrft')
-  get_molmass = m_no
+      CASE ('NO        ', 'NO_aircrft')
+         get_molmass = m_no
 
-CASE ('H2        ', 'no_H2     ')
-  get_molmass = m_h2
+      CASE ('H2        ', 'no_H2     ')
+         get_molmass = m_h2
 
-CASE ('NH3       ')
-  get_molmass = m_nh3
+      CASE ('NH3       ')
+         get_molmass = m_nh3
 
-CASE ('N2O       ', 'no_N2O    ')
-  get_molmass = m_n2o
+      CASE ('N2O       ', 'no_N2O    ')
+         get_molmass = m_n2o
 
-CASE ('BC_fossil ', 'BC_biofuel', 'BC_biomass',                                &
-      'OM_fossil ', 'OM_biofuel', 'OM_biomass')
-  get_molmass = m_c
+      CASE ('BC_fossil ', 'BC_biofuel', 'BC_biomass', &
+            'OM_fossil ', 'OM_biofuel', 'OM_biomass')
+         get_molmass = m_c
 
-CASE ('MP_frgmnts', 'MP_fibres ') !microplastics
-  get_molmass = m_mp
+      CASE ('MP_frgmnts', 'MP_fibres ') !microplastics
+         get_molmass = m_mp
 
-  ! -----------------------------------------
-  ! Sulphur containing
-CASE ('SO2       ', 'SO2_low   ', 'SO2_high  ', 'SO2_nat   ')
-  ! Some of these are emission fields
-  get_molmass = m_so2
+         ! -----------------------------------------
+         ! Sulphur containing
+      CASE ('SO2       ', 'SO2_low   ', 'SO2_high  ', 'SO2_nat   ')
+         ! Some of these are emission fields
+         get_molmass = m_so2
 
-CASE ('DMS       ')
-  get_molmass = m_dms
+      CASE ('DMS       ')
+         get_molmass = m_dms
 
-CASE ('Me2S      ')
-  get_molmass = m_me2s
+      CASE ('Me2S      ')
+         get_molmass = m_me2s
 
-CASE ('SO4       ')
-  get_molmass = m_so4
+      CASE ('SO4       ')
+         get_molmass = m_so4
 
-CASE ('COS       ')
-  get_molmass = m_ocs
+      CASE ('COS       ')
+         get_molmass = m_ocs
 
-CASE ('H2S       ')
-  get_molmass = m_h2s
+      CASE ('H2S       ')
+         get_molmass = m_h2s
 
-CASE ('CS2       ')
-  get_molmass = m_cs2
+      CASE ('CS2       ')
+         get_molmass = m_cs2
 
-  ! -----------------------------------------
-  ! CO, CH4 and NMVOCs
-CASE ('CO        ')
-  get_molmass = m_co
+         ! -----------------------------------------
+         ! CO, CH4 and NMVOCs
+      CASE ('CO        ')
+         get_molmass = m_co
 
-CASE ('CH4       ')
-  get_molmass = m_ch4
+      CASE ('CH4       ')
+         get_molmass = m_ch4
 
-CASE ('C2H6      ')
-  get_molmass = m_c2h6
+      CASE ('C2H6      ')
+         get_molmass = m_c2h6
 
-CASE ('C2H4      ')
-  get_molmass = m_c2h4
+      CASE ('C2H4      ')
+         get_molmass = m_c2h4
 
-CASE ('C3H8      ')
-  get_molmass = m_c3h8
+      CASE ('C3H8      ')
+         get_molmass = m_c3h8
 
-CASE ('C3H6      ')
-  get_molmass = m_c3h6
+      CASE ('C3H6      ')
+         get_molmass = m_c3h6
 
-CASE ('C4H10     ')
-  get_molmass = m_c4h10
+      CASE ('C4H10     ')
+         get_molmass = m_c4h10
 
-CASE ('MeOH      ', 'CH3OH     ')
-  get_molmass = m_meoh
+      CASE ('MeOH      ', 'CH3OH     ')
+         get_molmass = m_meoh
 
-CASE ('Me2CO     ')
-  get_molmass = m_me2co
+      CASE ('Me2CO     ')
+         get_molmass = m_me2co
 
-CASE ('HCHO      ')
-  get_molmass = m_hcho
+      CASE ('HCHO      ')
+         get_molmass = m_hcho
 
-CASE ('MeCHO     ')
-  get_molmass = m_mecho
+      CASE ('MeCHO     ')
+         get_molmass = m_mecho
 
-CASE ('C5H8      ')
-  get_molmass = m_isop
+      CASE ('C5H8      ')
+         get_molmass = m_isop
 
-CASE ('Monoterp  ', 'APINENE   ', 'BPINENE   ')
-  get_molmass = m_monoterp
+      CASE ('Monoterp  ', 'APINENE   ', 'BPINENE   ')
+         get_molmass = m_monoterp
 
-CASE ('TOLUENE   ')
-  get_molmass = m_toluene
+      CASE ('TOLUENE   ')
+         get_molmass = m_toluene
 
-CASE ('oXYLENE   ')
-  get_molmass = m_oxylene
+      CASE ('oXYLENE   ')
+         get_molmass = m_oxylene
 
-  ! -----------------------------------------
-  ! Long-lived halocarbons containing chlorine
-CASE ('MeCl      ')
-  get_molmass = m_mecl
+         ! -----------------------------------------
+         ! Long-lived halocarbons containing chlorine
+      CASE ('MeCl      ')
+         get_molmass = m_mecl
 
-CASE ('MeCCl3    ')
-  get_molmass = m_meccl3
+      CASE ('MeCCl3    ')
+         get_molmass = m_meccl3
 
-CASE ('CCl4      ')
-  get_molmass = m_ccl4
+      CASE ('CCl4      ')
+         get_molmass = m_ccl4
 
-CASE ('CF2Cl2    ')
-  get_molmass = m_cf2cl2
+      CASE ('CF2Cl2    ')
+         get_molmass = m_cf2cl2
 
-CASE ('CFCl3     ')
-  get_molmass = m_cfcl3
+      CASE ('CFCl3     ')
+         get_molmass = m_cfcl3
 
-CASE ('CF2ClCFCl2')
-  get_molmass = m_cf2clcfcl2
+      CASE ('CF2ClCFCl2')
+         get_molmass = m_cf2clcfcl2
 
-CASE ('CF2ClBr   ')
-  get_molmass = m_cf2clbr
+      CASE ('CF2ClBr   ')
+         get_molmass = m_cf2clbr
 
-CASE ('CHF2Cl    ')
-  get_molmass = m_chf2cl
+      CASE ('CHF2Cl    ')
+         get_molmass = m_chf2cl
 
-  ! -----------------------------------------
-  ! Reactive and total chlorine
-CASE ('Cl        ', 'TOT_Cl    ')
-  get_molmass = m_cl
+         ! -----------------------------------------
+         ! Reactive and total chlorine
+      CASE ('Cl        ', 'TOT_Cl    ')
+         get_molmass = m_cl
 
-CASE ('ClO       ', 'Clx       ')
-  get_molmass = m_clo
+      CASE ('ClO       ', 'Clx       ')
+         get_molmass = m_clo
 
-CASE ('Cl2O2     ')
-  get_molmass = m_cl2o2
+      CASE ('Cl2O2     ')
+         get_molmass = m_cl2o2
 
-CASE ('HCl       ')
-  get_molmass = m_hcl
+      CASE ('HCl       ')
+         get_molmass = m_hcl
 
-CASE ('HOCl      ')
-  get_molmass = m_hocl
+      CASE ('HOCl      ')
+         get_molmass = m_hocl
 
-CASE ('ClONO2    ')
-  get_molmass = m_clono2
+      CASE ('ClONO2    ')
+         get_molmass = m_clono2
 
-CASE ('OClO      ')
-  get_molmass = m_oclo
+      CASE ('OClO      ')
+         get_molmass = m_oclo
 
-  ! -----------------------------------------
-  !   Bromocarbons, reactive bromine and total bromine
-CASE ('MeBr      ')
-  get_molmass = m_mebr
+         ! -----------------------------------------
+         !   Bromocarbons, reactive bromine and total bromine
+      CASE ('MeBr      ')
+         get_molmass = m_mebr
 
-CASE ('CH2Br2    ')
-  get_molmass = m_ch2br2
+      CASE ('CH2Br2    ')
+         get_molmass = m_ch2br2
 
-CASE ('Br        ', 'TOT_Br    ')
-  get_molmass = m_br
+      CASE ('Br        ', 'TOT_Br    ')
+         get_molmass = m_br
 
-CASE ('BrO       ', 'Brx       ')
-  get_molmass = m_bro
+      CASE ('BrO       ', 'Brx       ')
+         get_molmass = m_bro
 
-CASE ('HBr       ')
-  get_molmass = m_hbr
+      CASE ('HBr       ')
+         get_molmass = m_hbr
 
-CASE ('HOBr      ')
-  get_molmass = m_hobr
+      CASE ('HOBr      ')
+         get_molmass = m_hobr
 
-CASE ('BrONO2    ')
-  get_molmass = m_brono2
+      CASE ('BrONO2    ')
+         get_molmass = m_brono2
 
-CASE ('BrCl      ')
-  get_molmass = m_brcl
+      CASE ('BrCl      ')
+         get_molmass = m_brcl
 
-  ! -----------------------------------------
-  !   Emitted CRI species
-CASE ('C2H2      ')
-  get_molmass = m_c2h2
+         ! -----------------------------------------
+         !   Emitted CRI species
+      CASE ('C2H2      ')
+         get_molmass = m_c2h2
 
-CASE ('TBUT2ENE  ')
-  get_molmass = m_tbut2ene
+      CASE ('TBUT2ENE  ')
+         get_molmass = m_tbut2ene
 
-CASE ('BENZENE   ')
-  get_molmass = m_benzene
+      CASE ('BENZENE   ')
+         get_molmass = m_benzene
 
-CASE ('EtOH      ')
-  get_molmass = m_etoh
+      CASE ('EtOH      ')
+         get_molmass = m_etoh
 
-CASE ('EtCHO     ')
-  get_molmass = m_etcho
+      CASE ('EtCHO     ')
+         get_molmass = m_etcho
 
-CASE ('MEK       ')
-  get_molmass = m_mek
+      CASE ('MEK       ')
+         get_molmass = m_mek
 
-CASE ('HCOOH     ')
-  get_molmass = m_hcooh
+      CASE ('HCOOH     ')
+         get_molmass = m_hcooh
 
-CASE ('MeCO2H    ')
-  get_molmass = m_meco2h
+      CASE ('MeCO2H    ')
+         get_molmass = m_meco2h
 
-CASE ('HOCH2CHO  ')
-  get_molmass = m_hoch2cho
+      CASE ('HOCH2CHO  ')
+         get_molmass = m_hoch2cho
 
-  ! -----------------------------------------
-  !   Others (report warning)
-CASE ('AGE       ')
-  get_molmass =  1.0
-  ierr        = -1
+         ! -----------------------------------------
+         !   Others (report warning)
+      CASE ('AGE       ')
+         get_molmass = 1.0
+         ierr = -1
 
-CASE ('AGE OF AIR')
-  get_molmass =  1.0
-  ierr        = -1
+      CASE ('AGE OF AIR')
+         get_molmass = 1.0
+         ierr = -1
 
-CASE ('PASSIVE O3')
-  get_molmass =  1.0
-  ierr        = -1
+      CASE ('PASSIVE O3')
+         get_molmass = 1.0
+         ierr = -1
 
-CASE ('XXX       ')
-  get_molmass =  1.0   ! unused species
-  ierr        = -1
+      CASE ('XXX       ')
+         get_molmass = 1.0   ! unused species
+         ierr = -1
 
-CASE DEFAULT  ! report error
-  ierr     = 1
-END SELECT
+      CASE DEFAULT  ! report error
+         ierr = 1
+      END SELECT
 
 ! -------------------------------------------
 ! Report warning when the mass is set to 1
 ! and error if the species is not found
-IF (ierr /= 0) THEN
-  SELECT CASE (ierr)
-  CASE (-1)
-    cmessage = 'Molecular mass of ' // TRIM(species_name) // ' set to 1'
-  CASE (1)
-    cmessage = 'Add molecular mass of ' // TRIM(species_name) //               &
-             ' to this routine and check if it is present in ukca_constants'
-  END SELECT
+      IF (ierr /= 0) THEN
+         SELECT CASE (ierr)
+         CASE (-1)
+            cmessage = 'Molecular mass of '//TRIM(species_name)//' set to 1'
+         CASE (1)
+            cmessage = 'Add molecular mass of '//TRIM(species_name)// &
+                       ' to this routine and check if it is present in ukca_constants'
+         END SELECT
 
-  CALL ereport ('GET_MOLMASS', ierr, cmessage)
-END IF
+         CALL ereport('GET_MOLMASS', ierr, cmessage)
+      END IF
 
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_out, zhook_handle)
+      IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_out, zhook_handle)
 
-RETURN
+      RETURN
 
-END FUNCTION get_molmass
+   END FUNCTION get_molmass
 
 END MODULE get_molmass_mod
