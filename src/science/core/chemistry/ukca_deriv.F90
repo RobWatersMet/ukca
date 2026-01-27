@@ -43,7 +43,7 @@ CONTAINS
       USE parkind1, ONLY: jprb, jpim
 
       IMPLICIT NONE
-
+      INTEGER :: test_var   ! delete later
       INTEGER, INTENT(IN) :: nr         ! No. reactions
       INTEGER, INTENT(IN) :: n_be_calls ! No. chemical steps
       INTEGER, INTENT(IN) :: n_pnts     ! Actual no. calculations
