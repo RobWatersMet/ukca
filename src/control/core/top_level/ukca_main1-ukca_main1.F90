@@ -258,6 +258,8 @@ USE ukca_time_mod,   ONLY: i_year, i_month, i_day, i_hour, i_minute,           &
                            i_minute_previous, i_second_previous,               &
                            set_time, set_previous_time
 
+use timing_mod, only: start_timing, stop_timing, tik, LPROF
+
 IMPLICIT NONE
 
 ! ----------------------------------------------------------------------
@@ -586,9 +588,12 @@ INTEGER :: full_chunk_x, full_chunk_y, full_chunk_z
 
 CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_MAIN1'
 
+integer(tik) :: id
+
 !- End of header
 ! ----------------------------------------------------------------------
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+if ( LPROF ) call start_timing( id, ModuleName//':'//RoutineName )
 
 ! ----------------------------------------------------------------------
 ! 1. Initial set up
@@ -631,6 +636,7 @@ IF (l_first_call) THEN
       error_message = 'No UKCA configuration has been set up'
     IF (PRESENT(error_routine)) error_routine = RoutineName
     IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+    if ( LPROF ) call stop_timing( id, ModuleName//':'//RoutineName )
     RETURN
   END IF
   IF (.NOT. l_environ_req_available) THEN
@@ -639,6 +645,7 @@ IF (l_first_call) THEN
       error_message = 'No environment field requirement has been set up'
     IF (PRESENT(error_routine)) error_routine = RoutineName
     IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+    if ( LPROF ) call stop_timing( id, ModuleName//':'//RoutineName )
     RETURN
   END IF
 END IF
@@ -759,6 +766,7 @@ END IF
 IF (error_code_ptr /= 0) THEN
   IF (PRESENT(error_routine)) error_routine = RoutineName
   IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+  if ( LPROF ) call stop_timing( id, ModuleName//':'//RoutineName )
   RETURN
 END IF
 
@@ -812,6 +820,7 @@ IF (ukca_config%l_environ_z_top) THEN
         z_top_of_model_ext - z_top_of_model, ', exceeds tolerance'
     IF (PRESENT(error_routine)) error_routine = RoutineName
     IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+    if ( LPROF ) call stop_timing( id, ModuleName//':'//RoutineName )
     RETURN
   END IF
   z_top_of_model = z_top_of_model_ext
@@ -1669,6 +1678,7 @@ IF (ukca_config%l_ukca_chem .OR. ukca_config%l_ukca_mode) THEN
     IF (error_code_ptr > 0) THEN
       IF (lhook)                                                               &
         CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+        if ( LPROF ) call stop_timing( id, ModuleName//':'//RoutineName )
       RETURN
     END IF
   END IF
@@ -2046,6 +2056,7 @@ IF (ukca_config%l_ukca_chem .OR. ukca_config%l_ukca_mode) THEN
     IF (error_code_ptr > 0) THEN
       IF (lhook) THEN
         CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+        if ( LPROF ) call stop_timing( id, ModuleName//':'//RoutineName )
       END IF
       RETURN
     END IF
@@ -2956,6 +2967,7 @@ IF (ukca_config%l_ukca_chem) THEN
   IF (error_code_ptr > 0) THEN
     IF (lhook) THEN
       CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+      if ( LPROF ) call stop_timing( id, ModuleName//':'//RoutineName )
     END IF
     RETURN
   END IF
@@ -2980,6 +2992,7 @@ IF (L_asad_use_chem_diags) THEN
   IF (error_code_ptr > 0) THEN
     IF (lhook)                                                                 &
       CALL dr_hook(ModuleName//':'//RoutineName, zhook_out, zhook_handle)
+      if ( LPROF ) call stop_timing( id, ModuleName//':'//RoutineName )
     RETURN
   END IF
 
@@ -3029,6 +3042,7 @@ IF (ukca_config%l_blankout_invalid_diags) THEN
                                error_routine=error_routine)
   IF (error_code_ptr > 0) THEN
     IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+    if ( LPROF ) call stop_timing( id, ModuleName//':'//RoutineName )
     RETURN
   END IF
 END IF
@@ -3099,6 +3113,7 @@ END IF
 #endif
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+if ( LPROF ) call stop_timing( id, ModuleName//':'//RoutineName )
 RETURN
 
 END SUBROUTINE ukca_main1
