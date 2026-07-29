@@ -100,6 +100,8 @@ USE ukca_missing_data_mod, ONLY: rmdi
 
 USE errormessagelength_mod, ONLY: errormessagelength
 
+use timing_mod, only: start_timing, stop_timing, tik, LPROF
+
 IMPLICIT NONE
 
 INTEGER, INTENT(IN) :: row_length        ! size of UKCA x dimension
@@ -248,6 +250,7 @@ CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_CHEMISTRY_CTL_FULL'
 
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+if ( LPROF ) call start_timing( id, ModuleName//':'//RoutineName )
 
 ! Dummy variables to satisfy expected numbers of arguments for ASAD_CDRIVE,
 ! ASAD_CHEMICAL_DIAGNOSTICS and ASAD_PSC_DIAGNOSTIC
@@ -422,6 +425,9 @@ END IF
 ! on performance. As different chunks can be processed in parallel, care is
 ! taken to avoid data races where two different threads are computing the
 ! same grid point at the same time.
+
+WRITE(umMessage,'(A,3(1X,I0)))') 'The following chunk size has been selected:', chunk_n_x, chunk_n_y, chunk_n_z
+CALL umPrint(umMessage,src='ukca_chemistry_ctl_full')
 
 ! 3D chunking loop
 !$OMP PARALLEL DO DEFAULT(NONE) SCHEDULE(DYNAMIC) COLLAPSE(3)                  &
@@ -715,6 +721,7 @@ IF (.not. ukca_config%l_fix_ukca_h2so4_ystore .and.                            &
 END IF
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+if ( LPROF ) call stop_timing( id, ModuleName//':'//RoutineName )
 RETURN
 END SUBROUTINE ukca_chemistry_ctl_full
 
