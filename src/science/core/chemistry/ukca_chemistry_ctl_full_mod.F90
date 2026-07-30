@@ -248,6 +248,8 @@ LOGICAL :: chunking_enabled
 
 CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_CHEMISTRY_CTL_FULL'
 
+integer(tik) :: id
+
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
 if ( LPROF ) call start_timing( id, ModuleName//':'//RoutineName )
