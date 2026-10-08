@@ -1,0 +1,178 @@
+#!/usr/bin/env bash
+# *****************************COPYRIGHT******************************
+# (C) Crown copyright Met Office. All rights reserved.
+# For further details please refer to the file COPYRIGHT.txt
+# which you should have received as part of this distribution.
+# *****************************COPYRIGHT******************************
+#-----------------------------------------------------------------------
+# Code Owner: Please refer to the UM file CodeOwners.txt
+# This file belongs in section: Rose scripts
+#-----------------------------------------------------------------------
+# NAME
+#     ukca-box
+#
+# SYNOPSIS
+#     ukca-box [EXE ...]
+#
+# DESCRIPTION
+#     Set up the environment and trigger the UM executable with
+#     "rose mpi-launch".
+#
+# ARGUMENTS
+#     EXE
+#          The command to launch. Defaults:
+#          1. $UKCA_EXEC
+#          2. ukca-box.exe
+#
+# ENVIRONMENT VARIABLES
+#     This script uses the following variables:
+#
+#     UKCA_EXEC
+#          A command to launch. Default=ukca-box.exe.
+#     UKCA_KEEP_MPP_STDOUT
+#          Switch to keep stdout files after a successful run. Default=false.
+#     UKCA_PE0_TO_STDOUT
+#          Switch to output PE0 to stdout rather than just the contents of the
+#          .stdout file. Default=false.
+#     UKCA_STDOUT_FILE
+#          Base filename for model PE files.
+#          Default=pe_output/box.fort6.pe
+#     UKCA_LAUNCHER
+#          Command to run the model. If not defined use rose mpi-launch
+#     CONTINUE
+#          Flag for Nrun
+#          Default=false.
+#     DR_HOOK
+#          Activate Dr Hook. Default=0 (off).
+#     DR_HOOK_OPTS
+#          Options to pass to Dr Hook. Default=noself.
+#     FLUME_IOS_NPROC
+#          Number of processors for the I/O server.
+#     PRINT_STATUS
+#          Model verbosity. Default=PrStatus_Normal.
+#     SHARED_FNAME
+#          SHARED_NLIST file. Default=SHARED.
+#     UMDIR
+#          Location of UM installation.
+#     UM_ATM_NPROCX
+#          Number of processors east-west.
+#     UM_ATM_NPROCY
+#          Number of processors north-south.
+#     UM_THREAD_LEVEL
+#          MPI threading level. Default=MULTIPLE.
+#-----------------------------------------------------------------------
+
+set -eu
+
+# Source common UM script functions from file
+ukca_scripts=$(dirname "$0")/ukca_script_functions
+if [ -f "$ukca_scripts" ] ; then
+    . $ukca_scripts
+else
+    echo "[FAIL] UKCA script functions file not found: $ukca_scripts " 1>&2
+    echo "[FAIL] Ensure UKCA file above is located in the same       " 1>&2
+    echo "[FAIL] directory as this script                            " 1>&2
+    exit 1
+fi
+
+export DR_HOOK=${DR_HOOK:-0}
+export DR_HOOK_OPT=${DR_HOOK_OPT:-noself}
+export PRINT_STATUS=${PRINT_STATUS:-PrStatus_Normal}
+export UM_THREAD_LEVEL=${UM_THREAD_LEVEL:-MULTIPLE}
+
+# Processor variables
+export UM_NPES=$((UM_ATM_NPROCX * UM_ATM_NPROCY))
+
+export HOUSEKEEP=hkfile
+export ATMOSCNTL=ATMOSCNTL
+export SHARED_NLIST=${SHARED_FNAME:-SHARED}
+export IDEALISE=IDEALISE
+export IOSCNTL=IOSCNTL
+
+# Set environment variable $VN to the current UM version
+usf_set_um_vn
+
+export STDOUT_FILE=${UKCA_STDOUT_FILE:-pe_output/box.fort6.pe}
+mkdir -p $(dirname $STDOUT_FILE)
+# Delete any previous .pe* files:
+rm -f $STDOUT_FILE*
+
+export NPROC=$((UM_NPES + FLUME_IOS_NPROC))
+
+# SAN - change name of executable
+COMMAND="${@:-${UKCA_EXEC:-$(dirname "$0")/ukca-box.exe}}"
+usf_which $COMMAND
+usf_print_script_path
+
+# Since we need to process some data after the executable we can trap the EXIT
+# signal to do this automatically whenever this script exits.  This also
+# catches times when this script is killed for any reason.
+SIGNALS='EXIT'
+FINALLY() {
+  for S in $SIGNALS; do
+    trap '' $S # Switch off traps
+  done
+
+  PE0_SUFFIX=$(echo $((NPROC - 1)) | sed s/./0/g)
+  UM_PE0_STDOUT_FILE="${STDOUT_FILE}${PE0_SUFFIX}"
+  UM_STDOUT_FILE=${STDOUT_FILE}.stdout
+
+  # If UKCA_PE0_TO_STDOUT is true, cat the .pe0 file to stdout.
+  if [[ ${UKCA_PE0_TO_STDOUT:-false} == "true" ]]; then
+    if [[ -s "$UM_PE0_STDOUT_FILE" ]]; then
+      echo '%PE0 OUTPUT%'
+      cat "$UM_PE0_STDOUT_FILE"
+    elif [[ -f "$UM_PE0_STDOUT_FILE" ]]; then
+      echo "PE0 file exists, but has zero size"
+    else
+      echo "Could not find PE0 output file: $UM_PE0_STDOUT_FILE"
+    fi
+  # If UKCA_PE0_TO_STDOUT is false, cat the .stdout file to stdout.
+  else
+    if [[ -s "$UM_STDOUT_FILE" ]]; then
+      echo '%STD OUTPUT%'
+      cat "$UM_STDOUT_FILE"
+    elif [[ -f "$UM_STDOUT_FILE" ]]; then
+      echo ".stdout file exists, but has zero size"
+    else
+      echo "Could not find .stdout output file: $UM_STDOUT_FILE"
+    fi
+  fi
+
+  # Remove output from other PEs unless requested otherwise
+  if [[ ${UKCA_KEEP_MPP_STDOUT:-false} == "false" ]] ; then
+    for file in ${STDOUT_FILE}* ; do
+      if [[ $file != "$UM_PE0_STDOUT_FILE" ]]; then
+        rm -f $file
+      fi
+    done
+  fi
+
+  if [[ -f "$UM_PE0_STDOUT_FILE" ]]; then
+    # rose-ana expects fixed filenames so we link to .pe0 as otherwise the
+    # filename depends on the processor decomposition
+    if [[ $UM_PE0_STDOUT_FILE != ${STDOUT_FILE}0 ]]; then
+      ln -sf $(basename $STDOUT_FILE)$PE0_SUFFIX ${STDOUT_FILE}0
+    fi
+  fi
+
+  for corefile in ./*core*; do
+    # make any core dump files world-readable, to assist in debugging problems
+    [ -f "$corefile" ] && chmod uga+r "$corefile" || true
+  done
+
+}
+
+for S in $SIGNALS; do
+  trap 'FINALLY' $S
+done
+
+# Test if UKCA_LAUNCHER is defined in the environment.
+if [ ${UKCA_LAUNCHER+1} ]; then
+  # Run defined launcher. Caters for not running with any launcher.
+  usf_Print "$UKCA_LAUNCHER $COMMAND"
+  $UKCA_LAUNCHER $COMMAND
+else
+  rose mpi-launch -v $COMMAND
+fi
+
