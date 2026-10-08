@@ -271,6 +271,75 @@ err_message = ''
 IF (PRESENT(error_message)) error_message = ''
 IF (PRESENT(error_routine)) error_routine = ''
 
+! Print all input arguments and whether optional inputs are present
+PRINT *, RoutineName//': input argument dump follows'
+CALL print_required_integer('i_photol_scheme', i_photol_scheme)
+
+CALL print_optional_integer('chem_timestep', chem_timestep)
+CALL print_optional_integer('fastjx_mode', fastjx_mode)
+CALL print_optional_integer('fastjx_numwl', fastjx_numwl)
+CALL print_optional_integer('global_row_length', global_row_length)
+CALL print_optional_integer('i_solcylc_type', i_solcylc_type)
+CALL print_optional_integer('ip_aerosol_param_moist', ip_aerosol_param_moist)
+CALL print_optional_integer('ip_accum_sulphate', ip_accum_sulphate)
+CALL print_optional_integer('ip_aitken_sulphate', ip_aitken_sulphate)
+CALL print_optional_integer('model_levels', model_levels)
+CALL print_optional_integer('n_cca_lev', n_cca_lev)
+CALL print_optional_integer('solcylc_start_year', solcylc_start_year)
+CALL print_optional_integer('i_error_method', i_error_method)
+CALL print_optional_integer('n_phot_spc', n_phot_spc)
+CALL print_optional_integer('njval', njval)
+CALL print_optional_integer('nw1', nw1)
+CALL print_optional_integer('nw2', nw2)
+CALL print_optional_integer('jtaumx', jtaumx)
+CALL print_optional_integer('naa', naa)
+CALL print_optional_integer('n_solcyc_ts', n_solcyc_ts)
+CALL print_optional_integer_vector('jind', jind)
+
+CALL print_optional_logical('l_cal360', l_cal360)
+CALL print_optional_logical('l_cloud_pc2', l_cloud_pc2)
+CALL print_optional_logical('l_3d_cca', l_3d_cca)
+CALL print_optional_logical('l_enable_diag_um', l_enable_diag_um)
+CALL print_optional_logical('l_environ_jo2', l_environ_jo2)
+CALL print_optional_logical('l_environ_jo2b', l_environ_jo2b)
+CALL print_optional_logical('l_environ_ztop', l_environ_ztop)
+CALL print_optional_logical('l_strat_chem', l_strat_chem)
+
+CALL print_optional_real('fastjx_prescutoff', fastjx_prescutoff)
+CALL print_optional_real('timestep', timestep)
+CALL print_optional_real('atau', atau)
+CALL print_optional_real('atau0', atau0)
+
+CALL print_optional_real_array_1d('fl', fl)
+CALL print_optional_real_array_2d('q1d', q1d)
+CALL print_optional_real_array_2d('qo2', qo2)
+CALL print_optional_real_array_2d('qo3', qo3)
+CALL print_optional_real_array_3d('qqq', qqq)
+CALL print_optional_real_array_1d('qrayl', qrayl)
+CALL print_optional_real_array_2d('tqq', tqq)
+CALL print_optional_real_array_1d('wl', wl)
+CALL print_optional_real_array_1d('jfacta', jfacta)
+CALL print_optional_real_array_1d('daa', daa)
+CALL print_optional_real_array_3d('paa', paa)
+CALL print_optional_real_array_2d('qaa', qaa)
+CALL print_optional_real_array_1d('raa', raa)
+CALL print_optional_real_array_2d('saa', saa)
+CALL print_optional_real_array_2d('waa', waa)
+CALL print_optional_real_array_1d('solcyc_av', solcyc_av)
+CALL print_optional_real_array_1d('solcyc_quanta', solcyc_quanta)
+CALL print_optional_real_array_1d('solcyc_ts', solcyc_ts)
+CALL print_optional_real_array_1d('solcyc_spec', solcyc_spec)
+CALL print_optional_character_array_1d('jlabel', jlabel)
+CALL print_optional_character_array_1d('titlej', titlej)
+
+CALL print_optional_real('pi', pi)
+CALL print_optional_real('o3_mmr_vmr', o3_mmr_vmr)
+CALL print_optional_real('molemass_sulp', molemass_sulp)
+CALL print_optional_real('molemass_nh42so4', molemass_nh42so4)
+CALL print_optional_real('molemass_air', molemass_air)
+CALL print_optional_real('planet_radius', planet_radius)
+PRINT *, RoutineName//': end of input argument dump'
+
 ! Set all configuration data to default values
 CALL init_photol_configuration()
 
@@ -575,6 +644,123 @@ CALL photol_init_environ_req(error_code_ptr, error_message=error_message,      &
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_out, zhook_handle)
 RETURN
+
+CONTAINS
+
+SUBROUTINE print_required_integer(name, value)
+  CHARACTER(LEN=*), INTENT(IN) :: name
+  INTEGER, INTENT(IN) :: value
+
+  PRINT *, "RW - photol_setup: ", TRIM(name), ' = ', value
+END SUBROUTINE print_required_integer
+
+SUBROUTINE print_optional_integer(name, value)
+  CHARACTER(LEN=*), INTENT(IN) :: name
+  INTEGER, OPTIONAL, INTENT(IN) :: value
+
+  IF (PRESENT(value)) THEN
+    PRINT *, "RW - photol_setup: ", TRIM(name), ' = ', value
+  ELSE
+    PRINT *, "RW - photol_setup: ", TRIM(name), ' is not present'
+  END IF
+END SUBROUTINE print_optional_integer
+
+SUBROUTINE print_optional_real(name, value)
+  CHARACTER(LEN=*), INTENT(IN) :: name
+  REAL, OPTIONAL, INTENT(IN) :: value
+
+  IF (PRESENT(value)) THEN
+    PRINT *, "RW - photol_setup: ", TRIM(name), ' = ', value
+  ELSE
+    PRINT *, "RW - photol_setup: ", TRIM(name), ' is not present'
+  END IF
+END SUBROUTINE print_optional_real
+
+SUBROUTINE print_optional_logical(name, value)
+  CHARACTER(LEN=*), INTENT(IN) :: name
+  LOGICAL, OPTIONAL, INTENT(IN) :: value
+
+  IF (PRESENT(value)) THEN
+    PRINT *, "RW - photol_setup: ", TRIM(name), ' = ', value
+  ELSE
+    PRINT *, "RW - photol_setup: ", TRIM(name), ' is not present'
+  END IF
+END SUBROUTINE print_optional_logical
+
+SUBROUTINE print_optional_integer_vector(name, value)
+  CHARACTER(LEN=*), INTENT(IN) :: name
+  INTEGER, ALLOCATABLE, OPTIONAL, INTENT(IN) :: value(:)
+
+  IF (PRESENT(value)) THEN
+    IF (ALLOCATED(value)) THEN
+      PRINT *, "RW - photol_setup: ", TRIM(name), ' is present and allocated, size=', SIZE(value)
+    ELSE
+      PRINT *, "RW - photol_setup: ", TRIM(name), ' is present but not allocated'
+    END IF
+  ELSE
+    PRINT *, "RW - photol_setup: ", TRIM(name), ' is not present'
+  END IF
+END SUBROUTINE print_optional_integer_vector
+
+SUBROUTINE print_optional_real_array_1d(name, value)
+  CHARACTER(LEN=*), INTENT(IN) :: name
+  REAL, ALLOCATABLE, OPTIONAL, INTENT(IN) :: value(:)
+
+  IF (PRESENT(value)) THEN
+    IF (ALLOCATED(value)) THEN
+      PRINT *, "RW - photol_setup: ", TRIM(name), ' is present and allocated, size=', SIZE(value)
+    ELSE
+      PRINT *, "RW - photol_setup: ", TRIM(name), ' is present but not allocated'
+    END IF
+  ELSE
+    PRINT *, "RW - photol_setup: ", TRIM(name), ' is not present'
+  END IF
+END SUBROUTINE print_optional_real_array_1d
+
+SUBROUTINE print_optional_real_array_2d(name, value)
+  CHARACTER(LEN=*), INTENT(IN) :: name
+  REAL, ALLOCATABLE, OPTIONAL, INTENT(IN) :: value(:,:)
+
+  IF (PRESENT(value)) THEN
+    IF (ALLOCATED(value)) THEN
+      PRINT *, "RW - photol_setup: ", TRIM(name), ' is present and allocated, shape=', SHAPE(value)
+    ELSE
+      PRINT *, "RW - photol_setup: ", TRIM(name), ' is present but not allocated'
+    END IF
+  ELSE
+    PRINT *, "RW - photol_setup: ", TRIM(name), ' is not present'
+  END IF
+END SUBROUTINE print_optional_real_array_2d
+
+SUBROUTINE print_optional_real_array_3d(name, value)
+  CHARACTER(LEN=*), INTENT(IN) :: name
+  REAL, ALLOCATABLE, OPTIONAL, INTENT(IN) :: value(:,:,:)
+
+  IF (PRESENT(value)) THEN
+    IF (ALLOCATED(value)) THEN
+      PRINT *, "RW - photol_setup: ", TRIM(name), ' is present and allocated, shape=', SHAPE(value)
+    ELSE
+      PRINT *, "RW - photol_setup: ", TRIM(name), ' is present but not allocated'
+    END IF
+  ELSE
+    PRINT *, "RW - photol_setup: ", TRIM(name), ' is not present'
+  END IF
+END SUBROUTINE print_optional_real_array_3d
+
+SUBROUTINE print_optional_character_array_1d(name, value)
+  CHARACTER(LEN=*), INTENT(IN) :: name
+  CHARACTER(LEN=*), ALLOCATABLE, OPTIONAL, INTENT(IN) :: value(:)
+
+  IF (PRESENT(value)) THEN
+    IF (ALLOCATED(value)) THEN
+      PRINT *, "RW - photol_setup: ", TRIM(name), ' is present and allocated, size=', SIZE(value)
+    ELSE
+      PRINT *, "RW - photol_setup: ", TRIM(name), ' is present but not allocated'
+    END IF
+  ELSE
+    PRINT *, "RW - photol_setup: ", TRIM(name), ' is not present'
+  END IF
+END SUBROUTINE print_optional_character_array_1d
 
 END SUBROUTINE photol_setup
 

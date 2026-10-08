@@ -620,6 +620,220 @@ error_code_ptr = 0
 IF (PRESENT(error_message)) error_message = ''
 IF (PRESENT(error_routine)) error_routine = ''
 
+! Print all optional input arguments and whether they are present
+PRINT *, RoutineName//': optional input argument dump follows'
+CALL print_optional_integer('row_length', row_length)
+CALL print_optional_integer('rows', rows)
+CALL print_optional_integer('model_levels', model_levels)
+CALL print_optional_integer('bl_levels', bl_levels)
+CALL print_optional_integer('nlev_ent_tr_mix', nlev_ent_tr_mix)
+CALL print_optional_integer('ntype', ntype)
+CALL print_optional_integer('npft', npft)
+CALL print_optional_integer('i_brd_leaf', i_brd_leaf)
+CALL print_optional_integer('i_brd_leaf_dec', i_brd_leaf_dec)
+CALL print_optional_integer('i_brd_leaf_eg_trop', i_brd_leaf_eg_trop)
+CALL print_optional_integer('i_brd_leaf_eg_temp', i_brd_leaf_eg_temp)
+CALL print_optional_integer('i_ndl_leaf', i_ndl_leaf)
+CALL print_optional_integer('i_ndl_leaf_dec', i_ndl_leaf_dec)
+CALL print_optional_integer('i_ndl_leaf_eg', i_ndl_leaf_eg)
+CALL print_optional_integer('i_c3_grass', i_c3_grass)
+CALL print_optional_integer('i_c3_crop', i_c3_crop)
+CALL print_optional_integer('i_c3_pasture', i_c3_pasture)
+CALL print_optional_integer('i_c4_grass', i_c4_grass)
+CALL print_optional_integer('i_c4_crop', i_c4_crop)
+CALL print_optional_integer('i_c4_pasture', i_c4_pasture)
+CALL print_optional_integer('i_shrub', i_shrub)
+CALL print_optional_integer('i_shrub_dec', i_shrub_dec)
+CALL print_optional_integer('i_shrub_eg', i_shrub_eg)
+CALL print_optional_integer('i_urban', i_urban)
+CALL print_optional_integer('i_lake', i_lake)
+CALL print_optional_integer('i_soil', i_soil)
+CALL print_optional_integer('i_ice', i_ice)
+CALL print_optional_integer_vector('i_elev_ice', i_elev_ice)
+CALL print_optional_integer('i_ukca_chem', i_ukca_chem)
+CALL print_optional_integer('fixed_tropopause_level', fixed_tropopause_level)
+CALL print_optional_integer('i_ageair_reset_method', i_ageair_reset_method)
+CALL print_optional_integer('max_ageair_reset_level', max_ageair_reset_level)
+CALL print_optional_integer('i_error_method', i_error_method)
+CALL print_optional_integer('i_ukca_chem_version', i_ukca_chem_version)
+CALL print_optional_integer('nrsteps', nrsteps)
+CALL print_optional_integer('chem_timestep', chem_timestep)
+CALL print_optional_integer('i_chem_timestep_halvings', i_chem_timestep_halvings)
+CALL print_optional_integer('dts0', dts0)
+CALL print_optional_integer('nit', nit)
+CALL print_optional_integer('i_ukca_quasinewton_start', i_ukca_quasinewton_start)
+CALL print_optional_integer('i_ukca_quasinewton_end', i_ukca_quasinewton_end)
+CALL print_optional_integer('ukca_chem_seg_size', ukca_chem_seg_size)
+CALL print_optional_integer('nlev_above_trop_o3_env', nlev_above_trop_o3_env)
+CALL print_optional_integer('nlev_ch4_stratloss', nlev_ch4_stratloss)
+CALL print_optional_integer('i_ukca_topboundary', i_ukca_topboundary)
+CALL print_optional_integer('i_ukca_hetconfig', i_ukca_hetconfig)
+CALL print_optional_integer('i_inferno_emi', i_inferno_emi)
+CALL print_optional_integer('i_ukca_dms_flux', i_ukca_dms_flux)
+CALL print_optional_integer('i_ukca_light_param', i_ukca_light_param)
+CALL print_optional_integer('i_strat_lbc_source', i_strat_lbc_source)
+CALL print_optional_integer('env_log_step', env_log_step)
+CALL print_optional_integer('i_mode_nzts', i_mode_nzts)
+CALL print_optional_integer('ukca_mode_seg_size', ukca_mode_seg_size)
+CALL print_optional_integer('i_mode_setup', i_mode_setup)
+CALL print_optional_integer('i_mode_bln_param_method', i_mode_bln_param_method)
+CALL print_optional_integer('i_mode_nucscav', i_mode_nucscav)
+CALL print_optional_integer('i_ukca_activation_scheme', i_ukca_activation_scheme)
+CALL print_optional_integer('i_ukca_nwbins', i_ukca_nwbins)
+CALL print_optional_integer('i_ukca_tune_bc', i_ukca_tune_bc)
+CALL print_optional_integer('i_primss_method', i_primss_method)
+CALL print_optional_integer('i_photol_scheme', i_photol_scheme)
+CALL print_optional_integer('i_photol_scheme_off', i_photol_scheme_off)
+CALL print_optional_integer('i_photol_scheme_strat_only', i_photol_scheme_strat_only)
+CALL print_optional_integer('i_photol_scheme_2d', i_photol_scheme_2d)
+CALL print_optional_integer('i_photol_scheme_fastjx', i_photol_scheme_fastjx)
+CALL print_optional_real('dzsoil_layer1', dzsoil_layer1)
+CALL print_optional_real('timestep', timestep)
+CALL print_optional_real('max_ageair_reset_height', max_ageair_reset_height)
+CALL print_optional_real('max_z_for_offline_chem', max_z_for_offline_chem)
+CALL print_optional_real('fastjx_prescutoff', fastjx_prescutoff)
+CALL print_optional_real('mode_parfrac', mode_parfrac)
+CALL print_optional_real('seadms_ems_scaling', seadms_ems_scaling)
+CALL print_optional_real('sea_salt_ems_scaling', sea_salt_ems_scaling)
+CALL print_optional_real('marine_pom_ems_scaling', marine_pom_ems_scaling)
+CALL print_optional_real('lightnox_scale_fac', lightnox_scale_fac)
+CALL print_optional_real('anth_so2_ems_scaling', anth_so2_ems_scaling)
+CALL print_optional_real('soa_yield_scaling_mt', soa_yield_scaling_mt)
+CALL print_optional_real('soa_yield_scaling_isop', soa_yield_scaling_isop)
+CALL print_optional_real('dry_depvel_so2_scaling', dry_depvel_so2_scaling)
+CALL print_optional_real('mode_activation_dryr', mode_activation_dryr)
+CALL print_optional_real('dry_depvel_acc_scaling', dry_depvel_acc_scaling)
+CALL print_optional_real('acc_cor_scav_scaling', acc_cor_scav_scaling)
+CALL print_optional_real('mode_incld_so2_rfrac', mode_incld_so2_rfrac)
+CALL print_optional_real('biom_aer_ems_scaling', biom_aer_ems_scaling)
+CALL print_optional_real('ph_fit_coeff_a', ph_fit_coeff_a)
+CALL print_optional_real('ph_fit_coeff_b', ph_fit_coeff_b)
+CALL print_optional_real('ph_fit_intercept', ph_fit_intercept)
+CALL print_optional_real('sigwmin', sigwmin)
+CALL print_optional_real('hno3_uptake_coeff', hno3_uptake_coeff)
+CALL print_optional_real('sigma_updraught_scaling', sigma_updraught_scaling)
+CALL print_optional_real('const_rmol', const_rmol)
+CALL print_optional_real('const_tfs', const_tfs)
+CALL print_optional_real('const_rho_water', const_rho_water)
+CALL print_optional_real('const_rhosea', const_rhosea)
+CALL print_optional_real('const_lc', const_lc)
+CALL print_optional_real('const_avogadro', const_avogadro)
+CALL print_optional_real('const_boltzmann', const_boltzmann)
+CALL print_optional_real('const_rho_so4', const_rho_so4)
+CALL print_optional_logical('l_cal360', l_cal360)
+CALL print_optional_logical('l_ukca_chem_aero', l_ukca_chem_aero)
+CALL print_optional_logical('l_ukca_mode', l_ukca_mode)
+CALL print_optional_logical('l_fix_tropopause_level', l_fix_tropopause_level)
+CALL print_optional_logical('l_ukca_ageair', l_ukca_ageair)
+CALL print_optional_logical('l_blankout_invalid_diags', l_blankout_invalid_diags)
+CALL print_optional_logical('l_enable_diag_um', l_enable_diag_um)
+CALL print_optional_logical('l_ukca_persist_off', l_ukca_persist_off)
+CALL print_optional_logical('l_timer', l_timer)
+CALL print_optional_logical('l_ukca_emissions_off', l_ukca_emissions_off)
+CALL print_optional_logical('l_ukca_drydep_off', l_ukca_drydep_off)
+CALL print_optional_logical('l_ukca_wetdep_off', l_ukca_wetdep_off)
+CALL print_optional_logical('l_ukca_scale_ppe', l_ukca_scale_ppe)
+CALL print_optional_logical('l_ukca_asad_columns', l_ukca_asad_columns)
+CALL print_optional_logical('l_ukca_asad_full', l_ukca_asad_full)
+CALL print_optional_logical('l_ukca_debug_asad', l_ukca_debug_asad)
+CALL print_optional_logical('l_ukca_intdd', l_ukca_intdd)
+CALL print_optional_logical('l_ukca_ddepo3_ocean', l_ukca_ddepo3_ocean)
+CALL print_optional_logical('l_ukca_ddep_lev1', l_ukca_ddep_lev1)
+CALL print_optional_logical('l_ukca_dry_dep_so2wet', l_ukca_dry_dep_so2wet)
+CALL print_optional_logical('l_deposition_jules', l_deposition_jules)
+CALL print_optional_logical('l_ukca_quasinewton', l_ukca_quasinewton)
+CALL print_optional_logical('l_tracer_lumping', l_tracer_lumping)
+CALL print_optional_logical('l_ukca_ro2_ntp', l_ukca_ro2_ntp)
+CALL print_optional_logical('l_ukca_ro2_perm', l_ukca_ro2_perm)
+CALL print_optional_logical('l_ukca_intph', l_ukca_intph)
+CALL print_optional_logical('l_ukca_het_psc', l_ukca_het_psc)
+CALL print_optional_logical('l_ukca_limit_nat', l_ukca_limit_nat)
+CALL print_optional_logical('l_ukca_sa_clim', l_ukca_sa_clim)
+CALL print_optional_logical('l_ukca_trophet', l_ukca_trophet)
+CALL print_optional_logical('l_ukca_classic_hetchem', l_ukca_classic_hetchem)
+CALL print_optional_logical('l_use_photolysis', l_use_photolysis)
+CALL print_optional_logical('l_ukca_ibvoc', l_ukca_ibvoc)
+CALL print_optional_logical('l_ukca_inferno', l_ukca_inferno)
+CALL print_optional_logical('l_ukca_inferno_ch4', l_ukca_inferno_ch4)
+CALL print_optional_logical('l_ukca_so2ems_expvolc', l_ukca_so2ems_expvolc)
+CALL print_optional_logical('l_ukca_so2ems_plumeria', l_ukca_so2ems_plumeria)
+CALL print_optional_logical('l_ukca_qch4inter', l_ukca_qch4inter)
+CALL print_optional_logical('l_ukca_emsdrvn_ch4', l_ukca_emsdrvn_ch4)
+CALL print_optional_logical('l_ukca_enable_seadms_ems', l_ukca_enable_seadms_ems)
+CALL print_optional_logical('l_ukca_scale_seadms_ems', l_ukca_scale_seadms_ems)
+CALL print_optional_logical('l_ukca_linox_scaling', l_ukca_linox_scaling)
+CALL print_optional_logical('l_ukca_scale_soa_yield_mt', l_ukca_scale_soa_yield_mt)
+CALL print_optional_logical('l_ukca_scale_soa_yield_isop', l_ukca_scale_soa_yield_isop)
+CALL print_optional_logical('l_support_ems_vertprof', l_support_ems_vertprof)
+CALL print_optional_logical('l_support_ems_gridbox_units', l_support_ems_gridbox_units)
+CALL print_optional_logical('l_suppress_ems', l_suppress_ems)
+CALL print_optional_logical('l_ukca_h2o_feedback', l_ukca_h2o_feedback)
+CALL print_optional_logical('l_param_conv', l_param_conv)
+CALL print_optional_logical('l_ctile', l_ctile)
+CALL print_optional_logical('l_zon_av_ozone', l_zon_av_ozone)
+CALL print_optional_logical('l_ukca_conserve_h', l_ukca_conserve_h)
+CALL print_optional_logical('l_chem_environ_gas_scalars', l_chem_environ_gas_scalars)
+CALL print_optional_logical('l_chem_environ_co2_fld', l_chem_environ_co2_fld)
+CALL print_optional_logical('l_ukca_prescribech4', l_ukca_prescribech4)
+CALL print_optional_logical('l_use_classic_so4', l_use_classic_so4)
+CALL print_optional_logical('l_use_classic_soot', l_use_classic_soot)
+CALL print_optional_logical('l_use_classic_ocff', l_use_classic_ocff)
+CALL print_optional_logical('l_use_classic_biogenic', l_use_classic_biogenic)
+CALL print_optional_logical('l_use_classic_seasalt', l_use_classic_seasalt)
+CALL print_optional_logical('l_use_gridbox_volume', l_use_gridbox_volume)
+CALL print_optional_logical('l_use_gridbox_mass', l_use_gridbox_mass)
+CALL print_optional_logical('l_environ_rel_humid', l_environ_rel_humid)
+CALL print_optional_logical('l_environ_z_top', l_environ_z_top)
+CALL print_optional_logical('l_fix_ukca_cloud_frac', l_fix_ukca_cloud_frac)
+CALL print_optional_logical('l_fix_improve_drydep', l_fix_improve_drydep)
+CALL print_optional_logical('l_fix_drydep_so2_water', l_fix_drydep_so2_water)
+CALL print_optional_logical('l_fix_ukca_h2dd_x', l_fix_ukca_h2dd_x)
+CALL print_optional_logical('l_fix_ukca_offox_h2o_fac', l_fix_ukca_offox_h2o_fac)
+CALL print_optional_logical('l_fix_ukca_h2so4_ystore', l_fix_ukca_h2so4_ystore)
+CALL print_optional_logical('l_mode_bhn_on', l_mode_bhn_on)
+CALL print_optional_logical('l_mode_bln_on', l_mode_bln_on)
+CALL print_optional_logical('l_ddepaer', l_ddepaer)
+CALL print_optional_logical('l_aero_rainout', l_aero_rainout)
+CALL print_optional_logical('l_cv_rainout', l_cv_rainout)
+CALL print_optional_logical('l_impc_scav', l_impc_scav)
+CALL print_optional_logical('l_dust_mp_slinn_impc_scav', l_dust_mp_slinn_impc_scav)
+CALL print_optional_logical('l_ukca_primss', l_ukca_primss)
+CALL print_optional_logical('l_ukca_primsu', l_ukca_primsu)
+CALL print_optional_logical('l_ukca_primdu', l_ukca_primdu)
+CALL print_optional_logical('l_ukca_primbcoc', l_ukca_primbcoc)
+CALL print_optional_logical('l_ukca_prim_moc', l_ukca_prim_moc)
+CALL print_optional_logical('l_bcoc_bf', l_bcoc_bf)
+CALL print_optional_logical('l_bcoc_bm', l_bcoc_bm)
+CALL print_optional_logical('l_bcoc_ff', l_bcoc_ff)
+CALL print_optional_logical('l_ukca_scale_biom_aer_ems', l_ukca_scale_biom_aer_ems)
+CALL print_optional_logical('l_ukca_fine_no3_prod', l_ukca_fine_no3_prod)
+CALL print_optional_logical('l_ukca_coarse_no3_prod', l_ukca_coarse_no3_prod)
+CALL print_optional_logical('l_no3_prod_in_aero_step', l_no3_prod_in_aero_step)
+CALL print_optional_logical('l_ukca_scale_sea_salt_ems', l_ukca_scale_sea_salt_ems)
+CALL print_optional_logical('l_ukca_scale_marine_pom_ems', l_ukca_scale_marine_pom_ems)
+CALL print_optional_logical('l_ukca_mp_fragment', l_ukca_mp_fragment)
+CALL print_optional_logical('l_ukca_mp_fibre', l_ukca_mp_fibre)
+CALL print_optional_logical('l_ukca_radaer', l_ukca_radaer)
+CALL print_optional_logical('l_ntpreq_n_activ_sum', l_ntpreq_n_activ_sum)
+CALL print_optional_logical('l_ntpreq_dryd_nuc_sol', l_ntpreq_dryd_nuc_sol)
+CALL print_optional_logical('l_ukca_sfix', l_ukca_sfix)
+CALL print_optional_logical('l_fix_neg_pvol_wat', l_fix_neg_pvol_wat)
+CALL print_optional_logical('l_fix_ukca_impscav', l_fix_ukca_impscav)
+CALL print_optional_logical('l_fix_nacl_density', l_fix_nacl_density)
+CALL print_optional_logical('l_improve_aero_drydep', l_improve_aero_drydep)
+CALL print_optional_logical('l_fix_ukca_water_content', l_fix_ukca_water_content)
+CALL print_optional_logical('l_fix_ukca_activate_pdf', l_fix_ukca_activate_pdf)
+CALL print_optional_logical('l_fix_ukca_activate_vert_rep', l_fix_ukca_activate_vert_rep)
+CALL print_optional_logical('l_bug_repro_tke_index', l_bug_repro_tke_index)
+CALL print_optional_logical('l_fix_ukca_hygroscopicities', l_fix_ukca_hygroscopicities)
+CALL print_optional_logical('l_dust_mp_ageing', l_dust_mp_ageing)
+CALL print_optional_logical('l_skip_const_setup', l_skip_const_setup)
+CALL print_optional_procedure('proc_bl_tracer_mix', PRESENT(proc_bl_tracer_mix))
+CALL print_optional_procedure('proc_calc_ozonecol', PRESENT(proc_calc_ozonecol))
+CALL print_optional_procedure('proc_diag2d_copy_out', PRESENT(proc_diag2d_copy_out))
+CALL print_optional_procedure('proc_diag3d_copy_out', PRESENT(proc_diag3d_copy_out))
+PRINT *, RoutineName//': end of optional input argument dump'
+
 ! Set all configurable constants to defaults or values provided
 ! if not asked to skip this step
 
@@ -1803,6 +2017,67 @@ l_ukca_config_available = .TRUE.
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_out, zhook_handle)
 RETURN
+
+CONTAINS
+
+SUBROUTINE print_optional_integer(name, value)
+  CHARACTER(LEN=*), INTENT(IN) :: name
+  INTEGER, OPTIONAL, INTENT(IN) :: value
+
+  IF (PRESENT(value)) THEN
+    PRINT *, "RW - ukca_setup: ", TRIM(name), " = ", value
+  ELSE
+    PRINT *, "RW - ukca_setup: ", TRIM(name), " is not present"
+  END IF
+END SUBROUTINE print_optional_integer
+
+SUBROUTINE print_optional_real(name, value)
+  CHARACTER(LEN=*), INTENT(IN) :: name
+  REAL, OPTIONAL, INTENT(IN) :: value
+
+  IF (PRESENT(value)) THEN
+    PRINT *, "RW - ukca_setup: ", TRIM(name), " = ", value
+  ELSE
+    PRINT *, "RW - ukca_setup: ", TRIM(name), " is not present"
+  END IF
+END SUBROUTINE print_optional_real
+
+SUBROUTINE print_optional_logical(name, value)
+  CHARACTER(LEN=*), INTENT(IN) :: name
+  LOGICAL, OPTIONAL, INTENT(IN) :: value
+
+  IF (PRESENT(value)) THEN
+    PRINT *, "RW - ukca_setup: ", TRIM(name), " = ", value
+  ELSE
+    PRINT *, "RW - ukca_setup: ", TRIM(name), " is not present"
+  END IF
+END SUBROUTINE print_optional_logical
+
+SUBROUTINE print_optional_integer_vector(name, value)
+  CHARACTER(LEN=*), INTENT(IN) :: name
+  INTEGER, ALLOCATABLE, OPTIONAL, INTENT(IN) :: value(:)
+
+  IF (PRESENT(value)) THEN
+    IF (ALLOCATED(value)) THEN
+      PRINT *, "RW - ukca_setup: ", TRIM(name), " = ", value
+    ELSE
+      PRINT *, "RW - ukca_setup: ", TRIM(name), " is present but not allocated"
+    END IF
+  ELSE
+    PRINT *, "RW - ukca_setup: ", TRIM(name), " is not present"
+  END IF
+END SUBROUTINE print_optional_integer_vector
+
+SUBROUTINE print_optional_procedure(name, is_present)
+  CHARACTER(LEN=*), INTENT(IN) :: name
+  LOGICAL, INTENT(IN) :: is_present
+
+  IF (is_present) THEN
+    PRINT *, "RW - ukca_setup: ", TRIM(name), " is present"
+  ELSE
+    PRINT *, "RW - ukca_setup: ", TRIM(name), " is not present"
+  END IF
+END SUBROUTINE print_optional_procedure
 
 END SUBROUTINE ukca_setup
 

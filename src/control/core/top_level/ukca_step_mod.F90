@@ -269,6 +269,10 @@ SUBROUTINE ukca_step_3d_domain(timestep_number, current_time,                  &
 !   See ukca_step_1d_domain above
 ! ----------------------------------------------------------------------
 
+use ukca_tracers_mod, only: ukca_get_tracer_varlist
+use ukca_ntp_mod, only: ukca_get_ntp_varlist
+use ukca_fieldname_mod, only: maxlen_fieldname
+
 IMPLICIT NONE
 
 ! Subroutine arguments
@@ -314,6 +318,10 @@ REAL, TARGET, OPTIONAL, INTENT(OUT) :: diag_data_fullht_real(:,:,:,:)
 CHARACTER(LEN=maxlen_message), OPTIONAL, INTENT(OUT) :: error_message
 CHARACTER(LEN=maxlen_procname), OPTIONAL, INTENT(OUT) :: error_routine
 
+integer :: i
+
+CHARACTER(LEN=maxlen_fieldname), POINTER :: tracer_varnames(:), ntp_varnames(:)
+
 ! Local variables
 
 INTEGER, POINTER :: error_code_ptr
@@ -326,6 +334,20 @@ REAL(KIND=jprb) :: zhook_handle
 CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_STEP_3D_DOMAIN'
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+
+call ukca_get_ntp_varlist(ntp_varnames, error_code, error_message=error_message, error_routine=error_routine)
+call ukca_get_tracer_varlist(tracer_varnames, error_code, error_message=error_message, error_routine=error_routine)
+
+! RW - lets debug the tracer values at this point - one isn't being set
+do i = 1, size(tracer_data_parent,4)
+  WRITE(*,*) "RW - Tracer data from parent for ", trim(tracer_varnames(i)), " at start of step: ", tracer_data_parent(:,:,:,i)
+end do
+
+! RW - lets print NTP as well
+do i = 1, size(ntp_data_parent,4)
+  WRITE(*,*) "RW - NTP data from parent for ", trim(ntp_varnames(i)), " at start of step: ", ntp_data_parent(:,:,:,i)
+end do
+
 
 ! Use parent supplied argument for return code.
 ! Note that this argument is redundant if UKCA is configured to abort on error

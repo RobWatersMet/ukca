@@ -129,14 +129,14 @@ END DO
 ! of ozone column for above the model top (selected at 39, 41 or 85 km)
 ! is added to the total.
 
-IF (z_top_of_model > 38000.0 .AND. z_top_of_model < 40500.0) THEN
+IF (z_top_of_model > 38000.0 .AND. z_top_of_model <= 40500.0) THEN
   ozonecol = ozonecol + ozcol_39km
-ELSE IF (z_top_of_model > 40500.0 .AND. z_top_of_model < 42000.0) THEN
+ELSE IF (z_top_of_model > 40500.0 .AND. z_top_of_model <= 77000.0) THEN
   ozonecol = ozonecol + ozcol_41km
-ELSE IF (z_top_of_model > 77000.0 .AND. z_top_of_model < 85500.0) THEN
+ELSE IF (z_top_of_model > 77000.0 .AND. z_top_of_model <= 85500.0) THEN
   ozonecol = ozonecol + ozcol_85km
 ELSE
-  WRITE(cmessage, '(A,I0)')                                                    &
+  WRITE(cmessage, '(A,F1.3)')                                                    &
     'Ozone column undefined for specified z_top_of_model: ', z_top_of_model
   error_code_ptr = errcode_value_invalid
   CALL error_report(photol_config%i_error_method, error_code_ptr, cmessage,    &
