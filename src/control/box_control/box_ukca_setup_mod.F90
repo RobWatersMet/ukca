@@ -319,6 +319,8 @@ USE errormessagelength_mod, ONLY: errormessagelength
 USE parkind1,               ONLY: jpim, jprb      ! DrHook
 USE yomhook,                ONLY: lhook, dr_hook  ! DrHook
 
+USE ukca_internal_dump_mod, ONLY: ukca_dump_on, dump_ukca_internal_config
+
 IMPLICIT NONE
 
 ! Local variables
@@ -716,6 +718,8 @@ CALL ukca_setup(errcode,                                                       &
   l_tracer_lumping = l_tracer_lumping,                                         &
   ! Error reporting variables
   error_message=ukca_errmsg, error_routine=ukca_errproc)
+
+IF (ukca_dump_on()) CALL dump_ukca_internal_config()
 
 CALL print_config_settings(                                                    &
   ! Context information

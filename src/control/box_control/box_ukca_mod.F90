@@ -97,6 +97,9 @@ USE ukca_option_mod,        ONLY: l_ukca_chem, l_ukca_mode,                    &
 
 USE photol_api_mod,         ONLY: photol_setup
 
+USE ukca_internal_dump_mod, ONLY: ukca_dump_on, dump_ukca_step_in,             &
+                                  dump_ukca_step_out
+
 !++SAN ntp_data now made and allocated in the parent box_model
 !sUSE ukca_um_interf_mod,     ONLY: ukca_um_d1_initialise, putd1flds, &
 !s                                  ukca_um_dealloc,                    &
@@ -854,6 +857,11 @@ IF (PrintStatus >= PrStatus_Oper) THEN
 END IF
 !--SAN
 
+IF (ukca_dump_on()) THEN
+  CALL dump_ukca_step_in(stepim(atmos_im), current_time, ukca_tracer_data,     &
+                         ntp_data, r_theta_levels, r_rho_levels,               &
+                         previous_time=previous_time)
+END IF
 CALL ukca_step(stepim(atmos_im), current_time, ukca_tracer_data, ntp_data,      &
                 r_theta_levels, r_rho_levels,                                   &
                 errcode, previous_time=previous_time,                           &
@@ -862,6 +870,8 @@ IF (errcode > 0) THEN
   cmessage = ukca_errmsg
   CALL ereport(TRIM(ukca_errproc) // errproc_suffix, errcode, cmessage)
 END IF
+
+IF (ukca_dump_on()) CALL dump_ukca_step_out(ukca_tracer_data, ntp_data)
 
 !---------------------------------------------------------------------------------
 
