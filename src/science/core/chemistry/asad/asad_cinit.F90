@@ -82,6 +82,7 @@ USE ukca_config_specification_mod, ONLY: ukca_config, int_method_nr,           &
 
 USE parkind1, ONLY: jprb, jpim
 USE yomhook, ONLY: lhook, dr_hook
+use nvtx
 USE ereport_mod, ONLY: ereport
 USE umPrintMgr, ONLY: umMessage, umPrint
 USE errormessagelength_mod, ONLY: errormessagelength
@@ -120,6 +121,7 @@ REAL(KIND=jprb)               :: zhook_handle
 CHARACTER(LEN=*), PARAMETER :: RoutineName='ASAD_CINIT'
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 ljacx = .TRUE.
 
 jpnpx3 = (jpnr/(3*3))+3*3
@@ -354,6 +356,7 @@ IF ( ndepw /= 0 ) CALL ukca_inwdep()
 IF ( ndepd /= 0 ) CALL ukca_inddep()
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 END SUBROUTINE asad_cinit
 END MODULE asad_cinit_mod

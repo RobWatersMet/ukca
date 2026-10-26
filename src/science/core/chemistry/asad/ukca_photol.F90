@@ -42,6 +42,7 @@ SUBROUTINE ukca_photol(prt,n_points)
 USE asad_mod,        ONLY:  rk, nprkx, jppj
 USE parkind1, ONLY: jprb, jpim
 USE yomhook, ONLY: lhook, dr_hook
+use nvtx
 IMPLICIT NONE
 
 INTEGER, INTENT(IN) :: n_points         ! No of spatial points
@@ -60,7 +61,7 @@ REAL(KIND=jprb)               :: zhook_handle
 CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_PHOTOL'
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 DO jl = 1, n_points
   DO jr = 1, jppj
     rk(jl,nprkx(jr)) = prt(jl,jr)
@@ -68,6 +69,7 @@ DO jl = 1, n_points
 END DO
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 END SUBROUTINE ukca_photol
 END MODULE ukca_photol_mod

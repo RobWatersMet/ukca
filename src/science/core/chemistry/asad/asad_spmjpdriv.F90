@@ -110,6 +110,7 @@ USE asad_mod, ONLY: cdt, f, jpcspf, jpspec, ltrig,                             &
 USE ukca_config_specification_mod, ONLY: ukca_config
 USE parkind1, ONLY: jprb, jpim
 USE yomhook, ONLY: lhook, dr_hook
+use nvtx
 USE ereport_mod, ONLY: ereport
 USE umPrintMgr, ONLY: umMessage, umPrint, PrintStatus, PrStatus_Oper
 
@@ -157,6 +158,7 @@ CHARACTER(LEN=*), PARAMETER :: RoutineName='ASAD_SPMJPDRIV'
 
 !
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 ncst = ncsteps
 ctrd = cdt
 ltrig=.FALSE.
@@ -257,6 +259,7 @@ END IF
 
 9999 CONTINUE
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 END SUBROUTINE asad_spmjpdriv
 

@@ -127,6 +127,7 @@ SUBROUTINE forward_euler(n_points, f, f_initial, f_min, nonzero_map, spfj)
 
 USE asad_mod,            ONLY: cdt, jpcspf, fdot, spfjsize_max
 USE yomhook,             ONLY: lhook, dr_hook
+use nvtx
 USE parkind1,            ONLY: jprb, jpim
 
 IMPLICIT NONE
@@ -146,6 +147,7 @@ REAL(KIND=jprb)               :: zhook_handle
 CHARACTER(LEN=*),   PARAMETER :: RoutineName='FORWARD_EULER'
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 
 ! Solve for all species in f array, including non-transported RO2 species
 DO jtr=1,jpcspf
@@ -161,7 +163,7 @@ DO jtr=1,jpcspf
 END DO
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
-
+call nvtxEndRange()
 END SUBROUTINE forward_euler
 
 ! *********************************************************************
@@ -171,6 +173,7 @@ SUBROUTINE calc_residual_error(n_points,residual_error,G_f,f_min)
 USE asad_mod,            ONLY: jpcspf, nlf
 USE asad_mod,            ONLY: prod, slos
 USE yomhook,             ONLY: lhook, dr_hook
+use nvtx
 USE parkind1,            ONLY: jprb, jpim
 
 IMPLICIT NONE
@@ -189,7 +192,7 @@ REAL(KIND=jprb)               :: zhook_handle
 CHARACTER(LEN=*), PARAMETER   :: RoutineName='CALC_RESIDUAL_ERROR'
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 !  Temporary prod+loss array used to test for convergence
 !  by calculating residual_error further down
 DO jtr=1,jpcspf
@@ -207,7 +210,7 @@ DO jl=1,n_points
 END DO
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
-
+call nvtxEndRange()
 END SUBROUTINE calc_residual_error
 
 ! *********************************************************************
@@ -216,6 +219,7 @@ SUBROUTINE calc_error_norm(n_points,error_norm,f,f_incr,f_min)
 
 USE asad_mod,            ONLY: jpcspf
 USE yomhook,             ONLY: lhook, dr_hook
+use nvtx
 USE parkind1,            ONLY: jprb, jpim
 
 IMPLICIT NONE
@@ -235,7 +239,7 @@ REAL(KIND=jprb)               :: zhook_handle
 CHARACTER(LEN=*), PARAMETER   :: RoutineName='CALC_ERROR_NORM'
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 error_norm = 0.0
 DO jtr=1,jpcspf
   DO jl=1,n_points
@@ -246,7 +250,7 @@ DO jtr=1,jpcspf
 END DO
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
-
+call nvtxEndRange()
 END SUBROUTINE calc_error_norm
 
 ! *********************************************************************
@@ -260,6 +264,7 @@ USE asad_mod,           ONLY: ptol, peps, cdt, f, fdot, nitnr, nstst, y,       &
 USE asad_sparse_vars,   ONLY: setup_spfuljac, spfuljac, spresolv2, splinslv2
 USE ukca_config_specification_mod, ONLY: ukca_config
 USE yomhook,            ONLY: lhook, dr_hook
+use nvtx
 USE parkind1,           ONLY: jprb, jpim
 USE umPrintMgr,         ONLY: printstatus, PrStatus_Oper, PrStatus_Diag,       &
                               umMessage, umPrint
@@ -337,6 +342,7 @@ LOGICAL, SAVE :: first_pass = .TRUE.
 
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 
 f_min = SQRT(peps) ! Minimum species concentration
 
@@ -594,6 +600,7 @@ IF (exit_code /= 0) THEN
 END IF
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 END SUBROUTINE asad_spimpmjp
 

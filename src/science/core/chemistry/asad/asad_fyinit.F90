@@ -76,6 +76,7 @@ USE ukca_environment_fields_mod, ONLY: atmospheric_co2,                        &
 USE ukca_constants, ONLY: c_co2, c_h2, c_n2, c_o2, c_ch4
 USE parkind1, ONLY: jprb, jpim
 USE yomhook, ONLY: lhook, dr_hook
+use nvtx
 USE ereport_mod, ONLY: ereport
 USE errormessagelength_mod, ONLY: errormessagelength
 
@@ -135,6 +136,7 @@ CHARACTER(LEN=*), PARAMETER :: RoutineName='ASAD_FYINIT'
 !           ------- ----------- ---- -- ----- -- --------- -----
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 IF ( first_pass ) THEN
   IF ( gonce ) THEN
 
@@ -311,6 +313,7 @@ IF (ofirst .AND.                                                               &
 END IF
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 END SUBROUTINE asad_fyinit
 END MODULE asad_fyinit_mod

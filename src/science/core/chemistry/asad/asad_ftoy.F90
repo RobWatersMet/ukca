@@ -145,6 +145,7 @@ USE asad_mod,            ONLY: f, y, prod, slos, ratio, qa,                    &
 USE ukca_config_specification_mod, ONLY: ukca_config
 USE parkind1, ONLY: jprb, jpim
 USE yomhook, ONLY: lhook, dr_hook
+use nvtx
 USE ereport_mod, ONLY: ereport
 
 USE umPrintMgr, ONLY: umPrint
@@ -224,6 +225,8 @@ CHARACTER(LEN=*), PARAMETER :: RoutineName='ASAD_FTOY'
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,                          &
                         zhook_in,zhook_handle)
+call nvtxStartRange(ModuleName // ':' // RoutineName)
+
 ! OMP CRITICAL will only allow one thread through this code at a time,
 ! while the other threads are held until completion.
 errcodes(:) = 0
@@ -319,6 +322,8 @@ END IF
 IF ( nstst == 0) THEN
   IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,                        &
                           zhook_out,zhook_handle)
+
+  call nvtxEndRange()
   RETURN
 END IF
 
@@ -354,6 +359,7 @@ IF (iter == 0) THEN
   CALL asad_fyfixr(n_points)
   IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,                        &
                           zhook_out,zhook_handle)
+  call nvtxEndRange()
   RETURN
 END IF
 
@@ -538,6 +544,7 @@ DO jit = 1, iter
   IF (gconv) THEN
     IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,                      &
                             zhook_out,zhook_handle)
+    call nvtxEndRange()
     RETURN
   END IF
 
@@ -555,6 +562,7 @@ END DO    ! End of iterations
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,                          &
                         zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 END SUBROUTINE asad_ftoy
 END MODULE asad_ftoy_mod

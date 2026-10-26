@@ -48,6 +48,7 @@ SUBROUTINE asad_fyself(n_points)
 USE asad_mod,        ONLY: qa, rk, nstst, nlstst, nspi, jpnr
 USE parkind1,        ONLY: jprb, jpim
 USE yomhook,         ONLY: lhook, dr_hook
+use nvtx
 IMPLICIT NONE
 
 INTEGER, INTENT(IN) :: n_points    ! No of spatial points
@@ -71,6 +72,7 @@ CHARACTER(LEN=*), PARAMETER :: RoutineName='ASAD_FYSELF'
 !           --------------
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 DO j = 1, nstst
   js = nlstst(j)
   DO jl = 1, n_points
@@ -91,6 +93,7 @@ DO jr = 1, jpnr
 END DO
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 END SUBROUTINE asad_fyself
 END MODULE asad_fyself_mod

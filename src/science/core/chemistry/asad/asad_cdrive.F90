@@ -107,6 +107,7 @@ USE ukca_config_specification_mod, ONLY: ukca_config
 
 USE parkind1, ONLY: jprb, jpim
 USE yomhook, ONLY: lhook, dr_hook
+use nvtx
 USE ereport_mod, ONLY: ereport
 
 USE umPrintMgr, ONLY: umMessage, umPrint
@@ -191,6 +192,7 @@ CHARACTER(LEN=*), PARAMETER :: RoutineName='ASAD_CDRIVE'
 !             on which no chemistry is performed
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 DO jtr = 1, jpcspf
   DO jl = 1, n_points
     cdot(jl,jtr) = 0.0
@@ -425,6 +427,7 @@ IF ( lvmr ) THEN
 END IF
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 END SUBROUTINE asad_cdrive
 END MODULE asad_cdrive_mod

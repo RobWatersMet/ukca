@@ -63,6 +63,7 @@ USE asad_mod,        ONLY: cdt, ctype, dpd, dpw, f, frpx,                      &
                            jpspec, jpcspf, jptk, jppj
 USE parkind1, ONLY: jprb, jpim
 USE yomhook, ONLY: lhook, dr_hook
+use nvtx
 USE ereport_mod, ONLY: ereport
 
 USE ukca_um_legacy_mod, ONLY: mype
@@ -168,6 +169,7 @@ CHARACTER(LEN=*), PARAMETER :: RoutineName='ASAD_BEDRIV'
 
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 ! OMP CRITICAL will only allow one thread through this code at a time,
 ! while the other threads are held until completion.
 IF (first_pass) THEN
@@ -598,6 +600,7 @@ END DO
 
 ! finish BE step
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 END SUBROUTINE asad_bedriv
 END MODULE asad_bedriv_mod

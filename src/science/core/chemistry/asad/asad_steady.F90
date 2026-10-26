@@ -79,7 +79,7 @@ USE asad_mod,               ONLY:  deriv, y, rk, peps,                         &
                                    o3p_in_ss, n_in_ss, h_in_ss
 USE parkind1, ONLY: jprb, jpim
 USE yomhook, ONLY: lhook, dr_hook
-
+use nvtx
 
 IMPLICIT NONE
 
@@ -117,6 +117,7 @@ CHARACTER(LEN=*), PARAMETER :: RoutineName='ASAD_STEADY'
 !
 ! Set up loops correctly
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 jl1 = 1
 jl2 = kl
 IF (kl == 1) THEN
@@ -361,6 +362,7 @@ IF (h_in_ss) THEN
 END IF
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 END SUBROUTINE asad_steady
 END MODULE asad_steady_mod

@@ -98,7 +98,7 @@ USE asad_mod,        ONLY: cdt, ctype, ej, f, fdot, jpif,                      &
 USE ukca_config_specification_mod, ONLY: ukca_config
 USE parkind1, ONLY: jprb, jpim
 USE yomhook, ONLY: lhook, dr_hook
-
+use nvtx
 
 USE asad_diffun_mod, ONLY: asad_diffun
 USE asad_inimpct_mod, ONLY: asad_inimpct
@@ -162,6 +162,7 @@ CHARACTER(LEN=*), PARAMETER :: RoutineName='ASAD_IMPACT'
 !       Needs improving.
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 inl = 0
 DO jl = 1, n_points
   IF ( rk(jl,nprkx(1)) > peps ) THEN
@@ -364,6 +365,7 @@ DO jit = 1, ukca_config%nrsteps
   END DO
   IF (gconv) THEN
     IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+    call nvtxEndRange()
     RETURN
   END IF
 END DO           ! End of NR (jit) loop
@@ -371,6 +373,7 @@ END DO           ! End of NR (jit) loop
 !       9.1  Convergence achieved or max. no. of iterations reached
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 END SUBROUTINE asad_impact
 END MODULE asad_impact_mod

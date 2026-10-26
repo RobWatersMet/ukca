@@ -79,6 +79,7 @@ USE asad_mod,               ONLY: fdot, ydot, prod, slos,                      &
                                   nf, nlf, jpcspf
 USE parkind1, ONLY: jprb, jpim
 USE yomhook, ONLY: lhook, dr_hook
+use nvtx
 USE asad_prls_mod, ONLY: asad_prls
 IMPLICIT NONE
 
@@ -108,6 +109,7 @@ CHARACTER(LEN=*), PARAMETER :: RoutineName='ASAD_DIFFUN'
 !          ---------- ------------- --------- ----------
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 DO jtr = 1, jpcspf
   DO jl = 1, kl
     fdot(jl,jtr) = 0.0
@@ -149,6 +151,7 @@ DO j = 1, nf
 END DO
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 END SUBROUTINE asad_diffun
 END MODULE asad_diffun_mod

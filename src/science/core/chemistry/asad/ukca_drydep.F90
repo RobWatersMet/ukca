@@ -43,6 +43,7 @@ USE asad_mod,       ONLY: ndepd, nldepd, dpd, jpdd
 USE ukca_config_specification_mod,ONLY: ukca_config
 USE parkind1, ONLY: jprb, jpim
 USE yomhook, ONLY: lhook, dr_hook
+use nvtx
 IMPLICIT NONE
 
 INTEGER, INTENT(IN) :: nlev                 ! Level number
@@ -63,7 +64,7 @@ REAL(KIND=jprb)               :: zhook_handle
 CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_DRYDEP'
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 IF (nlev == 1 .OR. ukca_config%l_ukca_intdd) THEN
   ! Bottom level or interactive dry deposition
 
@@ -87,6 +88,7 @@ ELSE
 END IF
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 END SUBROUTINE ukca_drydep
 END MODULE ukca_drydep_mod

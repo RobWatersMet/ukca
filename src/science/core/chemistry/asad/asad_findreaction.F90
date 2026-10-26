@@ -75,6 +75,7 @@ INTEGER FUNCTION asad_findreaction( react1,react2,products,                    &
                                     np,reactions,idx_in,nr,ns )
 
 USE yomhook, ONLY: lhook, dr_hook
+use nvtx
 USE parkind1, ONLY: jprb, jpim
 IMPLICIT NONE
 
@@ -105,6 +106,7 @@ CHARACTER(LEN=*), PARAMETER :: RoutineName='ASAD_FINDREACTION'
 !          ------ --- --------- ------
 !
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 asad_findreaction = 0
 empty_ten             = '         '
 
@@ -181,6 +183,7 @@ DO
   j = j + 1
   IF ( j > nreacts ) THEN
     IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+    call nvtxEndRange()
     RETURN
   END IF
 END DO
@@ -188,6 +191,7 @@ END DO
 9999 CONTINUE
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 END FUNCTION asad_findreaction
 END MODULE asad_findreaction_mod

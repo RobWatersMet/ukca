@@ -61,6 +61,7 @@ USE asad_mod,       ONLY: y, f, ratio, linfam, nlmajmin, jpif,                 &
                           moffam, madvtr, majors, ctype
 USE parkind1, ONLY: jprb, jpim
 USE yomhook, ONLY: lhook, dr_hook
+use nvtx
 IMPLICIT NONE
 
 INTEGER, INTENT(IN) :: n_points
@@ -87,6 +88,7 @@ CHARACTER(LEN=*), PARAMETER :: RoutineName='ASAD_FYFIXR'
 !           --------- ----- ------- -- ------
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 istart = nlmajmin(1)
 iend   = nlmajmin(2)
 DO j = istart, iend
@@ -120,6 +122,7 @@ DO j = istart, iend
 END DO
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 END SUBROUTINE asad_fyfixr
 END MODULE asad_fyfixr_mod

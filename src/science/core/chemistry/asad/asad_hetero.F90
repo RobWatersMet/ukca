@@ -60,6 +60,7 @@ USE ukca_config_constants_mod,  ONLY: rho_water, avogadro
 USE ukca_constants,  ONLY: m_air, H_plus
 USE parkind1,        ONLY: jprb, jpim
 USE yomhook,         ONLY: lhook, dr_hook
+use nvtx
 USE ereport_mod,     ONLY: ereport
 USE umPrintMgr, ONLY:                                                          &
     umPrint,                                                                   &
@@ -108,6 +109,7 @@ CHARACTER(LEN=*), PARAMETER :: RoutineName='ASAD_HETERO'
 
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 
 !       1. Identify equations and calculate fractional dissociation
 !          --------------------------------------------------------
@@ -335,6 +337,7 @@ ELSE
 END IF
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 END SUBROUTINE asad_hetero
 END MODULE asad_hetero_mod

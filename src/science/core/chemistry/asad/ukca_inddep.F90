@@ -41,6 +41,7 @@ USE asad_mod,           ONLY: depvel, jddepc, jddept, jpdd
 USE ukca_chem_defs_mod, ONLY: depvel_defs
 USE parkind1, ONLY: jprb, jpim
 USE yomhook, ONLY: lhook, dr_hook
+use nvtx
 USE ereport_mod, ONLY: ereport
 
 
@@ -62,7 +63,7 @@ REAL(KIND=jprb)               :: zhook_handle
 CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_INDDEP'
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 !       Reading dry deposition velocities from module
 !       Dataset is for 6 time points and 5 land categories.
 
@@ -81,6 +82,7 @@ DO ns=1,jpdd
 END DO
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 END SUBROUTINE ukca_inddep
 END MODULE ukca_inddep_mod

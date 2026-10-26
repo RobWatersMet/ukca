@@ -96,6 +96,7 @@ USE asad_mod, ONLY: ctype, h_in_ss,                                            &
                     o1d_in_ss, o3p_in_ss, speci
 USE parkind1, ONLY: jprb, jpim
 USE yomhook, ONLY: lhook, dr_hook
+use nvtx
 USE ereport_mod, ONLY: ereport
 USE umPrintMgr, ONLY: umMessage, umPrint, PrintStatus, PrStatus_Oper
 
@@ -126,6 +127,7 @@ CHARACTER(LEN=*), PARAMETER :: RoutineName='ASAD_SETSTEADY'
 
 ! Zero all arrays
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 nsst=0
 nssi=0
 indss=0
@@ -252,6 +254,7 @@ END DO
 
 9999 CONTINUE
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 END SUBROUTINE asad_setsteady
 END MODULE asad_setsteady_mod

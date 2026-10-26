@@ -61,6 +61,7 @@ USE asad_mod,        ONLY: jpspj, madvtr, moffam,                              &
                            jpcspf, jppj
 USE parkind1, ONLY: jprb, jpim
 USE yomhook, ONLY: lhook, dr_hook
+use nvtx
 IMPLICIT NONE
 
 !       Local variables
@@ -108,6 +109,7 @@ CHARACTER(LEN=*), PARAMETER :: RoutineName='ASAD_INIMPCT'
 !           ---- ---- ---------- ---------
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 DO jt = 1, jpcspf
   gtr(jt) = .FALSE.
 END DO
@@ -273,6 +275,7 @@ DO j = 1, ntr
 END DO           ! j
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 END SUBROUTINE asad_inimpct
 END MODULE asad_inimpct_mod

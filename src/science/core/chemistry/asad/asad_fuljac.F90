@@ -92,6 +92,7 @@ USE asad_mod,        ONLY: cdt, ctype, deriv, dpd, dpw,                        &
                            jpspec, jpcspf
 USE parkind1, ONLY: jprb, jpim
 USE yomhook, ONLY: lhook, dr_hook
+use nvtx
 IMPLICIT NONE
 
 ! Subroutine interface
@@ -126,6 +127,7 @@ CHARACTER(LEN=*), PARAMETER :: RoutineName='ASAD_FULJAC'
 
 !
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 deltt=1.0/cdt
 !
 fj = 0.0
@@ -269,6 +271,7 @@ DO j=1,jpcspf
 END DO
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 END SUBROUTINE asad_fuljac
 END MODULE asad_fuljac_mod

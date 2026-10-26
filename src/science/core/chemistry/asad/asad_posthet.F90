@@ -56,6 +56,7 @@ SUBROUTINE asad_posthet
 
 
 USE yomhook, ONLY: lhook, dr_hook
+use nvtx
 USE parkind1, ONLY: jprb, jpim
 USE ereport_mod, ONLY: ereport
 USE errormessagelength_mod, ONLY: errormessagelength
@@ -72,12 +73,14 @@ REAL(KIND=jprb)               :: zhook_handle
 
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 cmessage = 'Routine should not be callable'
 icode = 1
 
 CALL ereport(RoutineName,icode,cmessage)
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 END SUBROUTINE asad_posthet
 END MODULE asad_posthet_mod

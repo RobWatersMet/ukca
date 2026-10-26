@@ -43,7 +43,7 @@ SUBROUTINE ukca_wetdep(wetrt,n_points)
 USE asad_mod,         ONLY: ndepw, nldepw, dpw, jpdw
 USE parkind1, ONLY: jprb, jpim
 USE yomhook, ONLY: lhook, dr_hook
-
+use nvtx
 
 IMPLICIT NONE
 
@@ -65,6 +65,7 @@ REAL(KIND=jprb)               :: zhook_handle
 CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_WETDEP'
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 
 DO js = 1,ndepw
   nspec = nldepw(js)
@@ -74,6 +75,7 @@ DO js = 1,ndepw
 END DO
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 END SUBROUTINE ukca_wetdep
 

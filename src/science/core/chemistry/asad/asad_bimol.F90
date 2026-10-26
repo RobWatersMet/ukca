@@ -84,6 +84,7 @@ USE ukca_config_specification_mod, ONLY: ukca_config
 
 USE parkind1, ONLY: jprb, jpim
 USE yomhook, ONLY: lhook, dr_hook
+use nvtx
 USE ukca_um_legacy_mod, ONLY: exp_v, powr_v, oneover_v
 USE errormessagelength_mod, ONLY: errormessagelength
 USE ereport_mod, ONLY: ereport
@@ -150,6 +151,7 @@ INTEGER                             :: errcode=0   ! Error flag (0 = OK)
 CHARACTER(LEN=errormessagelength)   :: cmessage    ! Error return message
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 
 ALLOCATE(z1(1:n_points))
 ALLOCATE(z3(1:n_points))
@@ -500,6 +502,7 @@ IF (ALLOCATED(ratiob2total)) DEALLOCATE(ratiob2total)
 IF (ALLOCATED(alpha)) DEALLOCATE(alpha)
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 END SUBROUTINE asad_bimol
 END MODULE asad_bimol_mod

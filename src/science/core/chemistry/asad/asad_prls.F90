@@ -122,6 +122,7 @@ USE asad_mod,            ONLY: prod, slos, y, rk, prk,                         &
                                nldepx, nnfrp, jpspec, jpnr
 USE parkind1, ONLY: jprb, jpim
 USE yomhook, ONLY: lhook, dr_hook
+use nvtx
 IMPLICIT NONE
 
 INTEGER, INTENT(IN) :: kl
@@ -168,6 +169,7 @@ CHARACTER(LEN=*), PARAMETER :: RoutineName='ASAD_PRLS'
 !           ---------- ----------
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 DO js = 1, jpspec
   DO jl = 1, kl
     prod(jl,js) = 0.0
@@ -301,6 +303,7 @@ IF ( ldepem ) THEN
 END IF
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 END SUBROUTINE asad_prls
 END MODULE asad_prls_mod

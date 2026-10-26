@@ -56,6 +56,7 @@ USE asad_mod,        ONLY: rk, at, ntrkx, spt, t300, t, peps,                  &
                            tnd, f, wp, specf, jpcspf, jptk
 USE parkind1, ONLY: jprb, jpim
 USE yomhook, ONLY: lhook, dr_hook
+use nvtx
 USE ukca_um_legacy_mod, ONLY: exp_v, powr_v, oneover_v
 
 IMPLICIT NONE
@@ -107,6 +108,7 @@ REAL :: inv_t(1:n_points)
 !           --------- ------------ ---- ------------
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 iho2  = 0
 in2o5   = 0
 ino2no3 = 0
@@ -233,6 +235,7 @@ ELSE IF (ih2o == 0 .AND. iho2 /= 0) THEN
 END IF
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 END SUBROUTINE asad_trimol
 END MODULE asad_trimol_mod

@@ -47,6 +47,7 @@ USE ukca_chem_offline,    ONLY: henry_defs_const, nwet_constant
 USE ukca_config_specification_mod, ONLY: ukca_config
 USE parkind1, ONLY: jprb, jpim
 USE yomhook, ONLY: lhook, dr_hook
+use nvtx
 USE ereport_mod, ONLY: ereport
 USE errormessagelength_mod, ONLY: errormessagelength
 
@@ -64,7 +65,7 @@ REAL(KIND=jprb)               :: zhook_handle
 CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_INWDEP'
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 !       Use module to define Henry constants
 
 IF (SIZE(henry_defs) /= jpdw*6) THEN
@@ -97,6 +98,7 @@ IF (ukca_config%l_ukca_offline .OR. ukca_config%l_ukca_offline_be) THEN
 END IF
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 END SUBROUTINE ukca_inwdep
 END MODULE ukca_inwdep_mod

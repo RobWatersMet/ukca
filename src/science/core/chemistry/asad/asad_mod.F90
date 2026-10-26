@@ -511,6 +511,7 @@ REAL(KIND=jprb)               :: zhook_handle
 CHARACTER(LEN=*), PARAMETER :: RoutineName='ASAD_MOD_PRE_SETUP_INIT'
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 
 ! All arrays within ASAD which previously were of size jpctr have been
 ! resized to jpcspf, unless they specifically refer to number of transported
@@ -531,6 +532,7 @@ IF (.NOT. ALLOCATED(speci)) ALLOCATE(speci(jpspec))
 IF (.NOT. ALLOCATED(ctype)) ALLOCATE(ctype(jpspec))
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 END SUBROUTINE asad_mod_pre_setup_init
 
@@ -553,6 +555,7 @@ CHARACTER(LEN=*), PARAMETER :: RoutineName='ASAD_MOD_INIT'
 
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 ! nullify prod and slos on firstcall to give DISSASSOCIATED attribute
 IF (firstcall) THEN
   NULLIFY(prod)
@@ -754,6 +757,7 @@ deriv(:,:,:) = 1.0      ! Temp fix for deriv being uninitialised in first
                         ! solver iteration
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 END SUBROUTINE asad_mod_init
 
@@ -775,7 +779,7 @@ REAL(KIND=jprb)               :: zhook_handle
 CHARACTER(LEN=*), PARAMETER :: RoutineName='ASAD_MOD_INIT_SPATIAL_VARS'
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 ! Set integration method (1 = IMPACT; 3 = N-R solver; 5 = Backward-Euler)
 method = ukca_config%ukca_int_method
 
@@ -872,6 +876,7 @@ rk(:,:)   = 0.0
 prk(:,:)  = 0.0
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 END SUBROUTINE asad_mod_init_spatial_vars
 
@@ -892,7 +897,7 @@ INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
 REAL(KIND=jprb) :: zhook_handle
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 ! Set integration method (1 = IMPACT; 3 = N-R solver; 5 = Backward-Euler)
 method = ukca_config%ukca_int_method
 
@@ -939,7 +944,7 @@ IF (ALLOCATED(co3)) DEALLOCATE(co3)
 IF (ALLOCATED(pd)) DEALLOCATE(pd)
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
-
+call nvtxEndRange()
 END SUBROUTINE asad_mod_dealloc_spatial_vars
 
 END MODULE asad_mod

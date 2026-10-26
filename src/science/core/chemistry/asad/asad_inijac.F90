@@ -70,6 +70,7 @@ USE asad_mod,        ONLY: specf, ctype, jpfm, jppjac, jpmsp,                  &
                            jpspec, jpcspf, jpnr
 USE parkind1, ONLY: jprb, jpim
 USE yomhook, ONLY: lhook, dr_hook
+use nvtx
 USE ereport_mod, ONLY: ereport
 USE umPrintMgr, ONLY:                                                          &
     umPrint,                                                                   &
@@ -127,7 +128,7 @@ CHARACTER(LEN=*), PARAMETER :: RoutineName='ASAD_INIJAC'
 !          ---- ---- --------- --- --- ----- -------
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 jpnjcx3 = (jpnr/(3*3))+3*3
 
 ifn(:) = 0
@@ -513,6 +514,7 @@ DO jtr=1,jpspec
 END DO
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+clal nvtxEndRange()
 RETURN
 END SUBROUTINE asad_inijac
 END MODULE asad_inijac_mod

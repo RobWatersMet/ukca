@@ -56,6 +56,7 @@ USE ukca_environment_fields_mod,     ONLY: o3_offline, oh_offline,             &
                            no3_offline, ho2_offline
 USE parkind1, ONLY: jprb, jpim
 USE yomhook, ONLY: lhook, dr_hook
+use nvtx
 USE ereport_mod, ONLY: ereport
 USE errormessagelength_mod, ONLY: errormessagelength
 
@@ -94,6 +95,7 @@ CHARACTER(LEN=*), PARAMETER :: RoutineName='ASAD_INICNT_COL'
 !     1.  Copy water, CO2, and offline oxidants (if required) into ASAD array.
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 
 IF (species(1:4) == 'CO2 ' .AND. ukca_config%l_chem_environ_co2_fld) THEN
   !  The CO2 field is set to the UM prognostic if it is available and
@@ -151,7 +153,7 @@ END IF
 y_out(:) = y_out(:)*tnd(:)
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
-
+call nvtxEndRange()
 RETURN
 END SUBROUTINE asad_inicnt_col
 END MODULE asad_inicnt_col_mod

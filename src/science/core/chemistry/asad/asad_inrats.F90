@@ -84,6 +84,7 @@ USE ukca_chem_defs_mod,   ONLY: chch_defs
 USE ukca_config_specification_mod, ONLY: ukca_config
 USE parkind1, ONLY: jprb, jpim
 USE yomhook, ONLY: lhook, dr_hook
+use nvtx
 USE ereport_mod, ONLY: ereport
 USE umPrintMgr, ONLY: umMessage, umPrint
 
@@ -114,7 +115,7 @@ CHARACTER(LEN=*), PARAMETER :: RoutineName='ASAD_INRATS_SET_SP_LISTS'
 
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 ! Find out which species are in steady state (for N-R solver)
 
 o1d_in_ss = .FALSE.
@@ -295,6 +296,7 @@ IF (ANY(errcodes(:,:) /= 0)) THEN
 END IF
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 
 END SUBROUTINE asad_inrats_set_sp_lists
@@ -319,6 +321,7 @@ USE ukca_chem_defs_mod,   ONLY: ratb_defs, ratt_defs,                          &
 
 USE parkind1, ONLY: jprb, jpim
 USE yomhook, ONLY: lhook, dr_hook
+use nvtx
 USE ereport_mod, ONLY: ereport
 USE umPrintMgr, ONLY: umMessage, umPrint, PrintStatus, PrStatus_Oper
 USE ukca_um_legacy_mod, ONLY: mype
@@ -380,6 +383,7 @@ CHARACTER(LEN=*), PARAMETER :: RoutineName='ASAD_INRATS'
 !           --------- ---------
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 
 ! Initialise local counters, see asad_cinit for (e.g.) spb and frpb
 ispb(:,:) = 0
@@ -859,6 +863,7 @@ IF ( ix /= jpnr ) THEN
 END IF
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 END SUBROUTINE asad_inrats
 END MODULE asad_inrats_mod
