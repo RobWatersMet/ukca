@@ -116,7 +116,6 @@ CALL oneover_v(n_points, t, inv_t)
 
 ! OMP CRITICAL will only allow one thread through this code at a time,
 ! while the other threads are held until completion.
-!$OMP CRITICAL (asad_trimol_init)
 IF (first_pass) THEN
   IF (first) THEN
     ! Calculate the N factor to be used in broadening factor
@@ -133,7 +132,6 @@ IF (first_pass) THEN
   END IF
   first_pass = .FALSE.
 END IF
-!$OMP END CRITICAL (asad_trimol_init)
 
 DO j = 1, jptk
   jr = ntrkx(j)

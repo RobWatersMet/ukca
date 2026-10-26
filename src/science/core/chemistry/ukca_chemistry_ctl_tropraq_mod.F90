@@ -306,39 +306,9 @@ DO l = 1, dim_ntp
   END IF
 END DO
 
-!$OMP PARALLEL DEFAULT(NONE)                                                   &
-!$OMP PRIVATE(BE_biogenic, BE_dryrt, BE_frdiss, BE_h2o, BE_hrc,                &
-!$OMP         BE_o2, BE_ocff_aged, BE_ocff_fresh,                              &
-!$OMP         BE_rc, BE_rh_frac, BE_rho,                                       &
-!$OMP         BE_sea_salt_film, BE_sea_salt_jet,                               &
-!$OMP         BE_so4_aitken, BE_so4_accum,                                     &
-!$OMP         BE_soot_aged, BE_soot_fresh,                                     &
-!$OMP         BE_tnd, BE_wetrt, BE_vol, BE_y,                                  &
-!$OMP         errcode, jna, jro2, jspf, k, kcs, kce, k_dms, l,                 &
-!$OMP         SO2_dryox_OH, SO2_wetox_H2O2, SO2_wetox_O3,                      &
-!$OMP         stratflag, ystore,                                               &
-!$OMP         zfnatr, zftr)                                                    &
-!$OMP SHARED(advt, avogadro, biogenic, boltzmann, c_species, c_na_species,     &
-!$OMP        cloud_frac, delh2so4_chem, delSO2_drydep, delSO2_wet_H2O2,        &
-!$OMP        delSO2_wet_O3, delSO2_wetdep, dry_dep_3d, dts, speci,             &
-!$OMP        jpctr, jpdd, jpdw, jphk, jppj, jpspec, jpro2,                     &
-!$OMP        jpcspf, spro2, nlnaro2, ctype, l_stratosphere,                    &
-!$OMP        ukca_config,                                                      &
-!$OMP        ldepd, ldepw, model_levels,                                       &
-!$OMP        n_be_calls, n_ch4, n_o3, nadvt, nlev_with_ddep, ntp_data,         &
-!$OMP        nlev_ch4_stratloss, nn_ch4, nn_h2o2, nn_h2so4, nn_o1d, nn_o3,     &
-!$OMP        nn_o3p, nn_oh, nn_so2, nnaf, nr, nr_therm,                        &
-!$OMP        ocff_aged, ocff_fresh, photol_rates, pres, q, qcf, qcl, rgas, rh, &
-!$OMP        row_length, rows, sea_salt_film, sea_salt_jet, so4_accum,         &
-!$OMP        so4_aitken, soot_aged, soot_fresh, strat_ch4_mol, strat_ch4loss,  &
-!$OMP        temp, theta_field_size, tracer, trop_ch4_mol,                     &
-!$OMP        trop_o3_mol, trop_oh_mol, uph2so4inaer, volume, wet_dep_3d,       &
-!$OMP        zdryrt, zfrdiss, zwetrt, H_plus, cmessage)
-
 IF (.NOT. ALLOCATED(ystore) .AND. uph2so4inaer == 1)                           &
                              ALLOCATE(ystore(theta_field_size))
 
-!$OMP DO SCHEDULE(DYNAMIC)
 DO k=1,model_levels
 
   ! Determine the indices for extracting the slice of data which corresponds to
@@ -643,12 +613,9 @@ DO k=1,model_levels
     delSO2_wetdep(kcs:kce) = BE_wetrt(:,nn_so2)*BE_y(:,nn_so2)*dts
   END IF
 END DO ! level loop (k)
-!$OMP END DO
 
 IF (ALLOCATED(zfnatr)) DEALLOCATE(zfnatr)
 IF (ALLOCATED(ystore)) DEALLOCATE(ystore)
-
-!$OMP END PARALLEL
 
 ! Map ntp_data back into 3D array
 DO l = 1, dim_ntp

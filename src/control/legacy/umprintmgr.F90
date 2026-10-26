@@ -57,7 +57,6 @@ CHARACTER(LEN=1), PARAMETER   :: newline=NEW_LINE('a')
 ! directed writes
 ! ========================
 CHARACTER (LEN=maxLineLen)    :: umMessage
-!$OMP THREADPRIVATE (umMessage)
 
 ! ========================
 ! Runtime variables and

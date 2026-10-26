@@ -279,33 +279,6 @@ END IF
 #endif
 
 ! Model levels loop
-!$OMP PARALLEL DEFAULT(NONE)                                                   &
-!$OMP PRIVATE(cdot, cmessage, errcode, i, ierr,                                &
-!$OMP         j, js, l, rc_het, stratflag,                                     &
-!$OMP         ystore, zclw, zdryrt2, zfcloud, zftr, have_nat1d,                &
-!$OMP         zp, zprt1d, zq, zt, co2_1d, zwetrt2,                             &
-!$OMP         kcs, kce, chunk_size, dpd_full, dpw_full,                        &
-!$OMP         fpsc1_full, fpsc2_full, prk_full, y_full, jspf, jna,             &
-!$OMP         H_plus_1d_arr)                                                   &
-!$OMP SHARED(advt, all_ntp, atm_cf2cl2_mol, atm_cfcl3_mol, atm_ch4_mol,        &
-!$OMP        atm_co_mol, atm_h2_mol, atm_mebr_mol, atm_n2o_mol, avogadro,      &
-!$OMP        c_species, c_na_species, cloud_frac,                              &
-!$OMP        delh2so4_chem, delSO2_wet_H2O2, delSO2_wet_O3, have_nat3d,        &
-!$OMP        ih2so4_hv, ihso3_h2o2, ihso3_o3, iso2_oh, iso3_o3,                &
-!$OMP        jpctr, jpdd, jpspec, jpcspf, jpro2, klevel, speci, specf,         &
-!$OMP        spro2, nlnaro2, ctype, co2_interactive, istore_h2so4,             &
-!$OMP        l_asad_use_chem_diags, l_asad_use_drydep,                         &
-!$OMP        l_asad_use_flux_rxns, l_asad_use_psc_diagnostic,                  &
-!$OMP        l_asad_use_rxn_rates, l_asad_use_wetdep, l_stratosphere,          &
-!$OMP        ukca_config,                                                      &
-!$OMP        l_autotune_local,                                                 &
-!$OMP        model_levels, n_cf2cl2, n_cfcl3, n_ch4, n_co, n_h2,               &
-!$OMP        n_mebr, n_n2o, nadvt, nlev_with_ddep,                             &
-!$OMP        nn_h2o2, nn_h2so4, nn_o1d, nn_o3, nn_o3p, nn_oh, nn_so2,          &
-!$OMP        o1d_in_ss, o3p_in_ss, photol_rates, pres, q, qcf, qcl,            &
-!$OMP        row_length, rows, so4_sa, shno3_3d,                               &
-!$OMP        temp, tracer, uph2so4inaer, volume, zdryrt, zwetrt,               &
-!$OMP        H_plus_3d_arr)
 
 IF (.NOT. ALLOCATED(ystore) .AND. uph2so4inaer == 1)                           &
                              ALLOCATE(ystore(model_levels))
@@ -317,7 +290,6 @@ IF (l_autotune_local) THEN
   CALL ukca_reallocate_asad_arrays(ukca_config%ukca_chem_seg_size)
 END IF
 
-!$OMP DO SCHEDULE(STATIC)
 DO i=1,rows
   DO j=1,row_length
 
@@ -713,11 +685,8 @@ DO i=1,rows
     END IF
   END DO
 END DO ! loop (j,i)
-!$OMP END DO
 
 IF (ALLOCATED(ystore)) DEALLOCATE(ystore)
-
-!$OMP END PARALLEL
 
 #if !defined(LFRIC)
 IF (l_autotune_segments) THEN

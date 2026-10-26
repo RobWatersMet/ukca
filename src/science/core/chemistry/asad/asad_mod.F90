@@ -353,17 +353,147 @@ LOGICAL :: ltrig
 
 CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName='ASAD_MOD'
 
-! Variables which should be stored separately on each thread
-!$OMP THREADPRIVATE(cdt, co3, deriv, dpd, dpw, ej, emr,                        &
-!$OMP               f, fdot, fj, fpsc1, fpsc2, ftilde,                         &
-!$OMP               interval, ipa, jsubs,                                      &
-!$OMP               lati, linfam, ltrig, modified_map,                         &
-!$OMP               ncsteps, p, pd, pmintnd, prk, prod,                        &
-!$OMP               qa, ratio, rk,                                             &
-!$OMP               sh2o, shno3, slos, spfj, sph2o, sphno3,                    &
-!$OMP               t, t300, tnd, wp, co2, y, ydot, za)
+! Overloaded interface for both integer and real arrays
+interface array_xor_checksum
+  module procedure array_xor_checksum_int_2d
+  module procedure array_xor_checksum_int_1d
+  module procedure array_xor_checksum_real_3d
+  module procedure array_xor_checksum_real_2d
+  module procedure array_xor_checksum_real_1d
+  module procedure array_xor_checksum_logical_2d
+  module procedure array_xor_checksum_logical_1d
+end interface
 
 CONTAINS
+
+function array_xor_checksum_int_2d(arr) result(checksum)
+  implicit none
+  integer, intent(in)  :: arr(:,:)
+  integer, allocatable :: arrflat(:)
+  integer              :: checksum
+  integer              :: i
+
+  print*, 'Im in array_xor_checksum_int_2d'
+  print*, 'Sum of variable: ', sum(arr)
+
+  allocate(arrflat(size(arr)))
+
+  ! need to flatten if using arr(i)
+  arrflat = reshape(arr, [size(arr)])
+
+  checksum = 0
+  do i = 1, size(arr)
+    checksum = ieor(checksum, arrflat(i))
+  end do
+end function array_xor_checksum_int_2d
+
+function array_xor_checksum_int_1d(arr) result(checksum)
+  implicit none
+  integer, intent(in)  :: arr(:)
+  integer              :: checksum
+  integer              :: i
+
+  print*, 'Im in array_xor_checksum_int_1d'
+  print*, 'Sum of variable: ', sum(arr)
+
+  checksum = 0
+  do i = 1, size(arr)
+    checksum = ieor(checksum, arr(i))
+  end do
+end function array_xor_checksum_int_1d
+
+function array_xor_checksum_real_3d(arr) result(checksum)
+  implicit none
+  real, intent(in)     :: arr(:,:,:)
+  real, allocatable    :: arrflat(:)
+  integer              :: checksum
+  integer              :: i, int_value
+
+  print*, 'Im in array_xor_checksum_real_3d'
+
+  allocate(arrflat(size(arr)))
+
+  ! need to flatten if using arr(i)
+  arrflat = reshape(arr, [size(arr)])
+
+  checksum = 0
+  do i = 1, size(arr)
+      int_value = int(arrflat(i) * 1e6)  ! Convert to int with scaling
+      checksum = ieor(checksum, int_value)
+  end do
+end function array_xor_checksum_real_3d
+
+function array_xor_checksum_real_2d(arr) result(checksum)
+  implicit none
+  real, intent(in)     :: arr(:,:)
+  real, allocatable    :: arrflat(:)
+  integer              :: checksum
+  integer              :: i, int_value
+
+  print*, 'Im in array_xor_checksum_real_2d'
+
+  allocate(arrflat(size(arr)))
+
+  ! need to flatten if using arr(i)
+  arrflat = reshape(arr, [size(arr)])
+
+  checksum = 0
+  do i = 1, size(arr)
+      int_value = int(arrflat(i) * 1e6)  ! Convert to int with scaling
+      checksum = ieor(checksum, int_value)
+  end do
+end function array_xor_checksum_real_2d
+
+function array_xor_checksum_real_1d(arr) result(checksum)
+  implicit none
+  real, intent(in)     :: arr(:)
+  integer              :: checksum
+  integer              :: i, int_value
+
+  print*, 'Im in array_xor_checksum_real_1d'
+
+  checksum = 0
+  do i = 1, size(arr)
+      int_value = int(arr(i) * 1e6)  ! Convert to int with scaling
+      checksum = ieor(checksum, int_value)
+  end do
+end function array_xor_checksum_real_1d
+
+function array_xor_checksum_logical_2d(arr) result(checksum)
+  implicit none
+  logical, intent(in)     :: arr(:,:)
+  logical, allocatable    :: arrflat(:)
+  integer                 :: checksum
+  integer                 :: i, int_value
+
+  print*, 'Im in array_xor_checksum_logical_2d'
+
+  allocate(arrflat(size(arr)))
+
+  ! need to flatten if using arr(i)
+  arrflat = reshape(arr, [size(arr)])
+
+  checksum = 0
+  do i = 1, size(arr)
+      int_value = merge(1, 0, arrflat(i))
+      checksum = ieor(checksum, int_value)
+  end do
+end function array_xor_checksum_logical_2d
+
+function array_xor_checksum_logical_1d(arr) result(checksum)
+  implicit none
+  logical, intent(in)     :: arr(:)
+  integer                 :: checksum
+  integer                 :: i, int_value
+
+  print*, 'Im in array_xor_checksum_logical_1d'
+
+  checksum = 0
+  do i = 1, size(arr)
+      int_value = merge(1, 0, arr(i))
+      checksum = ieor(checksum, int_value)
+  end do
+end function array_xor_checksum_logical_1d
 
 ! ######################################################################
 SUBROUTINE asad_mod_pre_setup_init()
@@ -420,7 +550,6 @@ REAL(KIND=jprb)               :: zhook_handle
 
 CHARACTER(LEN=*), PARAMETER :: RoutineName='ASAD_MOD_INIT'
 
-!$OMP THREADPRIVATE(firstcall)
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
 ! nullify prod and slos on firstcall to give DISSASSOCIATED attribute
@@ -432,7 +561,6 @@ END IF
 
 ! variables and shared arrays should only be set and allocated on
 ! one thread
-!$OMP SINGLE
 
 ! Fractional product parameters - set total number allowed to be
 ! total number of reactions * 2 as each fractional product has 4 potentials!!
@@ -573,8 +701,6 @@ IF (method == int_method_NR) THEN
   IF (.NOT. ALLOCATED(base_tracer)) ALLOCATE(base_tracer(spfjsize_max))
   IF (.NOT. ALLOCATED(ffrac))       ALLOCATE(ffrac(spfjsize_max, maxfterms))
 END IF
-
-!$OMP END SINGLE
 
 ! The arrays which have copies on all threads
 

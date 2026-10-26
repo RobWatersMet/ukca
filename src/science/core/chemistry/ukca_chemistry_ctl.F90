@@ -238,37 +238,9 @@ DO l = 1, dim_ntp
   END IF
 END DO
 
-!$OMP PARALLEL DEFAULT(NONE)                                                   &
-!$OMP PRIVATE(cdot, ddmask, errcode, ierr, jna, jro2, js, jspf, jtr, k, kcs,   &
-!$OMP         kce, l, rc_het, ystore, zdryrt2, zftr, zprt1d, zq, co2_1d)       &
-!$OMP SHARED(advt, atm_cf2cl2_mol, atm_cfcl3_mol, atm_ch4_mol,                 &
-!$OMP        atm_co_mol, atm_h2_mol, atm_mebr_mol, atm_n2o_mol, avogadro,      &
-!$OMP        c_species, c_na_species, cloud_frac, cmessage,                    &
-!$OMP        delh2so4_chem, delSO2_wet_H2O2, delSO2_wet_O3,                    &
-!$OMP        dpd_dummy, dpw_dummy, fpsc1_dummy, fpsc2_dummy, H_plus,           &
-!$OMP        have_nat, prk_dummy, speci, specf, y_dummy, co2_interactive,      &
-!$OMP        ih2so4_hv, ihso3_h2o2, ihso3_o3, iso2_oh, iso3_o3,                &
-!$OMP        ix, jpctr, jpdd, jpdw, jppj, jpspec, jpro2, jy,                   &
-!$OMP        jpcspf, spro2, nlnaro2, ctype, istore_h2so4,                      &
-!$OMP        l_asad_use_chem_diags, l_asad_use_drydep,                         &
-!$OMP        l_asad_use_flux_rxns, l_asad_use_psc_diagnostic,                  &
-!$OMP        l_asad_use_rxn_rates, l_asad_use_wetdep, l_stratosphere,          &
-!$OMP        ukca_config,                                                      &
-!$OMP        model_levels,                                                     &
-!$OMP        n_cf2cl2, n_cfcl3, n_ch4, n_co, n_h2,                             &
-!$OMP        n_mebr, n_n2o, nadvt, nlev_with_ddep,                             &
-!$OMP        nn_h2o2, nn_h2so4, nn_o1d, nn_o3, nn_o3p, nn_oh, nn_so2,          &
-!$OMP        ntp_data, o1d_in_ss, o3p_in_ss, photol_rates,                     &
-!$OMP        pres, q, qcf, qcl, row_length, rows,                              &
-!$OMP        shno3_3d, so4_sa,                                                 &
-!$OMP        temp, theta_field_size, tracer,                                   &
-!$OMP        uph2so4inaer, volume,                                             &
-!$OMP        zdryrt, zwetrt)
-
 IF (.NOT. ALLOCATED(ystore) .AND. uph2so4inaer == 1)                           &
                              ALLOCATE(ystore(theta_field_size))
 
-!$OMP DO SCHEDULE(DYNAMIC)
 DO k=1,model_levels
 
   ! Determine the indices for extracting the slice of data which corresponds to
@@ -603,11 +575,8 @@ DO k=1,model_levels
   END DO ! End loop through species in zftr array
 
 END DO ! level loop (k)
-!$OMP END DO
 
 IF (ALLOCATED(ystore)) DEALLOCATE(ystore)
-
-!$OMP END PARALLEL
 
 ! Map ntp_data back into 3D array
 DO l = 1, dim_ntp

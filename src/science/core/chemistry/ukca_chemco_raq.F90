@@ -188,9 +188,6 @@ REAL(KIND=jprb)               :: zhook_handle
 CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_CHEMCO_RAQ'
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-! OMP CRITICAL will only allow one thread through this code at a time,
-! while the other threads are held until completion.
-!$OMP CRITICAL (init_ukca_chemco_raq)
 IF (first_pass) THEN
   IF (first) THEN
     ! Set up derived type arrays rk (rate coefficients of thermal reactions)
@@ -209,7 +206,6 @@ IF (first_pass) THEN
   END IF  ! If first = .TRUE.
   first_pass = .FALSE.
 END IF    ! IF first_pass = .TRUE.
-!$OMP END CRITICAL (init_ukca_chemco_raq)
 
 ! Initialise reaction rates
 rc  (:,:) = 0.0

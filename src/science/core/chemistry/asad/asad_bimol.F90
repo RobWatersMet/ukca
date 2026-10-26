@@ -179,7 +179,6 @@ CALL oneover_v(n_points, t, inv_t)
 
 ! OMP CRITICAL will only allow one thread through this code at a time,
 ! while the other threads are held until completion.
-!$OMP CRITICAL (asad_bimol_init)
 IF (first_pass) THEN
   IF (first) THEN
     first = .FALSE.
@@ -332,7 +331,6 @@ IF (first_pass) THEN
   END IF    ! first
   first_pass = .FALSE.
 END IF      ! first_pass
-!$OMP END CRITICAL (asad_bimol_init)
 
 !       1.2  Compute rates
 

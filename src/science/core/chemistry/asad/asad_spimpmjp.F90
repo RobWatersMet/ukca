@@ -361,7 +361,6 @@ IF (nstst /= 0)  CALL asad_steady( n_points )
 
 ! OMP CRITICAL will only allow one thread through this code at a time,
 ! while the other threads are held until completion.
-!$OMP CRITICAL (setup_jacobian_init)
 IF (first_pass) THEN
   IF (first) THEN
     ! Determine number and positions of nonzero elements in sparse
@@ -371,7 +370,6 @@ IF (first_pass) THEN
   END IF
   first_pass = .FALSE.
 END IF
-!$OMP END CRITICAL (setup_jacobian_init)
 
 CALL spfuljac(n_points,cdt,f_min,nonzero_map,spfj)
 

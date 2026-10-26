@@ -89,26 +89,20 @@ CALL log_v(nmodes,glomap_variables_local%sigmag,log_sigmag)
 root2 = SQRT(2.0)
 
 ! Initialise to zero
-!$OMP PARALLEL DO SCHEDULE(STATIC) DEFAULT(NONE) PRIVATE(i)                    &
-!$OMP SHARED(nbox, ccn_1)
 DO i = 1, nbox
   ccn_1(i) = 0.0
 END DO
-!$OMP END PARALLEL DO
 
 DO imode=1,nmodes
   IF (glomap_variables_local%mode(imode)) THEN
     IF (glomap_variables_local%modesol(imode) == 1) THEN
       ! for CCN_1 take CCN for particles > ACT dry radius
       dp0=2.0*act
-!$OMP PARALLEL DO SCHEDULE(STATIC) DEFAULT(NONE) PRIVATE(i,erf_arg, erfterm)   &
-!$OMP SHARED(nbox, ccn_1, drydp,imode, log_sigmag, nd, dp0, root2)
       DO i = 1, nbox
         erf_arg = LOG(dp0/drydp(i,imode)) / (root2*log_sigmag(imode))
         erfterm = 0.5 * nd(i,imode) * (1.0-umErf(erf_arg))
         ccn_1(i)   = ccn_1(i) - (0.0025*erfterm)
       END DO
-!$OMP END PARALLEL DO
     END IF
   END IF
 END DO
@@ -116,13 +110,10 @@ END DO
 CALL exp_v( nbox , ccn_1, ccn_1_exp )
 
 ! Jones method, see doi:10.1038/370450a0
-!$OMP PARALLEL DO SCHEDULE(STATIC) DEFAULT(NONE) PRIVATE(i)                    &
-!$OMP SHARED(nbox, ccn_1_exp, cdnc)
 DO i = 1, nbox
   cdnc(i)=375.0*(1.0-ccn_1_exp(i))
   IF (cdnc(i) < cdnmin ) cdnc(i) = cdnmin
 END DO
-!$OMP END PARALLEL DO
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
 RETURN

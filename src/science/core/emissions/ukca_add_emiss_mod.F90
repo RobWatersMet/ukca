@@ -924,16 +924,6 @@ IF (.NOT. ukca_config%l_suppress_ems) THEN
   ! OpenMP 3.1.
   ! However, it still has to be declared inside the PARALLEL region.
 
-!$OMP PARALLEL DO SCHEDULE(STATIC) DEFAULT(SHARED)                             &
-!$OMP PRIVATE(ilev, k)                                                         &
-!$OMP SHARED(ukca_config,bl_levels, dtrdz,                                     &
-!$OMP        em_field, exner_rho_levels, kent, kent_dsc,                       &
-!$OMP        ml_depth, model_levels, n_tracers, nm_tracer,                     &
-!$OMP        q, qcf, qcl,                                                      &
-!$OMP        rho_r2, rhokh_rdz,                                                &
-!$OMP        row_length, rows,                                                 &
-!$OMP        t_frac, t_frac_dsc, theta, timestep, tracers,                     &
-!$OMP        we_lim, we_lim_dsc, z_half, zhsc, zrzi, zrzi_dsc)
 
   DO k = 1, n_tracers
     !   Add emissions over all model layers except at surface
@@ -964,8 +954,6 @@ IF (.NOT. ukca_config%l_suppress_ems) THEN
     END IF
 
   END DO
-
-!$OMP END PARALLEL DO
 
 END IF
 

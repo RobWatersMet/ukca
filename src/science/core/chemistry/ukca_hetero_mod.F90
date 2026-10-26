@@ -285,7 +285,6 @@ mm_arr = [m_clono2,                                                            &
 
 ! OMP CRITICAL will only allow one thread through this code at a time,
 ! while the other threads are held until completion.
-!$OMP CRITICAL (ukca_hetero_init)
 IF (first_pass) THEN
   IF (first) THEN
     DO js = 1, jpcspf
@@ -368,7 +367,6 @@ IF (first_pass) THEN
   END IF
   first_pass = .FALSE.
 END IF
-!$OMP END CRITICAL (ukca_hetero_init)
 
 ! pressure in hPa here.
 zp(1:n_points)       = p(1:n_points) / 100.0
@@ -1160,7 +1158,6 @@ CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_SOLIDPHASE'
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
 ! OMP CRITICAL will only allow one thread through this code at a time,
 ! while the other threads are held until completion.
-!$OMP CRITICAL (ukca_solidphase_init)
 IF (first_pass) THEN
   IF (firstcall) THEN
     DO js = 1, jpcspf
@@ -1175,7 +1172,6 @@ IF (first_pass) THEN
   END IF
   first_pass = .FALSE.
 END IF
-!$OMP END CRITICAL (ukca_solidphase_init)
 
 f(1:n_points,ihno3) = f(1:n_points,ihno3) +                                    &
                  sphno3(1:n_points)

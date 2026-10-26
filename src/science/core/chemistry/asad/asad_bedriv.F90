@@ -170,7 +170,6 @@ CHARACTER(LEN=*), PARAMETER :: RoutineName='ASAD_BEDRIV'
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
 ! OMP CRITICAL will only allow one thread through this code at a time,
 ! while the other threads are held until completion.
-!$OMP CRITICAL (asad_bedriv_init)
 IF (first_pass) THEN
   IF (first) THEN
     first = .FALSE.
@@ -357,7 +356,6 @@ IF (first_pass) THEN
   END IF
   first_pass = .FALSE.
 END IF  ! End of initialization
-!$OMP END CRITICAL (asad_bedriv_init)
 
 ! find parameters needed in chemistry, special reactions etc
 ! Assign sensible values to species array y

@@ -191,13 +191,6 @@ mmr1d(:,:,:) = 0.0
 SELECT CASE(i_glomap_clim_setup)
 CASE (i_sussbcoc_5mode)
 
-!$OMP PARALLEL DO SCHEDULE(STATIC) DEFAULT(NONE) PRIVATE(i,j,k,loop,jj,kk)     &
-!$OMP SHARED(tdims, nmr1d, mmr1d, gc_nd_nuc_sol, gc_nuc_sol_su, gc_nuc_sol_oc, &
-!$OMP        gc_nd_ait_sol, gc_ait_sol_su, gc_ait_sol_bc, gc_ait_sol_oc,       &
-!$OMP        gc_nd_acc_sol, gc_acc_sol_su, gc_acc_sol_bc, gc_acc_sol_oc,       &
-!$OMP        gc_acc_sol_ss, gc_nd_cor_sol, gc_cor_sol_su, gc_cor_sol_bc,       &
-!$OMP        gc_cor_sol_oc, gc_cor_sol_ss, gc_nd_ait_ins, gc_ait_ins_bc,       &
-!$OMP        gc_ait_ins_oc)
   DO k = 1, tdims%k_end
     kk= (k-1) * tdims%j_len * tdims%i_len
     DO j = 1, tdims%j_end
@@ -232,7 +225,6 @@ CASE (i_sussbcoc_5mode)
       END DO
     END DO
   END DO
-!$OMP END PARALLEL DO
 
 
 CASE DEFAULT

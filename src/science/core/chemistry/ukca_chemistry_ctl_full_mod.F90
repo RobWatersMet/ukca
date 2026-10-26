@@ -224,16 +224,11 @@ END IF
 
 ! Fill stratospheric flag indicator and ntp_data array
 stratflag(:) = (L_stratosphere(:))
-!$OMP PARALLEL DEFAULT(NONE) PRIVATE(l)                                        &
-!$OMP SHARED(all_ntp, ntp_data, tot_n_pnts)
-!$OMP DO SCHEDULE(DYNAMIC)
 DO l = 1, dim_ntp
   IF (all_ntp(l)%l_required) THEN
     ntp_data(:,l) = RESHAPE(all_ntp(l)%data_3d(:,:,:),[tot_n_pnts])
   END IF
 END DO
-!$OMP END DO
-!$OMP END PARALLEL
 
 ! Put tracer mmr into 1-D array for use in ASAD chemical solver
 zq(:) = q(:)/c_h2o
@@ -461,12 +456,6 @@ END IF
 ! The indices (n_ch4, n_n2o etc.) don't refer to the location
 ! in the zftr array if RO2_NTP is true, but instead to the
 ! location in the tracer array.
-!$OMP PARALLEL DEFAULT(NONE) PRIVATE(jspf)                                     &
-!$OMP SHARED(advt, atm_cf2cl2_mol, atm_cfcl3_mol, atm_ch4_mol, atm_co_mol,     &
-!$OMP        atm_h2_mol, atm_mebr_mol, atm_n2o_mol, avogadro, jpcspf,          &
-!$OMP        n_cf2cl2, n_cfcl3, n_ch4, n_co, n_h2, n_mebr, n_n2o, specf,       &
-!$OMP        volume, zftr)
-!$OMP DO SCHEDULE(DYNAMIC)
 DO jspf = 1, jpcspf
 
   IF (n_ch4 > 0) THEN
@@ -518,8 +507,6 @@ DO jspf = 1, jpcspf
   END IF
 
 END DO ! End loop through species in zftr array
-!$OMP END DO
-!$OMP END PARALLEL
 
 IF (ALLOCATED(ystore)) DEALLOCATE(ystore)
 
@@ -553,17 +540,12 @@ DO js = 1,jpspec
 END DO       ! Close loop through all species
 
 ! Map ntp_data back into 3D array
-!$OMP PARALLEL DEFAULT(NONE) PRIVATE(l)                                        &
-!$OMP SHARED(all_ntp, model_levels, ntp_data, row_length, rows)
-!$OMP DO SCHEDULE(DYNAMIC)
 DO l = 1, dim_ntp
   IF (all_ntp(l)%l_required) THEN
     all_ntp(l)%data_3d(:,:,:) = RESHAPE(ntp_data(:,l),                         &
                                         [row_length,rows,model_levels])
   END IF
 END DO
-!$OMP END DO
-!$OMP END PARALLEL
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
 RETURN

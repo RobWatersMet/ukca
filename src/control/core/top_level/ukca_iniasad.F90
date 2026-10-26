@@ -87,9 +87,7 @@ IF (printstatus >= prstatus_oper) THEN
   CALL umPrint(umMessage,src='ukca_iniasad')
 END IF
 
-!$OMP PARALLEL
 CALL asad_mod_init(npoints)
-!$OMP END PARALLEL
 
 ! Set up dry and wet deposition logicals using module switches
 ldepd(:) = .FALSE.
@@ -170,9 +168,7 @@ CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_INIASAD_SPATIAL_VARS'
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
 
-!$OMP PARALLEL
 CALL asad_mod_init_spatial_vars(npoints)
-!$OMP END PARALLEL
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
 RETURN
@@ -196,9 +192,7 @@ CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_DELASAD_SPATIAL_VARS'
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
 
-!$OMP PARALLEL
 CALL asad_mod_dealloc_spatial_vars()
-!$OMP END PARALLEL
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
 RETURN

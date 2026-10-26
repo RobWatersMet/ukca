@@ -188,7 +188,6 @@ peps  = 1.0e19 * sfmin
 !       3.  Set fixed vmrs (Now done in UKCA_MAIN1)
 
 ! The arrays below are stored on each thread
-!$OMP PARALLEL
 
 !       4.  Clear the species arrays
 
@@ -211,7 +210,6 @@ emr  = 0.0
 
 rk   = 0.0
 prk  = 0.0
-!$OMP END PARALLEL
 
 nspi = 0
 
