@@ -227,6 +227,7 @@ IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,                          &
                         zhook_in,zhook_handle)
 call nvtxStartRange(ModuleName // ':' // RoutineName)
 
+call nvtxStartRange('RW_ftoy_1')
 ! OMP CRITICAL will only allow one thread through this code at a time,
 ! while the other threads are held until completion.
 errcodes(:) = 0
@@ -265,6 +266,7 @@ IF ( first_pass ) THEN
   END IF   ! End of IF (gonce) statement
   first_pass = .FALSE.
 END IF     ! End of IF (first_pass) statement
+call nvtxEndRange()
 
 ! Perform error check outside of the loop to better suit GPU runs
 IF (ANY(errcodes(:) /= 0)) THEN
@@ -279,6 +281,7 @@ END IF
 
 CALL asad_fyinit(ofirst,n_points, ix, jy, nlev)
 
+call nvtxStartRange('RW_ftoy_2')
 ! If computing RO2-permutation reactions, update total RO2 concentration
 IF ( ukca_config%l_ukca_ro2_perm ) THEN
 
@@ -316,7 +319,7 @@ IF ( ukca_config%l_ukca_ro2_perm ) THEN
       damp_ro2*(fro2(1:n_points) - fro2_old(1:n_points))
 
 END IF
-
+call nvtxEndRange()
 !       1.2 If there are no family or steady species then exit
 
 IF ( nstst == 0) THEN
@@ -330,14 +333,14 @@ END IF
 !       1.3 Initialise local variables and do sanity checks.
 
 nl = n_points
-
+call nvtxStartRange('RW_ftoy_3')
 DO j = 1, nstst
   js = nlstst(j)
   DO jl = 1, n_points
     zy(jl,js) = 0.0
   END DO
 END DO
-
+call nvtxEndRange()
 IF (ofirst .AND. iter < 5) THEN
   iter = 5
   icode = -1
@@ -368,6 +371,7 @@ END IF
 !           and non-model steady-state species
 !           --- --------- ------------ -------
 
+call nvtxStartRange('RW_ftoy_4')
 DO jit = 1, iter
 
   !         check to see if a species has gone zero with a nonzero
@@ -384,7 +388,7 @@ DO jit = 1, iter
       END DO
     END DO
   END IF
-
+call nvtxEndRange()
   !         4.1 Calculate production and loss terms.
   !             Note that the effect of deposition (wet & dry) and
   !             emissions are not included in the ratios calculation.
@@ -394,13 +398,14 @@ DO jit = 1, iter
   CALL asad_prls( nl, istmin, ilstmin, gdepem )
 
   !         4.2 Initialise ratios
-
+  call nvtxStartRange('RW_ftoy_5')
   DO j = 1, nstst
     js = nlstst(j)
     DO jl = 1, n_points
       ratio(jl,js) = 0.0
     END DO
   END DO
+  call nvtxEndRange()
 
   !         4.3  Compute species values for species in steady state
   !              (minor members of family, 'SS' and 'FT' species)
@@ -409,7 +414,7 @@ DO jit = 1, iter
   !              due to loss of precision. We forcibly fix it here.
   !              Also note that we cannot permit y=0.0 during the ftoy
   !              iteration because of the need to get 'sl'.
-
+  call nvtxStartRange('RW_ftoy_6')
   DO j = 1, istmin
     js = ilstmin(j)
     DO jl = 1, n_points
@@ -435,12 +440,13 @@ DO jit = 1, iter
       END IF
     END DO
   END DO
-
+  call nvtxEndRange()
   !         4.4  Now compute ratios for minor species members.
   !              ** could possibly take out 1/y(imaj) and convert to '*'
 
   istart = nlmajmin(3)
   iend   = nlmajmin(4)
+  call nvtxStartRange('RW_ftoy_7')
   DO j = nlmajmin(3), nlmajmin(4)
     js = nlmajmin(j)
     iodd = nodd(js)
@@ -457,11 +463,12 @@ DO jit = 1, iter
       END IF
     END DO
   END DO
-
+  call nvtxEndRange()
   !         4.5  Now compute ratios from species of type 'FT' if
   !              applicable. If this is the first call, we also set
   !              whether the species is in or out of the family.
 
+  call nvtxStartRange('RW_ftoy_8')
   DO j = 1, ift
     js = ilft(j)
     iodd = nodd(js)
@@ -495,12 +502,14 @@ DO jit = 1, iter
       END IF
     END DO
   END DO
+  call nvtxEndRange()
 
   !         4.6  Finally compute ratio of major species to family and
   !              hence set the minor family members.
 
   istart = nlmajmin(1)
   iend   = nlmajmin(2)
+  call nvtxStartRange('RW_ftoy_9')
   DO j = istart, iend
     js = nlmajmin(j)
     iodd = nodd(js)
@@ -510,9 +519,11 @@ DO jit = 1, iter
       y(jl,js)     = f(jl,ifam) * ratio(jl,js)
     END DO
   END DO
+  call nvtxEndRange()
 
   istart = nlmajmin(3)
   iend   = nlmajmin(4)
+  call nvtxStartRange('RW_ftoy_10')
   DO j = istart, iend
     js = nlmajmin(j)
     ifam = moffam(js)
@@ -529,10 +540,12 @@ DO jit = 1, iter
       END DO
     END IF
   END DO
+  call nvtxEndRange()
 
   !         4.7 Test for convergence.
 
   gconv = .TRUE.
+  call nvtxStartRange('RW_ftoy_11')
   DO j = 1,nstst
     js = nlstst(j)
     DO jl = 1, n_points
@@ -541,6 +554,7 @@ DO jit = 1, iter
     END DO
     IF ( .NOT. gconv ) EXIT
   END DO
+  call nvtxEndRange()
   IF (gconv) THEN
     IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,                      &
                             zhook_out,zhook_handle)
@@ -548,12 +562,14 @@ DO jit = 1, iter
     RETURN
   END IF
 
+  call nvtxStartRange('RW_ftoy_12')
   DO j = 1, nstst
     js = nlstst(j)
     DO jl = 1, n_points
       zy(jl,js) = y(jl,js)
     END DO
   END DO
+  call nvtxEndRange()
 
 END DO    ! End of iterations
 
