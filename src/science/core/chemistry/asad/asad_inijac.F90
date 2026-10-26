@@ -514,7 +514,7 @@ DO jtr=1,jpspec
 END DO
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
-clal nvtxEndRange()
+call nvtxEndRange()
 RETURN
 END SUBROUTINE asad_inijac
 END MODULE asad_inijac_mod
