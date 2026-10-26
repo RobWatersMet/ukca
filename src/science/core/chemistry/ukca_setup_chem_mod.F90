@@ -56,6 +56,7 @@ USE ereport_mod,     ONLY: ereport
 USE umPrintMgr, ONLY: umMessage, umPrint, PrintStatus, PrStatus_Diag
 USE parkind1,        ONLY: jprb, jpim
 USE yomhook,         ONLY: lhook, dr_hook
+use nvtx
 
 USE ukca_chem_offline, ONLY: ndry_offline, nwet_offline
 USE ukca_chem_aer,     ONLY: ndry_aer_aer, nwet_aer_aer
@@ -77,7 +78,7 @@ REAL(KIND=jprb)               :: zhook_handle
 CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_SETUP_CHEM'
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 
 SELECT CASE (ukca_config%i_ukca_chem)
 
@@ -453,7 +454,7 @@ IF (PrintStatus >= PrStatus_Diag) THEN
 END IF
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
-
+call nvtxEndRange()
 END SUBROUTINE ukca_setup_chem
 
 END MODULE ukca_setup_chem_mod

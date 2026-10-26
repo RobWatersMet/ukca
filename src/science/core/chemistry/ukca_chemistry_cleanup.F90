@@ -57,6 +57,7 @@ USE ereport_mod,                   ONLY: ereport
 USE errormessagelength_mod,        ONLY: errormessagelength
 USE parkind1,                      ONLY: jprb, jpim
 USE yomhook,                       ONLY: lhook, dr_hook
+use nvtx
 
 IMPLICIT NONE
 
@@ -107,6 +108,7 @@ CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_CHEMISTRY_CLEANUP'
 
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 
 IF (ukca_config%l_ukca_offline_be) RETURN
 
@@ -194,6 +196,7 @@ ELSE IF (.NOT. ukca_config%l_ukca_offline) THEN   ! tropospheric chemistry
 END IF     ! l_ukca_strat etc
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 
 END SUBROUTINE ukca_chemistry_cleanup
 

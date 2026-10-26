@@ -74,6 +74,7 @@ SUBROUTINE ukca_chemco_raq_init (nr, npdep)
 
 USE ukca_config_specification_mod, ONLY: ukca_config
 USE yomhook, ONLY: lhook, dr_hook
+use nvtx
 USE parkind1, ONLY: jprb, jpim
 USE umprintmgr, ONLY: umPrint, umMessage
 USE ereport_mod, ONLY: ereport
@@ -102,7 +103,7 @@ INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
 REAL(KIND=jprb)               :: zhook_handle
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 ! Safety checks
 IF (ukca_config%l_ukca_raqaero) THEN
   IF (nr /= 197) THEN
@@ -546,6 +547,7 @@ pdep(10) =  pd(125,130,125, 0.5)
 
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 END SUBROUTINE ukca_chemco_raq_init
 

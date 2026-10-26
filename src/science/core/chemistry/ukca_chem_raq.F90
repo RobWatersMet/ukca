@@ -386,6 +386,7 @@ SUBROUTINE ukca_init_raq
 USE asad_mod,           ONLY: jphk
 USE ukca_config_specification_mod, ONLY: ukca_config
 USE yomhook,            ONLY: lhook, dr_hook
+use nvtx
 USE parkind1,           ONLY: jprb, jpim
 
 IMPLICIT NONE
@@ -397,6 +398,7 @@ REAL(KIND=jprb)               :: zhook_handle
 CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_INIT_RAQ'
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_in, zhook_handle)
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 
 ! Allocate array with heterogeneous rates
 ALLOCATE (rath_defs_raq (jphk))
@@ -412,6 +414,7 @@ ELSE
 END IF
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_out, zhook_handle)
+call nvtxEndRange()
 RETURN
 END SUBROUTINE ukca_init_raq
 

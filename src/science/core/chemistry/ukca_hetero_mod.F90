@@ -38,6 +38,7 @@ MODULE ukca_hetero_mod
 
 
 USE yomhook, ONLY: lhook, dr_hook
+use nvtx
 USE parkind1, ONLY: jprb, jpim
 
 IMPLICIT NONE
@@ -204,6 +205,7 @@ REAL(KIND=jprb)               :: zhook_handle
 CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_HETERO'
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 
 !! The uptake coefficients for reactions 1-5 on NAT and ice are those
 !! recommended in "Chemical Kinetics and Photochemical Data for use in
@@ -685,6 +687,7 @@ END IF
 sphno3 = shno3
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 END SUBROUTINE ukca_hetero
 
@@ -715,7 +718,7 @@ REAL(KIND=jprb)               :: zhook_handle
 CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_BR_GAMMA'
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 ! Equations are IUPAC recommendations and can be found in
 ! Crowley et al. 2010, Atmos. Chem. Physics. (ref. to page numbers)
 ! or at IUPAC web link
@@ -754,6 +757,7 @@ DO jl=kstart, kend
 END DO
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 END SUBROUTINE ukca_br_gamma
 
@@ -842,7 +846,7 @@ REAL(KIND=jprb)               :: zhook_handle
 CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_SHI_LIQUID_AEROSOL'
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 ! initialise to zero
 gam3arr(:,:)= 0.0
 
@@ -1082,6 +1086,7 @@ DO jl=kstart, kend
 END DO !(jl=kstart, kend)
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 END SUBROUTINE ukca_shi_liquid_aerosol
 
@@ -1156,6 +1161,7 @@ CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_SOLIDPHASE'
 !               --- ------ -- ----- ---- -- ---- ---- -------
 !
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 ! OMP CRITICAL will only allow one thread through this code at a time,
 ! while the other threads are held until completion.
 IF (first_pass) THEN
@@ -1177,6 +1183,7 @@ f(1:n_points,ihno3) = f(1:n_points,ihno3) +                                    &
                  sphno3(1:n_points)
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 END SUBROUTINE ukca_solidphase
 
@@ -1342,6 +1349,7 @@ CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_CALCKPSC'
 !              ---------- ----- -- ----
 !
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 akpsc1(kstart:kend) = 0.0
 akpsc2(kstart:kend) = 0.0
 akpsc3(kstart:kend) = 0.0
@@ -1462,6 +1470,7 @@ IF ( lppsc .OR. lpsa ) THEN
 END IF
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 END SUBROUTINE ukca_calckpsc
 
@@ -1734,7 +1743,7 @@ DATA (c(i,28),i=1,16)/                                                         &
 !              -------- ----------- --- ------ - ---
 !
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 hshcl(:)  = 0.0
 rpcncl(:) = 0.0
 hhocl(:)  = 0.0
@@ -1814,6 +1823,7 @@ IF (lphocl) THEN
 END IF
 !
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 END SUBROUTINE ukca_eqcomp
 
@@ -1848,6 +1858,7 @@ CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_POSITION'
 !     --------------------------------------------------------------------
 !
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 ier = 1
 IF ( iorder == 0 ) THEN
   IF ( x < xc(1) ) THEN
@@ -1878,6 +1889,7 @@ END IF
 !     --------------------------------------------------------------------
 !
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 END SUBROUTINE ukca_position
 
@@ -1919,6 +1931,7 @@ CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_PSCPRES'
 
 !
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 shno3(kstart:kend) = 0.0
 sh2o (kstart:kend) = 0.0
 fpsc1(kstart:kend) = 0.0
@@ -1979,6 +1992,7 @@ DO jl=kstart,kend
 END DO
 !
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 END SUBROUTINE ukca_pscpres
 ! =======================================================================

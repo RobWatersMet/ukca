@@ -59,6 +59,7 @@ USE ereport_mod, ONLY: ereport
 USE errormessagelength_mod, ONLY: errormessagelength
 
 USE yomhook, ONLY: lhook, dr_hook
+use nvtx
 USE parkind1, ONLY: jprb, jpim
 
 USE ukca_config_constants_mod, ONLY: rho_water, avogadro
@@ -188,6 +189,7 @@ REAL(KIND=jprb)               :: zhook_handle
 CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_CHEMCO_RAQ'
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 IF (first_pass) THEN
   IF (first) THEN
     ! Set up derived type arrays rk (rate coefficients of thermal reactions)
@@ -613,6 +615,7 @@ END IF ! l_ukca_raqaero
 
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 END SUBROUTINE ukca_chemco_raq
 

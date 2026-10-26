@@ -40,6 +40,7 @@ SUBROUTINE ukca_sediment(rows, row_length, model_levels,                       &
 !
 
 USE yomhook, ONLY: lhook, dr_hook
+use nvtx
 USE parkind1, ONLY: jprb, jpim
 IMPLICIT NONE
 
@@ -81,7 +82,7 @@ REAL(KIND=jprb)               :: zhook_handle
 CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_SEDIMENT'
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 ! do sedimentation. Don't do it at bottom level.
 ! any limiting of NAT formation will already have been considered in the
 ! amounts of shno3
@@ -127,6 +128,7 @@ DO k=2,model_levels
 END DO
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 END SUBROUTINE ukca_sediment
 END MODULE ukca_sediment_mod

@@ -79,6 +79,7 @@ USE ukca_cspecies,  ONLY: c_species,n_so2 ! to convert so2 concs
 USE ukca_config_specification_mod, ONLY: ukca_config
 USE parkind1,            ONLY: jprb, jpim
 USE yomhook,             ONLY: lhook, dr_hook
+use nvtx
 
 IMPLICIT NONE
 
@@ -128,6 +129,7 @@ CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_CALC_CLOUD_PH'
 ! End of Header
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 
 ! Replace default fitting parameters with those input from rose metadata
 fit_1=ukca_config%ph_fit_coeff_a
@@ -184,6 +186,7 @@ END DO     ! k
 
 ! Finished defined new values of cloud pH to use elsewhere
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 
 END SUBROUTINE ukca_calc_cloud_ph
 

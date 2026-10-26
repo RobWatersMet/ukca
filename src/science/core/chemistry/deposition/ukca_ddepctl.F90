@@ -46,6 +46,7 @@ USE ukca_config_specification_mod, ONLY: ukca_config
 USE ukca_config_constants_mod, ONLY: tfs, rho_water
 USE asad_mod, ONLY: jpdd
 USE yomhook,             ONLY: lhook, dr_hook
+use nvtx
 USE parkind1,            ONLY: jprb, jpim
 
 USE ukca_aerod_mod, ONLY: ukca_aerod
@@ -140,6 +141,7 @@ CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_DDEPCTL'
 ! fraction = 1.0, set the land fraction to 0.0
 !
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 land_fraction = 0.0
 smr           = 0.0
 lai_ft        = 0.0
@@ -271,6 +273,7 @@ CALL ukca_ddcalc(row_length, rows, bl_levels, ntype,                           &
   nlev_with_ddep, zdryrt, len_stashwork, stashwork)
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 !
 END SUBROUTINE ukca_ddepctl

@@ -87,6 +87,7 @@ USE ukca_environment_fields_mod,   ONLY: surf_wetness
 USE ukca_config_specification_mod, ONLY: ukca_config
 
 USE yomhook,              ONLY: lhook, dr_hook
+use nvtx
 USE parkind1,             ONLY: jprb, jpim
 USE ereport_mod,          ONLY: ereport
 USE umPrintMgr,           ONLY: umMessage, umPrint, PrintStatus, PrStatus_Oper
@@ -202,6 +203,7 @@ CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_CHEMISTRY_CTL_BE'
 
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 
 nr = jpbk + jptk + jphk
 secs_per_step = REAL(chem_timestep)
@@ -397,6 +399,7 @@ WHERE (tracer(:,n_h2o2) > h2o2_offline(:))                                     &
        tracer(:,n_h2o2) = h2o2_offline(:)
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 END SUBROUTINE ukca_chemistry_ctl_be
 
@@ -417,6 +420,7 @@ USE ukca_missing_data_mod, ONLY: rmdi, imdi
 USE umPrintMgr,          ONLY: umPrint, umMessage
 USE ereport_mod,         ONLY: ereport
 USE yomhook,             ONLY: lhook, dr_hook
+use nvtx
 USE parkind1,            ONLY: jprb, jpim
 IMPLICIT NONE
 
@@ -456,7 +460,7 @@ REAL(KIND=jprb)               :: zhook_handle
 CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_CHEMCO_BE_OFFLINE'
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 ! Copy pressure, temperature and water vapour into module variables
 npnts = theta_field_size
 
@@ -612,6 +616,7 @@ END IF
 
 first = .FALSE.
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 END SUBROUTINE ukca_chemco_be_offline
 
@@ -653,6 +658,7 @@ SUBROUTINE ukca_deriv_offline(nr, n_be_calls, theta_field_size, dts, y,        &
 USE asad_mod, ONLY: jpspec
 USE ukca_um_legacy_mod, ONLY: oneover_v
 USE yomhook,         ONLY: lhook, dr_hook
+use nvtx
 USE parkind1,        ONLY: jprb, jpim
 IMPLICIT NONE
 
@@ -694,7 +700,7 @@ REAL(KIND=jprb)               :: zhook_handle
 CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_DERIV_OFFLINE'
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 npnts = theta_field_size
 
 ! Initialise the flux terms
@@ -819,7 +825,7 @@ END DO  ! n_be_calls
 
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
-
+call nvtxEndRange()
 RETURN
 END SUBROUTINE ukca_deriv_offline
 

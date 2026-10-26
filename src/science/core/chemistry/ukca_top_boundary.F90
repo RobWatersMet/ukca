@@ -45,6 +45,7 @@ USE ukca_constants,         ONLY: pi, c_no, c_co, c_h2o, c_h2, c_h, c_oh, c_o3
 USE ukca_time_mod,          ONLY: i_day_number, i_year, days_in_year
 
 USE yomhook,                ONLY: lhook, dr_hook
+use nvtx
 USE parkind1,               ONLY: jprb, jpim
 
 IMPLICIT NONE
@@ -267,7 +268,7 @@ INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
 INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 ! make sure we initialize the array either if the years no longer match
 ! i.e. the job has crossed into a new year, of at the start of each leg
 IF ((firstcall) .OR. (i_year /= year_filled)) THEN
@@ -382,7 +383,7 @@ IF (ukca_config%i_ukca_topboundary == i_top_BC_H2O) THEN
 END IF
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
-
+call nvtxEndRange()
 END SUBROUTINE ukca_top_boundary
 
 END MODULE ukca_topboundary_mod

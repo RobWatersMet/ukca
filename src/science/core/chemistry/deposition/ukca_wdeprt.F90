@@ -46,6 +46,7 @@ USE ukca_um_legacy_mod, ONLY: exp_v, log_v
 USE ukca_config_constants_mod, ONLY: rmol
 USE parkind1, ONLY: jprb, jpim
 USE yomhook, ONLY: lhook, dr_hook
+use nvtx
 
 IMPLICIT NONE
 
@@ -108,6 +109,7 @@ REAL :: tmp4_out(p_fieldda,model_levels,jpdw) ! temporary array
 REAL :: tmp5_out(p_fieldda,model_levels,jpdw) ! temporary array
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 
 first_point = 1
 last_point = p_fieldda
@@ -227,6 +229,7 @@ DO ns = 1,jpdw
 END DO
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 END SUBROUTINE ukca_wdeprt
 END MODULE ukca_wdeprt_mod

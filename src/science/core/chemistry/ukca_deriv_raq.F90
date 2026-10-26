@@ -46,6 +46,7 @@ USE ukca_config_specification_mod, ONLY: ukca_config
 
 USE ukca_config_constants_mod, ONLY: avogadro
 USE yomhook, ONLY: lhook, dr_hook
+use nvtx
 USE parkind1, ONLY: jprb, jpim
 USE ukca_um_legacy_mod, ONLY: oneover_v
 
@@ -96,7 +97,7 @@ REAL(KIND=jprb)               :: zhook_handle
 CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_DERIV_RAQ'
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 recip_avogad = 1.0 / avogadro
 
 !     Initialise flux diagnostics to zero
@@ -1132,6 +1133,7 @@ DO j = 1, icnt_wd
 END DO
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 END SUBROUTINE ukca_deriv_raq
 END MODULE ukca_deriv_raq_mod

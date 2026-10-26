@@ -57,7 +57,7 @@ USE ukca_um_legacy_mod,      ONLY:                                             &
 USE yomhook,                 ONLY:                                             &
     lhook,                                                                     &
     dr_hook
-
+use nvtx
 
 IMPLICIT NONE
 
@@ -104,7 +104,7 @@ CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_DDCALC'
 
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 
 !     Set all arrays to zero
 DO loop = 1, jpdd
@@ -329,6 +329,7 @@ IF ( ukca_config%l_enable_diag_um ) THEN
 END IF     ! l_enable_diag_um
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 END SUBROUTINE ukca_ddcalc
 END MODULE ukca_ddcalc_mod

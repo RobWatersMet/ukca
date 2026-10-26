@@ -45,6 +45,7 @@ USE ukca_config_specification_mod, ONLY: ukca_config
 USE asad_mod,         ONLY: peps, jpeq, jpspec
 USE parkind1, ONLY: jprb, jpim
 USE yomhook, ONLY: lhook, dr_hook
+use nvtx
 
 IMPLICIT NONE
 
@@ -96,6 +97,7 @@ CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_CHEMCO'
 
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 IF (ukca_config%l_ukca_aerchem) THEN
   faq(:,:) = fdiss(:,:,1) + fdiss(:,:,2)
   ! convert clw in kg/kg to volume ratio
@@ -1117,6 +1119,7 @@ END IF    ! l_ukca_aerchem
 
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 END SUBROUTINE ukca_chemco
 END MODULE ukca_chemco_mod

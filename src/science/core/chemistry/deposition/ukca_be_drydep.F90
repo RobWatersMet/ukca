@@ -39,6 +39,7 @@ USE asad_mod,          ONLY:  ndepd, nldepd, jpspec, jpdd
 USE ukca_config_specification_mod, ONLY: ukca_config
 USE parkind1, ONLY: jprb, jpim
 USE yomhook, ONLY: lhook, dr_hook
+use nvtx
 
 IMPLICIT NONE
 
@@ -67,6 +68,7 @@ CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_BE_DRYDEP'
 
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 DO js = 1, jpspec
   DO i = 1, n_pnts
     odryrt(i,js) = 0.0
@@ -100,6 +102,7 @@ ELSE
 END IF   ! End of IF (l_ukca_intdd) statement
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 END SUBROUTINE ukca_be_drydep
 END MODULE ukca_be_drydep_mod

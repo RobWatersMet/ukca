@@ -37,6 +37,7 @@ SUBROUTINE ukca_ch4_stratloss(n_be_calls, n_pnts,                              &
                     y, stratloss)
 
 USE yomhook, ONLY: lhook, dr_hook
+use nvtx
 USE parkind1, ONLY: jprb, jpim
 USE ukca_config_constants_mod, ONLY: avogadro
 
@@ -68,7 +69,7 @@ REAL(KIND=jprb)               :: zhook_handle
 CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_CH4_STRATLOSS'
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 DO n = 1, n_be_calls
 
   yp(:) = y(:)
@@ -84,6 +85,7 @@ DO n = 1, n_be_calls
 END DO  ! n_be_calls
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 END SUBROUTINE ukca_ch4_stratloss
 END MODULE ukca_ch4_stratloss_mod

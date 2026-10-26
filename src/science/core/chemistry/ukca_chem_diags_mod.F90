@@ -67,6 +67,7 @@ USE ukca_um_legacy_mod, ONLY: copydiag_3d, len_stlist, stindex, stlist,        &
 
 USE ereport_mod,  ONLY: ereport
 USE yomhook,      ONLY: lhook, dr_hook
+use nvtx
 USE parkind1,     ONLY: jprb, jpim
 
 IMPLICIT NONE
@@ -128,7 +129,7 @@ CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_CHEM_DIAGS' ! used for EReport
 ! End of header
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 icode = 0 ! Initialise error status
 im_index = 1
 
@@ -350,6 +351,7 @@ END IF  ! sf(item,UKCA_diag_sect)
 ! ----------------------------------------------------------------------
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+use nvtxEndRange()
 RETURN
 END SUBROUTINE ukca_chem_diags
 

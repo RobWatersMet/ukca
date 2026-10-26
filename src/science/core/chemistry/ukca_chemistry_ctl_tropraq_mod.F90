@@ -90,6 +90,7 @@ USE ukca_chemco_raq_mod,  ONLY: ukca_chemco_raq
 USE ukca_deriv_raqaero_mod, ONLY: ukca_deriv_raqaero
 
 USE yomhook,              ONLY: lhook, dr_hook
+use nvtx
 USE parkind1,             ONLY: jprb, jpim
 USE ereport_mod,          ONLY: ereport
 USE umPrintMgr,           ONLY: umMessage, umPrint, PrintStatus, PrStatus_Oper
@@ -263,6 +264,7 @@ CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_CHEMISTRY_CTL_TROPRAQ'
 
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 nr = nr_therm + nr_phot
 
 IF (firstcall) THEN
@@ -642,6 +644,7 @@ IF (ukca_config%l_enable_diag_um .AND. ukca_config%l_ukca_raq) THEN
 END IF
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 END SUBROUTINE ukca_chemistry_ctl_tropraq
 

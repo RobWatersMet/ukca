@@ -44,6 +44,7 @@ USE ukca_constants,     ONLY: pi_over_180, fxb, fxc
 USE asad_mod, ONLY: depvel, jpdd
 USE parkind1, ONLY: jprb, jpim
 USE yomhook, ONLY: lhook, dr_hook
+use nvtx
 
 IMPLICIT NONE
 
@@ -99,6 +100,7 @@ CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_DDEPRT'
 !       Initialise dryrt to zero
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 dryrt(:,:) = 0.0
 
 DO i = 1,p_fieldda  ! Loop over spatial scale
@@ -210,6 +212,7 @@ DO ns = 1,jpdd                     ! Loop over deposited species
 END DO                       ! End of loop over deposited species
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 END SUBROUTINE ukca_ddeprt
 END MODULE ukca_ddeprt_mod

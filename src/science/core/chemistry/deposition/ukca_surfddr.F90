@@ -70,6 +70,7 @@ USE umPrintMgr,              ONLY:                                             &
 USE yomhook,                 ONLY:                                             &
     lhook,                                                                     &
     dr_hook
+use nvtx
 
 IMPLICIT NONE
 
@@ -289,6 +290,7 @@ CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_SURFDDR'
 
 ! Set up standard resistance array rsurf on first call only
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 
 IF (first) THEN
 
@@ -2663,6 +2665,7 @@ DO j = 1, ndepd
 
 END DO  ! End of DO j = 1, ndepd
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 
 END SUBROUTINE ukca_surfddr

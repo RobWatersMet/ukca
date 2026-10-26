@@ -43,6 +43,7 @@ USE asad_mod, ONLY: jpspec, jppj
 USE ukca_config_specification_mod, ONLY: ukca_config
 
 USE yomhook,             ONLY: lhook, dr_hook
+use nvtx
 USE parkind1,            ONLY: jprb, jpim
 
 USE ukca_um_legacy_mod,  ONLY: oneover_v
@@ -85,7 +86,7 @@ REAL(KIND=jprb)               :: zhook_handle
 CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_DERIV_RAQAERO'
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 ! Initialise sulphur oxidation fluxes
 delta_so2_wetox_h2o2(:) = 0.0
 delta_so2_wetox_o3(:) = 0.0
@@ -934,6 +935,7 @@ END DO  ! n_be_calls
 
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 END SUBROUTINE ukca_deriv_raqaero
 

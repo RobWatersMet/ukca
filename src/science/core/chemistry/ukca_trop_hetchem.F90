@@ -53,6 +53,7 @@ USE ukca_mode_setup,      ONLY: nmodes,                                        &
 
 USE ukca_config_specification_mod, ONLY: ukca_config, glomap_variables
 USE yomhook,              ONLY: lhook, dr_hook
+use nvtx
 USE parkind1,             ONLY: jprb, jpim
 USE ereport_mod,          ONLY: ereport
 USE umPrintMgr, ONLY: umMessage, umPrint, PrintStatus, PrStatus_Diag
@@ -132,7 +133,7 @@ REAL(KIND=jprb)               :: zhook_handle
 CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_TROP_HETCHEM'
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 ! Caution - pointers to TYPE glomap_variables%
 !           have been included here to make the code easier to read
 !           take care when making changes involving pointers
@@ -361,7 +362,7 @@ IF (PrintStatus >= PrStatus_Diag) THEN
 END IF
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
-
+call nvtxEndRange()
 RETURN
 
 END SUBROUTINE ukca_trop_hetchem
@@ -414,7 +415,7 @@ CHARACTER(LEN=*), PARAMETER :: RoutineName='CAL_N2O5'
 !==============================================================
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 ! Convert RH to % (max = 100%)
 ! Values already limited to <= 1.0 - see rel_humid_frac in UKCA_MAIN1
 rh_p(:)  = rh(:) * 100.0
@@ -567,7 +568,7 @@ CASE DEFAULT
 END SELECT
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
-
+call nvtxEndRange()
 RETURN
 END FUNCTION cal_n2o5
 
@@ -630,7 +631,7 @@ CHARACTER(LEN=*), PARAMETER :: RoutineName='CAL_HO2'
 !==============================================================
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 ! Convert rh to % (max = 100%)  !! RH is already <= 1.0
 rh_p(:)  = rh(:) * 100.0
 
@@ -768,6 +769,7 @@ CASE DEFAULT
 END SELECT
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 END FUNCTION cal_ho2
 
@@ -840,7 +842,7 @@ CHARACTER(LEN=*), PARAMETER :: RoutineName='CAL_LOSS1K'
 !=============================================================
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 ! Convert molecular weight from g/mol to kg/mol
 mw_s = molec_wt_s/1.0e3
 
@@ -894,7 +896,7 @@ IF (PrintStatus >= PrStatus_Diag) THEN
 END IF
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
-
+call nvtxEndRange()
 RETURN
 END FUNCTION cal_loss1k
 

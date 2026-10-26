@@ -123,6 +123,7 @@ SUBROUTINE ukca_transform_halogen(rows, row_length, model_levels, tr_ukca,     &
 
 USE parkind1,       ONLY: jprb, jpim
 USE yomhook,        ONLY: lhook, dr_hook
+use nvtx
 
 IMPLICIT NONE
 
@@ -147,7 +148,7 @@ CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_TRANSFORM_HALOGEN'
 
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 IF (first) THEN
   CALL ukca_setup_lumping()
   first = .FALSE.
@@ -209,6 +210,7 @@ ELSE
 
 END IF
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 
 END SUBROUTINE ukca_transform_halogen
@@ -282,7 +284,7 @@ SUBROUTINE transform(row_length, rows, model_levels, tr_ukca,                  &
 
 USE parkind1,       ONLY: jprb, jpim
 USE yomhook,        ONLY: lhook, dr_hook
-
+use nvtx
 IMPLICIT NONE
 
 ! I/O variables
@@ -317,7 +319,7 @@ REAL(KIND=jprb)               :: zhook_handle
 CHARACTER(LEN=*), PARAMETER :: RoutineName='TRANSFORM'
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 ALLOCATE(total_all(row_length,rows,model_levels))
 ALLOCATE(total_source(row_length,rows,model_levels))
 ALLOCATE(total_nochange(row_length,rows,model_levels))
@@ -492,6 +494,7 @@ DEALLOCATE (total_source)
 DEALLOCATE (total_nochange)
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 END SUBROUTINE transform
 
@@ -535,6 +538,7 @@ USE umPrintMgr, ONLY: umMessage, umPrint, PrintStatus, PrStatus_Oper
 
 USE parkind1,       ONLY: jprb, jpim
 USE yomhook,        ONLY: lhook, dr_hook
+use nvtx
 
 IMPLICIT NONE
 
@@ -548,7 +552,7 @@ CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_SETUP_LUMPING'
 
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 DO i=1,jpctr
   SELECT CASE (advt(i))
 
@@ -747,6 +751,7 @@ DO i=1,jpctr
 END DO
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 END SUBROUTINE ukca_setup_lumping
 
 END MODULE ukca_transform_halogen_mod

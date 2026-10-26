@@ -50,7 +50,7 @@ USE ukca_um_legacy_mod,        ONLY: vkman, rgas => r
 USE ukca_config_constants_mod, ONLY: rhosea
 USE parkind1,                  ONLY: jpim, jprb
 USE yomhook,                   ONLY: lhook, dr_hook
-
+use nvtx
 
 IMPLICIT NONE
 
@@ -87,7 +87,7 @@ CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_DDEPO3_OCEAN'
 
 !------------------------------------------------------------------------
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 
 rhoa = p0 / ( rgas * t0 ) ! air density (kg/m3)
 
@@ -119,6 +119,7 @@ vdw=SQRT(a1*m_diff)*(psi*b_k1(delzt1)*COSH(argm)+b_k0(delzt1)*SINH(argm))/     &
 rc=1.0/(alpha*vdw) ! surface resistance (s/m)
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 
 END SUBROUTINE ukca_ddepo3_ocean
 

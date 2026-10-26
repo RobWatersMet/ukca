@@ -69,6 +69,7 @@ USE errormessagelength_mod,        ONLY: errormessagelength
 USE parkind1,                      ONLY: jprb, jpim
 USE umPrintMgr,                    ONLY: umMessage, umPrint
 USE yomhook,                       ONLY: lhook, dr_hook
+use nvtx
 
 IMPLICIT NONE
 
@@ -153,7 +154,7 @@ REAL(KIND=jprb)               :: zhook_handle
 CHARACTER(LEN=*), PARAMETER   :: RoutineName = 'UKCA_CHEMISTRY_SETUP'
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 tropraq = (ukca_config%l_ukca_trop .OR. ukca_config%l_ukca_aerchem .OR.        &
            ukca_config%l_ukca_raq .OR. ukca_config%l_ukca_raqaero)
 
@@ -303,7 +304,7 @@ IF (ukca_config%l_ukca_offline) THEN
 END IF
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
-
+call nvtxEndRange()
 END SUBROUTINE ukca_chemistry_setup
 
 END MODULE ukca_chemistry_setup_mod

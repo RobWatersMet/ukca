@@ -55,6 +55,7 @@ USE ukca_constants,  ONLY: m_br, m_brcl, m_bro, m_brono2, m_c, m_c2h4,         &
 USE ereport_mod,     ONLY: ereport
 USE parkind1,        ONLY: jpim,  jprb     ! DrHook
 USE yomhook,         ONLY: lhook, dr_hook  ! DrHook
+use nvtx
 USE errormessagelength_mod, ONLY: errormessagelength
 
 IMPLICIT NONE
@@ -78,7 +79,7 @@ CHARACTER(LEN=*), PARAMETER :: RoutineName='GET_MOLMASS'
 ! End of header
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_in, zhook_handle)
-
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 ierr = 0
 
 ! Use values from the module ukca_constants to return the
@@ -318,7 +319,7 @@ IF (ierr /= 0) THEN
 END IF
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_out, zhook_handle)
-
+call nvtxEndRange()
 RETURN
 
 END FUNCTION get_molmass

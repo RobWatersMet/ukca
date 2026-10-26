@@ -37,6 +37,7 @@ USE ukca_constants,      ONLY: m_air
 USE ukca_config_constants_mod,  ONLY: rmol
 USE parkind1,            ONLY: jprb, jpim
 USE yomhook,             ONLY: lhook, dr_hook
+use nvtx
 
 IMPLICIT NONE
 
@@ -75,7 +76,7 @@ REAL(KIND=jprb)               :: zhook_handle
 CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_FDISS'
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 
 fdiss(:,:,:) = 0.0
 todo(:) = .FALSE.
@@ -125,6 +126,7 @@ DO ns=1,jpdw
 END DO
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 END SUBROUTINE ukca_fdiss
 END MODULE ukca_fdiss_mod

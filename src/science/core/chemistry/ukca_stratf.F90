@@ -47,6 +47,7 @@ USE ukca_cspecies,     ONLY: n_o3, n_o3s, n_hono2
 USE ukca_constants,    ONLY: c_n, c_hno3
 USE parkind1,          ONLY: jprb, jpim
 USE yomhook,           ONLY: lhook, dr_hook
+use nvtx
 
 USE ereport_mod,       ONLY: ereport
 USE umPrintMgr, ONLY: umMessage, umPrint, PrintStatus, PrStatus_Diag
@@ -90,7 +91,7 @@ REAL(KIND=jprb)               :: zhook_handle
 CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_STRATF'
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 ! Set number of levels above tropopause at which to start overwriting values.
 ! If number of levels is not set explicitly then set it depending on vertical
 ! resolution. This is deprecated functionality designed to support specific UM
@@ -124,6 +125,7 @@ END IF
 ! Skip processing if there are no updates to do
 IF (no_above_trop >= model_levels) THEN
   IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+  call nvtxEndRange()
   RETURN
 END IF
 
@@ -150,6 +152,7 @@ IF (n_o3s > 0) THEN
 END IF
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 END SUBROUTINE ukca_stratf
 END MODULE ukca_stratf_mod

@@ -180,6 +180,7 @@ USE ukca_um_legacy_mod,      ONLY: vkman, gg => g
 USE ukca_config_constants_mod, ONLY: rmol
 USE parkind1,                ONLY: jprb, jpim
 USE yomhook,                 ONLY: lhook, dr_hook
+use nvtx
 USE ereport_mod,             ONLY: ereport
 USE errormessagelength_mod,  ONLY: errormessagelength
 
@@ -266,6 +267,7 @@ INTEGER :: icode
 !     that dry deposit
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 IF (first) THEN
   ALLOCATE(d0(jpdd))
   d0(:) = -1.0
@@ -795,6 +797,7 @@ DO j = 1, ndepd
 END DO
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 END SUBROUTINE ukca_aerod
 END MODULE ukca_aerod_mod

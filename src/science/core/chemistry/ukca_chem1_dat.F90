@@ -56,6 +56,7 @@ USE ukca_chem_offline,  ONLY:  chch_defs_offline,                              &
                                ukca_init_offline
 
 USE yomhook, ONLY: lhook, dr_hook
+use nvtx
 USE parkind1, ONLY: jprb, jpim
 USE umPrintMgr, ONLY:                                                          &
     umPrint,                                                                   &
@@ -588,7 +589,7 @@ REAL(KIND=jprb)               :: zhook_handle
 CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_CHEM1_INIT'
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 IF (.NOT. (ukca_config%l_ukca_strat .OR. ukca_config%l_ukca_strattrop .OR.     &
            ukca_config%l_ukca_tropisop .OR. ukca_config%l_ukca_offline .OR.    &
            ukca_config%l_ukca_cristrat)) THEN
@@ -806,6 +807,7 @@ IF (ukca_config%l_ukca_chem_aero .AND. ukca_config%l_ukca_scale_soa_yield_isop &
 END IF
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 
 CONTAINS
@@ -820,6 +822,7 @@ REAL(KIND=jprb)               :: zhook_handle
 CHARACTER(LEN=*), PARAMETER :: RoutineName='CHECK_DIMS'
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 
 IF (isizes(1) /= jpspec) THEN
   cmessage= ' chch_defs: size not equal to jpspec'
@@ -871,6 +874,7 @@ IF (ierr > 1) THEN
 END IF
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 END SUBROUTINE check_dims
 
@@ -885,7 +889,7 @@ REAL(KIND=jprb)               :: zhook_handle
 CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_SCALE_SOA_YIELD'
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-
+call nvtxStartRange(ModuleName // ':' // RoutineName)
    ! A scaling factor soa_yield_scaling_mt can be used to tune the SOA
    ! yield from the oxidaton of monoterpene. E.g this could be
    ! increased to compensate for the lack of SOA production
@@ -900,6 +904,7 @@ DO i = 1, SIZE(ratb_defs)
 END DO
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 
 END SUBROUTINE ukca_scale_soa_yield
@@ -915,7 +920,7 @@ REAL(KIND=jprb)               :: zhook_handle
 CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_SCALE_SOA_YIELD_ISOP'
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-
+call nvtxStartRange(ModuleName // ':' // RoutineName)
    ! A scaling factor soa_yield_scaling_isop can be used to tune the SOA
    ! yield from the oxidation of isoprene.
 
@@ -955,6 +960,7 @@ IF (ukca_config%i_ukca_chem_version >= ichem_ver132) THEN
 END IF
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 
 END SUBROUTINE ukca_scale_soa_yield_isop

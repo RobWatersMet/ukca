@@ -32,6 +32,7 @@
 MODULE ukca_diurnal_oxidant
 
 USE yomhook,           ONLY: lhook, dr_hook
+use nvtx
 USE parkind1,          ONLY: jprb, jpim
 
 IMPLICIT NONE
@@ -89,7 +90,7 @@ REAL(KIND=jprb)    :: zhook_handle
 CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_SET_DIURNAL_OX'
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 SELECT CASE(species(1:4))
 CASE ('OH  ','HO2 ')
 
@@ -146,6 +147,7 @@ CASE ('HO2 ')
 END SELECT
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 END SUBROUTINE ukca_set_diurnal_ox
 
@@ -189,7 +191,7 @@ REAL(KIND=jprb)    :: zhook_handle
 CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_SET_DIURNAL_OX_COL'
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 ! get mapping from theta_field to proper x*y. Field is 1 column here!
 location = ix + ((jy - 1)*ukca_config%row_length)
 
@@ -247,6 +249,7 @@ CASE ('HO2 ')
 END SELECT
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 END SUBROUTINE ukca_set_diurnal_ox_col
 
@@ -295,7 +298,7 @@ REAL(KIND=jprb) :: zhook_handle
 CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_INT_COSZ'
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 decls = ASIN(sindec)
 
 tan_decls = TAN(decls)
@@ -331,6 +334,7 @@ cosza = RESHAPE(cos_zenith_angle,[row_length*rows])
 daylength1d = RESHAPE(daylength,[row_length*rows])
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 END SUBROUTINE ukca_int_cosz
 
@@ -348,12 +352,12 @@ CHARACTER(LEN=*), PARAMETER :: RoutineName = 'DEALLOC_DIURNAL_OXIDANT'
 REAL(KIND=jprb) :: zhook_handle
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 IF (ALLOCATED(daylength1d)) DEALLOCATE(daylength1d)
 IF (ALLOCATED(cosza))       DEALLOCATE(cosza)
 IF (ALLOCATED(intcosza))    DEALLOCATE(intcosza)
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
-
+call nvtxEndRange()
 END SUBROUTINE dealloc_diurnal_oxidant
 END MODULE ukca_diurnal_oxidant

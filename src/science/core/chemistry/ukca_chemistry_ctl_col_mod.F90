@@ -93,6 +93,7 @@ USE ukca_ntp_mod,       ONLY: ntp_type, dim_ntp, name2ntpindex
 USE ukca_environment_fields_mod, ONLY: co2_interactive
 
 USE yomhook, ONLY: lhook, dr_hook
+use nvtx
 USE parkind1, ONLY: jprb, jpim
 USE ereport_mod, ONLY: ereport
 USE umPrintMgr, ONLY: umMessage, umPrint
@@ -242,7 +243,7 @@ TYPE(autotune_type), ALLOCATABLE, SAVE :: autotune_state
 #endif
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 #if !defined(LFRIC)
 ! Set up automatic segment size tuning
 IF (l_autotune_segments) THEN
@@ -703,6 +704,7 @@ END IF
 #endif
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 END SUBROUTINE ukca_chemistry_ctl_col
 

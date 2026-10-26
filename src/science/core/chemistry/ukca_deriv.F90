@@ -40,6 +40,7 @@ SUBROUTINE ukca_deriv(nr, n_be_calls, n_pnts,                                  &
 USE asad_mod, ONLY: jpspec, jppj
 USE ukca_config_specification_mod, ONLY: ukca_config
 USE yomhook, ONLY: lhook, dr_hook
+use nvtx
 USE parkind1, ONLY: jprb, jpim
 
 IMPLICIT NONE
@@ -82,7 +83,7 @@ REAL(KIND=jprb)               :: zhook_handle
 CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_DERIV'
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 DO n = 1, n_be_calls           ! loop over chemical timesteps
 
   DO j = 1,jpspec
@@ -665,6 +666,7 @@ DO n = 1, n_be_calls           ! loop over chemical timesteps
 END DO  ! n_be_calls
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 END SUBROUTINE ukca_deriv
 END MODULE ukca_deriv_mod

@@ -91,6 +91,7 @@ USE ukca_config_specification_mod, ONLY: ukca_config
 USE ukca_ntp_mod,         ONLY: ntp_type, dim_ntp, name2ntpindex
 
 USE yomhook,              ONLY: lhook, dr_hook
+use nvtx
 USE parkind1,             ONLY: jprb, jpim
 USE ereport_mod,          ONLY: ereport
 USE umPrintMgr,           ONLY: umMessage, umPrint
@@ -210,7 +211,7 @@ CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_CHEMISTRY_CTL_FULL'
 
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 ! Dummy variables to satisfy expected numbers of arguments for ASAD_CDRIVE,
 ! ASAD_CHEMICAL_DIAGNOSTICS and ASAD_PSC_DIAGNOSTIC
 ix=0
@@ -548,6 +549,7 @@ DO l = 1, dim_ntp
 END DO
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 END SUBROUTINE ukca_chemistry_ctl_full
 

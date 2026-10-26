@@ -38,6 +38,7 @@ USE ukca_config_constants_mod, ONLY: rmol, avogadro
 USE ukca_constants,       ONLY: m_air
 USE parkind1,             ONLY: jprb, jpim
 USE yomhook,              ONLY: lhook, dr_hook
+use nvtx
 
 IMPLICIT NONE
 
@@ -90,7 +91,7 @@ REAL(KIND=jprb)               :: zhook_handle
 CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_FRACDISS'
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 inv_298 = 1.0/298.0
 
 frac_diss(:,:,:,:,:)=0.0
@@ -180,6 +181,7 @@ DO k=1,model_levels
 END DO
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 
 END SUBROUTINE ukca_fracdiss

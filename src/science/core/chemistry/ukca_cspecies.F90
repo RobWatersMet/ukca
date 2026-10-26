@@ -23,6 +23,7 @@
 MODULE ukca_cspecies
 
 USE yomhook,         ONLY: lhook, dr_hook
+use nvtx
 USE parkind1,        ONLY: jprb, jpim
 IMPLICIT NONE
 PRIVATE
@@ -212,6 +213,7 @@ CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_CALC_CSPECIES'
 !      in UKCA_CONSTANTS, where xx is the species.
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 ! advected tracers
 c_species = 0.0
 WHERE (advt == 'Ox        ') c_species = c_o3
@@ -903,6 +905,7 @@ IF (printstatus > prstatus_oper) THEN
 END IF
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 END SUBROUTINE ukca_calc_cspecies
 
