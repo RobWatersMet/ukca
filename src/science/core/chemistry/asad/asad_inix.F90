@@ -212,15 +212,6 @@ DO jr = 1, jpnr
       iss = nspi(jr,jp)
       IF ( iss /= 0 ) THEN
         nnfrp = nnfrp + 1
-        IF ( nnfrp > jpfrpx ) THEN
-          WRITE(umMessage,'(2A)') '*ASAD ERROR: The parameter jpfrpx is',      &
-         ' too small. Please increase it.'
-          CALL umPrint(umMessage,src='asad_inix')
-          cmessage=' Parameter jpfrpx is too small for no. '//                 &
-                    'of fractional products'
-
-          CALL ereport('ASAD_INIX',nnfrp,cmessage)
-        END IF
         ntabfp(nnfrp,1) = iss
         ntabfp(nnfrp,2) = jr
         ntabfp(nnfrp,3) = nfrpx(jr) + (jp-3)
@@ -228,6 +219,15 @@ DO jr = 1, jpnr
     END DO
   END IF
 END DO
+
+! Perform error check outside of the loop to better suit GPU runs
+IF ( nnfrp > jpfrpx ) THEN
+  WRITE(umMessage,'(2A)') '*ASAD ERROR: The parameter jpfrpx is',              &
+  ' too small. Please increase it.'
+  CALL umPrint(umMessage,src='asad_inix')
+  cmessage=' Parameter jpfrpx is too small for no. of fractional products'
+  CALL ereport('ASAD_INIX',nnfrp,cmessage)
+END IF
 
 !       3.   Set up lists for deposition and emissions.
 !            --- -- ----- --- ---------- --- ----------
