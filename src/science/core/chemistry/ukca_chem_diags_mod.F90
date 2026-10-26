@@ -351,7 +351,7 @@ END IF  ! sf(item,UKCA_diag_sect)
 ! ----------------------------------------------------------------------
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
-use nvtxEndRange()
+call nvtxEndRange()
 RETURN
 END SUBROUTINE ukca_chem_diags
 
