@@ -3,7 +3,7 @@
 set -e
 
 CONFIG=$CONDA_PREFIX/share/psyclone/psyclone.cfg
-OPTS="-l output --config ${CONFIG} -s $(pwd)/psyclone/omp_cpu_trans.py"
+OPTS="-l output --config ${CONFIG}"
 PREPROC_OPTS='-DARRAYCHECK -DLFRIC'
 
 SOURCE_DIRECTORY='/home/rw796/ukca/r5776_ukca_gpuport_nvtx_calipers/'
@@ -15,11 +15,11 @@ FILES="
 
 # Need to process the files
 for FILE in ${FILES}; do
-  out_file=$FILE + '_prep'
+  out_file="${FILE}_prep"
 
   source_path="${SOURCE_DIRECTORY}${FILE}"
-
-  gfortran -E -cpp $PREPROC_OPTS $source_path -o $out_file
+  echo "gfortran -E -P -cpp $PREPROC_OPTS $source_path -o $out_file"
+  gfortran -E -P -cpp $PREPROC_OPTS $source_path -o $out_file
   rm -f $FILE
   mv $out_file $FILE
 
