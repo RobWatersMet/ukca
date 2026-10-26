@@ -27,6 +27,7 @@ MODULE asad_mod
 USE ukca_config_specification_mod, ONLY: ukca_config, int_method_nr
 
 USE yomhook, ONLY: lhook, dr_hook
+use nvtx
 USE parkind1, ONLY: jprb, jpim
 
 USE ukca_missing_data_mod, ONLY: imdi
@@ -418,7 +419,7 @@ function array_xor_checksum_real_3d(arr) result(checksum)
 
   checksum = 0
   do i = 1, size(arr)
-      int_value = int(arrflat(i) * 1e6)  ! Convert to int with scaling
+      int_value = int(arrflat(i) * 1e8)  ! Convert to int with scaling
       checksum = ieor(checksum, int_value)
   end do
 end function array_xor_checksum_real_3d
@@ -439,7 +440,7 @@ function array_xor_checksum_real_2d(arr) result(checksum)
 
   checksum = 0
   do i = 1, size(arr)
-      int_value = int(arrflat(i) * 1e6)  ! Convert to int with scaling
+      int_value = int(arrflat(i) * 1e8)  ! Convert to int with scaling
       checksum = ieor(checksum, int_value)
   end do
 end function array_xor_checksum_real_2d
@@ -454,7 +455,7 @@ function array_xor_checksum_real_1d(arr) result(checksum)
 
   checksum = 0
   do i = 1, size(arr)
-      int_value = int(arr(i) * 1e6)  ! Convert to int with scaling
+      int_value = int(arr(i) * 1e8)  ! Convert to int with scaling
       checksum = ieor(checksum, int_value)
   end do
 end function array_xor_checksum_real_1d

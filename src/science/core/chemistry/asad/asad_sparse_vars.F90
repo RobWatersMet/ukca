@@ -67,6 +67,10 @@
 
 MODULE asad_sparse_vars
 
+#ifdef ARRAYCHECKSUM
+  use asad_mod, only: array_xor_checksum
+#endif
+
 IMPLICIT NONE
 
 CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName='ASAD_SPARSE_VARS'
@@ -113,6 +117,7 @@ USE asad_mod, ONLY: specf, frpx, jpcspf, jpfrpx, jpmsp, jpspec,                &
                     fracterms, base_tracer, ffrac, ztabpd, total
 USE parkind1, ONLY: jprb, jpim
 USE yomhook, ONLY: lhook, dr_hook
+use nvtx
 USE ereport_mod, ONLY: ereport
 USE umPrintMgr, ONLY:                                                          &
     PrintStatus, PrStatus_Oper, PrStatus_Normal, umMessage, umPrint
@@ -161,8 +166,12 @@ REAL(KIND=jprb)               :: zhook_handle
 
 CHARACTER(LEN=*), PARAMETER :: RoutineName='SETUP_SPFULJAC'
 
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+#ifdef ARRAYCHECKSUM
+  integer :: checksum_result
+#endif
 
+IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 ! ------------------------------------------------------------------------------
 ! Section 1: Create nonzero_map (index array for Jacobian matrix) and
 !            base_tracer
@@ -461,7 +470,23 @@ IF (ANY(errcodes(:,:) /= 0)) THEN
   END IF
 END IF
 
+#ifdef ARRAYCHECKSUM
+  checksum_result = array_xor_checksum(ffrac)
+  print*, 'Checksum - ffrac in ', RoutineName, ' = ', checksum_result
+  checksum_result = array_xor_checksum(fracterms)
+  print*, 'Checksum - fracterms in ', RoutineName, ' = ', checksum_result
+  checksum_result = array_xor_checksum(posterms)
+  print*, 'Checksum - posterms in ', RoutineName, ' = ', checksum_result
+  checksum_result = array_xor_checksum(modified_map)
+  print*, 'Checksum - modified_map in ', RoutineName, ' = ', checksum_result
+  checksum_result = array_xor_checksum(ij)
+  print*, 'Checksum - ij in ', RoutineName, ' = ', checksum_result
+  checksum_result = array_xor_checksum(lj)
+  print*, 'Checksum - lj in ', RoutineName, ' = ', checksum_result
+#endif
+
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 END SUBROUTINE setup_spfuljac
 
@@ -513,7 +538,12 @@ REAL(KIND=jprb)               :: zhook_handle
 
 CHARACTER(LEN=*), PARAMETER :: RoutineName='SPFULJAC'
 
+#ifdef ARRAYCHECKSUM
+  integer :: checksum_result
+#endif
+
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 
 ! At the bottom of this routine we divide by f, so ensure that
 ! f is not too small.
@@ -616,8 +646,20 @@ DO p=1,total
   spfj(:,p)=spfj(:,p)/f(:,base_tracer(p))   ! filter f earlier!
 END DO
 
+#ifdef ARRAYCHECKSUM
+  checksum_result = array_xor_checksum(spfj)
+  print*, 'Checksum - spfj in ', RoutineName, ' = ', checksum_result
+  checksum_result = array_xor_checksum(ij)
+  print*, 'Checksum - ij in ', RoutineName, ' = ', checksum_result
+  checksum_result = array_xor_checksum(lj)
+  print*, 'Checksum - lj in ', RoutineName, ' = ', checksum_result
+  checksum_result = array_xor_checksum(f)
+  print*, 'Checksum - f in ', RoutineName, ' = ', checksum_result
+#endif
+
 !
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 END SUBROUTINE spfuljac
 
@@ -684,7 +726,12 @@ REAL(KIND=jprb)               :: zhook_handle
 
 CHARACTER(LEN=*), PARAMETER :: RoutineName='SPLINSLV2'
 
+#ifdef ARRAYCHECKSUM
+  integer :: checksum_result
+#endif
+
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 
 ! Filter sparse Jacobian
 #if defined(IBM_XL_FORTRAN)
@@ -795,7 +842,25 @@ DO j=1,jpcspf
   xx(:,reorder(j)) = xx1(:,j)
 END DO
 
+#ifdef ARRAYCHECKSUM
+  checksum_result = array_xor_checksum(spfj)
+  print*, 'Checksum - spfj in ', RoutineName, ' = ', checksum_result
+  checksum_result = array_xor_checksum(modified_map)
+  print*, 'Checksum - modified_map in ', RoutineName, ' = ', checksum_result
+  checksum_result = array_xor_checksum(pivot)
+  print*, 'Checksum - pivot in ', RoutineName, ' = ', checksum_result
+  checksum_result = array_xor_checksum(kfact)
+  print*, 'Checksum - kfact in ', RoutineName, ' = ', checksum_result
+  checksum_result = array_xor_checksum(bb1)
+  print*, 'Checksum - bb1 in ', RoutineName, ' = ', checksum_result
+  checksum_result = array_xor_checksum(xx1)
+  print*, 'Checksum - xx1 in ', RoutineName, ' = ', checksum_result
+  checksum_result = array_xor_checksum(xx)
+  print*, 'Checksum - xx in ', RoutineName, ' = ', checksum_result
+#endif
+
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 END SUBROUTINE splinslv2
 
@@ -843,7 +908,12 @@ REAL(KIND=jprb)               :: zhook_handle
 
 CHARACTER(LEN=*), PARAMETER :: RoutineName='SPRESOLV2'
 
+#ifdef ARRAYCHECKSUM
+  integer :: checksum_result
+#endif
+
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+call nvtxStartRange(ModuleName // ':' // RoutineName)
 
 ! Part (a) calculate right-hand side P b
 DO i=1,jpcspf
@@ -875,7 +945,19 @@ DO i=1,jpcspf
   xx(:,reorder(i)) = xx1(:,i)
 END DO
 
+#ifdef ARRAYCHECKSUM
+  checksum_result = array_xor_checksum(bb1)
+  print*, 'Checksum - bb1 in ', RoutineName, ' = ', checksum_result
+  checksum_result = array_xor_checksum(xx1)
+  print*, 'Checksum - xx1 in ', RoutineName, ' = ', checksum_result
+  checksum_result = array_xor_checksum(pivot)
+  print*, 'Checksum - pivot in ', RoutineName, ' = ', checksum_result
+  checksum_result = array_xor_checksum(xx)
+  print*, 'Checksum - xx in ', RoutineName, ' = ', checksum_result
+#endif
+
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+call nvtxEndRange()
 RETURN
 END SUBROUTINE spresolv2
 
