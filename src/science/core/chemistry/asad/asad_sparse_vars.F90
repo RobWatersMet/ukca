@@ -503,6 +503,7 @@ USE asad_mod, ONLY: ctype, deriv, dpd, dpw, f, jpcspf, jpfm, jpif, jpmsp,      &
                     fracterms, base_tracer, ffrac, y, total
 USE parkind1, ONLY: jprb, jpim
 USE yomhook, ONLY: lhook, dr_hook
+use nvtx
 
 IMPLICIT NONE
 
@@ -671,6 +672,7 @@ SUBROUTINE splinslv2(n_points,bb,xx,min_pivot,max_val,                         &
 USE asad_mod, ONLY: jpcspf, reorder, spfjsize_max, total
 USE parkind1, ONLY: jprb, jpim
 USE yomhook, ONLY: lhook, dr_hook
+use nvtx
 
 IMPLICIT NONE
 !
@@ -880,6 +882,7 @@ SUBROUTINE spresolv2(n_points,bb,xx,min_pivot,modified_map,spfj)
 USE asad_mod, ONLY: jpcspf, reorder, spfjsize_max
 USE parkind1, ONLY: jprb, jpim
 USE yomhook, ONLY: lhook, dr_hook
+use nvtx
 
 IMPLICIT NONE
 
