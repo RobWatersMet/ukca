@@ -63,29 +63,27 @@ MODULE fastjx_data
 
 USE yomhook,             ONLY: lhook, dr_hook
 USE parkind1,            ONLY: jprb, jpim
-USE asad_mod,            ONLY: jppj
-USE ukca_parpho_mod,     ONLY: jpwav
-USE errormessagelength_mod, ONLY: errormessagelength
+
+USE ukca_parpho_mod,       ONLY: jpwav
+USE ukca_missing_data_mod, ONLY: imdi
+USE photol_config_specification_mod, ONLY: photol_config
+USE photol_fieldname_mod, ONLY: photol_jlabel_len
+
 IMPLICIT NONE
 PUBLIC
 SAVE
 
 ! Setup Blocking of columns for complete fast-jx model
-! For time being only tested blocking mode 0
 
-!      Blocking mode          1: rows
-!                             2: whole domain
-!                             3: compressed   (Not implemented yet)
-!                             0: point by point
+!      Blocking mode          0) point-by-point
+!                             1) row-by-row
+!                             2) full domain
+!                             3) compressed (not implemented)
+!                             4) load balancing (not implemented)
+!                          imdi) unset
 
-TYPE :: Block_setup
-  INTEGER               :: Mode=0
-  INTEGER               :: Bl_size=1
-END TYPE Block_setup
+INTEGER :: Blocking_Mode = imdi
 
-TYPE (Block_setup)                      :: Blocking
-
-CHARACTER(LEN=errormessagelength) :: cmessage   ! Error message
 
 ! ***********************************************************************
        ! Defaults and Parameters
@@ -96,14 +94,12 @@ REAL, PARAMETER               :: zzht = 5.0e5
 REAL, PARAMETER               :: szamax = 98.0e0
 
 ! Retain these from fast-j implementation
-! Inelegant to duplicate rows/ row lengths?
-INTEGER                       :: ipcx      ! Number of longitudes
-INTEGER                       :: jpcx      ! Number of latitudes
 INTEGER                       :: lpar      ! Number of levels
 INTEGER                       :: jpcl      ! Number of chem. levels
 
 INTEGER                       :: kpcx      ! No. points (xy) in photoj
 INTEGER                       :: jjpnl     ! No. points (xyz)in photoj
+INTEGER                       :: jppj      ! Local copy of num phot species
 
 REAL                          :: tau       ! Time in hours
 INTEGER                       :: daynumber ! Day of the year
@@ -151,19 +147,22 @@ INTEGER :: n_solcyc_ts
 ! Number of cloud/aerosol types for scattering
 ! At present set to 2 (water/ice clouds)
 ! Will need to increase to include aerosols
-INTEGER,PARAMETER             :: mx =  3    !kk look at set_aer!
+INTEGER,PARAMETER        :: mx =  3   !kk look at set_aer!
 
 ! Index within the loaded array of scattering types
-INTEGER                       :: miedx(mx)
+INTEGER                  :: miedx(mx)
 
 ! Arrays that depend on GCM parameters
 
-      ! Array containing quantum yields
-REAL,  ALLOCATABLE        :: jfacta(:)
+! Array containing quantum yields
+REAL,  ALLOCATABLE       :: jfacta(:)
 INTEGER, ALLOCATABLE     :: jind(:)
 
-! Array containing labels for photolysed species    ! was len=10!
-CHARACTER(LEN=7), ALLOCATABLE     :: jlabel(:)
+! Array containing labels for photolysed species  ! was len=10!
+CHARACTER(LEN=photol_jlabel_len), ALLOCATABLE  :: jlabel(:)
+
+! Array containing labels for photolysed species as read from file
+CHARACTER(LEN=photol_jlabel_len) :: titlej(x_)
 
 ! Array containing indices in domain (xy) arrays
 INTEGER, ALLOCATABLE     :: nsl(:,:)
@@ -276,8 +275,7 @@ REAL :: atau
 REAL :: atau0
 
 ! SIZES
-
-      ! Maximum number of cloud sub layers
+! Maximum number of cloud sub layers
 INTEGER      :: jtaumx
 
 ! Number of aerosol/ cloud data types (must be less than a_)
@@ -290,8 +288,6 @@ INTEGER      :: njval
 INTEGER      :: nw1
 INTEGER      :: nw2
 
-
-
 ! **********************************************************************
 CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName='FASTJX_DATA'
 
@@ -302,10 +298,15 @@ CONTAINS
 ! subroutine that will set limits on lon, lat etc.
 ! Based on approach of fast-j routines
 ! Included as a dummy routine at present.
-SUBROUTINE fastjx_set_limits (row_length, rows, model_levels,                  &
-                              chemlev)
+SUBROUTINE fastjx_set_limits (error_code_ptr, row_length, rows, model_levels,  &
+                              n_phot, chemlev, error_message, error_routine)
 
-USE ereport_mod, ONLY: ereport
+USE ukca_error_mod, ONLY: maxlen_message, maxlen_procname, error_report,       &
+                          errcode_value_invalid, errcode_value_missing,        &
+                          errcode_value_unknown
+USE ukca_missing_data_mod, ONLY: imdi
+USE photol_config_specification_mod, ONLY: photol_config
+
 USE yomhook,     ONLY: lhook, dr_hook
 USE parkind1,    ONLY: jprb, jpim
 
@@ -314,7 +315,17 @@ IMPLICIT  NONE
 INTEGER,INTENT(IN)            :: row_length        ! Model dimensions
 INTEGER,INTENT(IN)            :: rows
 INTEGER,INTENT(IN)            :: model_levels
+INTEGER,INTENT(IN)            :: n_phot
 INTEGER,INTENT(IN),OPTIONAL   :: chemlev
+
+! error handling arguments
+INTEGER, POINTER, INTENT(IN) :: error_code_ptr
+CHARACTER(LEN=maxlen_message), OPTIONAL, INTENT(OUT) :: error_message
+                                                       ! Error return message
+CHARACTER(LEN=maxlen_procname), OPTIONAL, INTENT(OUT) :: error_routine
+                                         ! Routine in which error was trapped
+
+CHARACTER(LEN=maxlen_message) :: cmessage
 
 INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
 INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
@@ -326,10 +337,14 @@ CHARACTER(LEN=*), PARAMETER :: RoutineName='FASTJX_SET_LIMITS'
 ! ***********************************************************************
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
 
+error_code_ptr = 0
+cmessage = ''
+IF (PRESENT(error_message)) error_message = ''
+IF (PRESENT(error_routine)) error_routine = ''
+
 ! load size of GCM patch into module
-ipcx   = row_length
-jpcx   = rows
 lpar   = model_levels
+jppj   = n_phot
 
 IF (PRESENT(chemlev)) THEN
   jpcl = chemlev
@@ -338,22 +353,59 @@ ELSE
 END IF
 
 ! Construct arrays depending on how they are passed to fast-jx
-SELECT CASE (Blocking%Mode)
-CASE (0)
-  kpcx  = 1                    ! Blocking row-wise
-  jjpnl  = jpcl*kpcx
-CASE (1)
-  kpcx  = ipcx                 ! Blocking row-wise
-  jjpnl  = jpcl*kpcx
-CASE (2)
-  kpcx  = ipcx*jpcx            ! Blocking domain
-  jjpnl  = jpcl*kpcx
-CASE DEFAULT
-  cmessage='Blocking Mode does not Exist'
-  CALL ereport('FASTJX_DATA.FASTJX_SET_LIMITS', Blocking%Mode,                 &
-               cmessage)
-END SELECT
+SELECT CASE (Blocking_Mode)
 
+  ! *********************************
+  ! If blocking point-by-point
+CASE (0)
+  kpcx  = 1
+  jjpnl = jpcl*kpcx
+
+  ! *********************************
+  ! If blocking row-by-row
+CASE (1)
+  kpcx  = row_length
+  jjpnl = jpcl*kpcx
+
+  ! *********************************
+  ! If blocking full domain
+CASE (2)
+  kpcx  = row_length*rows
+  jjpnl = jpcl*kpcx
+
+  ! *********************************
+  ! If using compressed blocking
+CASE (3)
+
+  error_code_ptr = errcode_value_invalid
+  cmessage = 'Compressed blocking mode not implemented'
+  CALL error_report(photol_config%i_error_method, error_code_ptr, cmessage,    &
+         RoutineName, msg_out= error_message, locn_out = error_routine)
+
+  ! *********************************
+  ! If using load balanced blocking
+CASE (4)
+
+  error_code_ptr = errcode_value_invalid
+  cmessage = 'Load balanced blocking mode not implemented'
+  CALL error_report(photol_config%i_error_method, error_code_ptr, cmessage,    &
+         RoutineName, msg_out= error_message, locn_out = error_routine)
+
+CASE (imdi)
+
+  error_code_ptr = errcode_value_missing
+  cmessage = 'Blocking mode unset'
+  CALL error_report(photol_config%i_error_method, error_code_ptr, cmessage,    &
+         RoutineName, msg_out= error_message, locn_out = error_routine)
+
+CASE DEFAULT
+
+  error_code_ptr = errcode_value_unknown
+  WRITE(cmessage,'("Blocking mode ",I0," does not exist")') Blocking_Mode
+  CALL error_report(photol_config%i_error_method, error_code_ptr, cmessage,    &
+         RoutineName, msg_out= error_message, locn_out = error_routine)
+
+END SELECT
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
 RETURN
@@ -362,52 +414,45 @@ END SUBROUTINE fastjx_set_limits
 ! ######################################################################
       ! subroutine that allocates arrays that depend on GCM
       ! Based on approach of fast-j routines
-SUBROUTINE fastjx_allocate_memory
+SUBROUTINE fastjx_allocate_memory(row_length, rows)
 
 IMPLICIT  NONE
 
-LOGICAL :: first=.TRUE.
+INTEGER, INTENT(IN) :: row_length
+INTEGER, INTENT(IN) :: rows
+
 INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
 INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
 REAL(KIND=jprb)               :: zhook_handle
 
 CHARACTER(LEN=*), PARAMETER :: RoutineName='FASTJX_ALLOCATE_MEMORY'
 
-
 ! ***********************************************************************
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-
-! Allocate arrays that depend on number of species
-IF (first) THEN
-  ALLOCATE(jind(jppj))
-  ALLOCATE(jlabel(jppj))
-  ALLOCATE(jfacta(jppj))
-  first=.FALSE.
-END IF
 
 ! Allocate arrays that depend on GCM size
 IF (.NOT. ALLOCATED(amf2))                                                     &
   ALLOCATE(amf2      ((2*(lpar+1)+1), (2*(lpar+1)+1), kpcx))
 IF (.NOT. ALLOCATED(dm_3d))                                                    &
-  ALLOCATE(dm_3d     (ipcx, jpcx, (lpar+1)))
+  ALLOCATE(dm_3d     (row_length, rows, (lpar+1)))
 IF (.NOT. ALLOCATED(dm_block))                                                 &
   ALLOCATE(dm_block  (kpcx, (lpar+1)))
 IF (.NOT. ALLOCATED(o3_3d     ))                                               &
-  ALLOCATE(o3_3d     (ipcx, jpcx, (lpar+1)))
+  ALLOCATE(o3_3d     (row_length, rows, (lpar+1)))
 IF (.NOT. ALLOCATED(o3_block  ))                                               &
   ALLOCATE(o3_block  (kpcx, (lpar+1)))
 IF (.NOT. ALLOCATED(nsl       ))                                               &
   ALLOCATE(nsl       (2,    kpcx))
 IF (.NOT. ALLOCATED(odw_3d    ))                                               &
-  ALLOCATE(odw_3d    (ipcx, jpcx, (lpar+1)))
+  ALLOCATE(odw_3d    (row_length, rows, (lpar+1)))
 IF (.NOT. ALLOCATED(odi_3d    ))                                               &
-  ALLOCATE(odi_3d    (ipcx, jpcx, (lpar+1)))
+  ALLOCATE(odi_3d    (row_length, rows, (lpar+1)))
 IF (.NOT. ALLOCATED(odw_block ))                                               &
   ALLOCATE(odw_block (kpcx, (lpar+1)))
 IF (.NOT. ALLOCATED(odi_block ))                                               &
   ALLOCATE(odi_block (kpcx, (lpar+1)))
 IF (.NOT. ALLOCATED(ods_3d ))                                                  &
-  ALLOCATE(ods_3d    (ipcx, jpcx, (lpar+1)))
+  ALLOCATE(ods_3d    (row_length, rows, (lpar+1)))
 IF (.NOT. ALLOCATED(ods_block  ))                                              &
  ALLOCATE(ods_block (kpcx, (lpar+1)))
 IF (.NOT. ALLOCATED(od_block  ))                                               &
@@ -415,21 +460,21 @@ IF (.NOT. ALLOCATED(od_block  ))                                               &
 IF (.NOT. ALLOCATED(od600     ))                                               &
   ALLOCATE(od600     (kpcx, (lpar+1)))
 IF (.NOT. ALLOCATED(pz_all    ))                                               &
-  ALLOCATE(pz_all    (ipcx, jpcx, (lpar+2)))
+  ALLOCATE(pz_all    (row_length, rows, (lpar+2)))
 IF (.NOT. ALLOCATED(pz_block  ))                                               &
   ALLOCATE(pz_block  (kpcx, (lpar+2)))
 IF (.NOT. ALLOCATED(pz_3d     ))                                               &
-  ALLOCATE(pz_3d     (ipcx, jpcx, (lpar+1)))
+  ALLOCATE(pz_3d     (row_length, rows, (lpar+1)))
 IF (.NOT. ALLOCATED(re_all    ))                                               &
-  ALLOCATE(re_all    (ipcx, jpcx, (lpar+2)))
+  ALLOCATE(re_all    (row_length, rows, (lpar+2)))
 IF (.NOT. ALLOCATED(rz_all    ))                                               &
-  ALLOCATE(rz_all    (ipcx, jpcx, (lpar+2)))
+  ALLOCATE(rz_all    (row_length, rows, (lpar+2)))
 IF (.NOT. ALLOCATED(rz_block  ))                                               &
   ALLOCATE(rz_block  (kpcx, (lpar+2)))
 IF (.NOT. ALLOCATED(rz_3d     ))                                               &
-  ALLOCATE(rz_3d     (ipcx, jpcx, (lpar+1)))
+  ALLOCATE(rz_3d     (row_length, rows, (lpar+1)))
 IF (.NOT. ALLOCATED(sa_2d     ))                                               &
-  ALLOCATE(sa_2d     (ipcx, jpcx))
+  ALLOCATE(sa_2d     (row_length, rows))
 IF (.NOT. ALLOCATED(sa_block  ))                                               &
   ALLOCATE(sa_block  (kpcx))
 IF (.NOT. ALLOCATED(sza       ))                                               &
@@ -437,11 +482,11 @@ IF (.NOT. ALLOCATED(sza       ))                                               &
 IF (.NOT. ALLOCATED(szafac    ))                                               &
   ALLOCATE(szafac    (kpcx ))
 IF (.NOT. ALLOCATED(sza_2d    ))                                               &
-  ALLOCATE(sza_2d    (ipcx, jpcx))
+  ALLOCATE(sza_2d    (row_length, rows))
 IF (.NOT. ALLOCATED(szafac_2d ))                                               &
-  ALLOCATE(szafac_2d (ipcx, jpcx))
+  ALLOCATE(szafac_2d (row_length, rows))
 IF (.NOT. ALLOCATED(tz_3d     ))                                               &
-  ALLOCATE(tz_3d     (ipcx, jpcx, (lpar+1)))
+  ALLOCATE(tz_3d     (row_length, rows, (lpar+1)))
 IF (.NOT. ALLOCATED(tz_block  ))                                               &
   ALLOCATE(tz_block  (kpcx, (lpar+1)))
 IF (.NOT. ALLOCATED(u0        ))                                               &
@@ -503,6 +548,79 @@ IF (ALLOCATED(tz_block))    DEALLOCATE(tz_block)
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
 RETURN
 END SUBROUTINE fastjx_deallocate_memory
+
+! ######################################################################
+! Subroutine that transfers spectral and solar cycle values recived as
+! configuration data from parent, to local variables used in FastJX
+
+SUBROUTINE fastjx_set_data_from_config()
+
+IMPLICIT  NONE
+
+INTEGER :: n_species
+INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
+INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
+REAL(KIND=jprb)               :: zhook_handle
+
+CHARACTER(LEN=*), PARAMETER :: RoutineName='FASTJX_SET_DATA_FROM_CONFIG'
+
+! ***********************************************************************
+IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+
+! Copy configuration data to local variables.
+! Wavelength number as selected by user.
+w_ = photol_config%fastjx_numwl
+
+! Values from cross-sections file (jvspec)
+njval = photol_config%njval
+nw1   = photol_config%nw1
+nw2   = photol_config%nw2
+fl(:) = photol_config%fl(:)
+q1d(:,:) = photol_config%q1d(:,:)
+qo2(:,:) = photol_config%qo2(:,:)
+qo3(:,:) = photol_config%qo3(:,:)
+qqq(:,:,:) = photol_config%qqq(:,:,:)
+qrayl(:) = photol_config%qrayl(:)
+tqq(:,:) = photol_config%tqq(:,:)
+wl(:) = photol_config%wl(:)
+
+! Values from (Mie) scattering file (jvscat)
+jtaumx = photol_config%jtaumx
+naa    = photol_config%naa
+atau   = photol_config%atau
+atau0   = photol_config%atau0
+daa(:) = photol_config%daa(:)
+paa(:,:,:) = photol_config%paa(:,:,:)
+qaa(:,:) = photol_config%qaa(:,:)
+raa(:) = photol_config%raa(:)
+saa(:,:) = photol_config%saa(:,:)
+waa(:,:) = photol_config%waa(:,:)
+
+! Solar cycle data
+IF ( photol_config%i_solcylc_type > 0 ) THEN
+  n_solcyc_ts = photol_config%n_solcyc_ts
+  solcyc_av(:) = photol_config%solcyc_av(:)
+  solcyc_quanta(:) = photol_config%solcyc_quanta(:)
+  IF ( .NOT. ALLOCATED(solcyc_ts)) ALLOCATE(solcyc_ts(n_solcyc_ts))
+  solcyc_ts(:) = photol_config%solcyc_ts(:)
+  solcyc_spec(:) = photol_config%solcyc_spec(:)
+END IF
+
+titlej(:) = photol_config%titlej(:)
+
+! These vectors need to be allocated first -size should be identical
+n_species = SIZE(photol_config%jfacta)
+
+IF (.NOT. ALLOCATED(jfacta)) ALLOCATE(jfacta(n_species))
+jfacta(:) = photol_config%jfacta(:)
+IF (.NOT. ALLOCATED(jlabel)) ALLOCATE(jlabel(n_species))
+jlabel(:) = photol_config%jlabel(:)
+IF (.NOT. ALLOCATED(jind)) ALLOCATE(jind(n_species))
+jind(:) = photol_config%jind(:)
+
+IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
+RETURN
+END SUBROUTINE fastjx_set_data_from_config
 
 ! ######################################################################
 ! Function to do 3 point linear interpolation

@@ -31,12 +31,8 @@ FUNCTION ukca_flupj(x,xs,ys,ln)
 
 USE yomhook, ONLY: lhook, dr_hook
 USE parkind1, ONLY: jprb, jpim
-USE ereport_mod, ONLY: ereport
-USE umPrintMgr, ONLY:                                                          &
-    umPrint,                                                                   &
-    umMessage
 
-USE errormessagelength_mod, ONLY: errormessagelength
+USE ukca_error_mod,  ONLY: maxlen_message, i_error_method_abort, error_report
 
 IMPLICIT NONE
 
@@ -59,7 +55,8 @@ REAL :: ukca_flupj                ! Interpolated value at point
 
 LOGICAL :: L_in_range             ! Flag to indicate if x is wit
 
-CHARACTER(LEN=errormessagelength) :: cmessage     ! Error message
+INTEGER, POINTER :: err_code_ptr
+CHARACTER(LEN=maxlen_message) :: cmessage     ! Error message
 
 INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
 INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
@@ -85,7 +82,7 @@ END IF
 !       Do linear interpolation
 
 L_in_range = .FALSE.
-Loop: DO i = 2,ln
+DO i = 2,ln
   IF (temp_xs(i-1) <= x .AND. x <= temp_xs(i)) THEN
     delta_xs = temp_xs(i) - temp_xs(i-1)
     ukca_flupj = (x - temp_xs(i-1))                                            &
@@ -93,20 +90,15 @@ Loop: DO i = 2,ln
                + (temp_xs(i) - x  )                                            &
                * temp_ys(i-1)/delta_xs
     L_in_range = .TRUE.
-    EXIT Loop
+    EXIT
   END IF
-END DO Loop
+END DO
 
 IF (.NOT. (L_in_range)) THEN
-  WRITE(umMessage,'(A,F0.5)') 'Max value of xs = ',MAXVAL(xs)
-  CALL umPrint(umMessage,src='ukca_flupj')
-  WRITE(umMessage,'(A,F0.5)') 'Min value of xs = ',MINVAL(xs)
-  CALL umPrint(umMessage,src='ukca_flupj')
-  WRITE(umMessage,'(A,F0.5)') 'Value of x = ',x
-  CALL umPrint(umMessage,src='ukca_flupj')
-  cmessage = 'Value of x not within range of xs'
-  errcode=123
-  CALL ereport('UKCA_FLUPJ',errcode,cmessage)
+  err_code_ptr = 123
+  WRITE(cmessage, '(A,3(1x,E12.5))') 'Value of x not within range of xs', x,   &
+    MINVAL(xs), MAXVAL(xs)
+  CALL error_report(i_error_method_abort, err_code_ptr, cmessage, RoutineName)
 END IF
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)

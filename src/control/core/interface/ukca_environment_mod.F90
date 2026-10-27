@@ -185,10 +185,20 @@ USE ukca_fieldname_mod,  ONLY:                                                 &
   fldname_inferno_nox,                                                         &
   fldname_inferno_oc,                                                          &
   fldname_inferno_so2,                                                         &
+  fldname_inferno_c2h4,                                                        &
+  fldname_inferno_c2h6,                                                        &
+  fldname_inferno_c3h8,                                                        &
+  fldname_inferno_hcho,                                                        &
+  fldname_inferno_mecho,                                                       &
+  fldname_inferno_nh3,                                                         &
+  fldname_inferno_dms,                                                         &
   fldname_lscat_zhang,                                                         &
   fldname_grid_area_fullht,                                                    &
   fldname_grid_volume,                                                         &
-  fldname_grid_airmass
+  fldname_grid_airmass,                                                        &
+  fldname_rel_humid_frac,                                                      &
+  fldname_rel_humid_frac_clr,                                                  &
+  fldname_qsvp
 
 USE ukca_environment_fields_mod, ONLY:                                         &
   environ_field_info,                                                          &
@@ -336,10 +346,20 @@ USE ukca_environment_fields_mod, ONLY:                                         &
   inferno_nox,                                                                 &
   inferno_oc,                                                                  &
   inferno_so2,                                                                 &
+  inferno_c2h4,                                                                &
+  inferno_c2h6,                                                                &
+  inferno_c3h8,                                                                &
+  inferno_hcho,                                                                &
+  inferno_mecho,                                                               &
+  inferno_nh3,                                                                 &
+  inferno_dms,                                                                 &
   lscat_zhang,                                                                 &
   grid_area_fullht,                                                            &
   grid_volume,                                                                 &
-  grid_airmass
+  grid_airmass,                                                                &
+  rel_humid_frac,                                                              &
+  rel_humid_frac_clr,                                                          &
+  qsvp
 
 USE ukca_environment_req_mod, ONLY: environ_field_index,                       &
                                     l_environ_req_available
@@ -716,7 +736,7 @@ INTEGER, OPTIONAL, INTENT(OUT) :: field_index
 
 ! List of 3-D fields that can be populated from 1D real data arrays
 ! Have to use DATA statement as names are not of uniform length
-CHARACTER(LEN=maxlen_fieldname), DIMENSION(59) :: fldnames_3d_real
+CHARACTER(LEN=maxlen_fieldname) :: fldnames_3d_real(62)
 
 DATA fldnames_3d_real / fldname_stcon, fldname_theta, fldname_q, fldname_qcf,  &
   fldname_conv_cloud_amount, fldname_rho_r2, fldname_qcl,                      &
@@ -735,7 +755,8 @@ DATA fldnames_3d_real / fldname_stcon, fldname_theta, fldname_q, fldname_qcf,  &
   fldname_bl_tke, fldname_interf_z, fldname_h2o2_offline,                      &
   fldname_ho2_offline, fldname_no3_offline, fldname_o3_offline,                &
   fldname_oh_offline, fldname_grid_area_fullht, fldname_grid_volume,           &
-  fldname_grid_airmass /
+  fldname_grid_airmass, fldname_rel_humid_frac, fldname_rel_humid_frac_clr,    &
+  fldname_qsvp /
 
 INTEGER :: i_field  ! Index of field in required fields array
 
@@ -873,6 +894,20 @@ CASE (fldname_inferno_oc)
   CALL set_field_1d_real(i_field, i1, i2, field_data, inferno_oc)
 CASE (fldname_inferno_so2)
   CALL set_field_1d_real(i_field, i1, i2, field_data, inferno_so2)
+CASE (fldname_inferno_c2h4)
+  CALL set_field_1d_real(i_field, i1, i2, field_data, inferno_c2h4)
+CASE (fldname_inferno_c2h6)
+  CALL set_field_1d_real(i_field, i1, i2, field_data, inferno_c2h6)
+CASE (fldname_inferno_c3h8)
+  CALL set_field_1d_real(i_field, i1, i2, field_data, inferno_c3h8)
+CASE (fldname_inferno_hcho)
+  CALL set_field_1d_real(i_field, i1, i2, field_data, inferno_hcho)
+CASE (fldname_inferno_mecho)
+  CALL set_field_1d_real(i_field, i1, i2, field_data, inferno_mecho)
+CASE (fldname_inferno_nh3)
+  CALL set_field_1d_real(i_field, i1, i2, field_data, inferno_nh3)
+CASE (fldname_inferno_dms)
+  CALL set_field_1d_real(i_field, i1, i2, field_data, inferno_dms)
 CASE DEFAULT
   ! Field not a recognised 1-D (or 3-D) field
   IF ( .NOT. (ANY(fldnames_3d_real == varname)) ) THEN
@@ -919,7 +954,7 @@ INTEGER, OPTIONAL, INTENT(OUT) :: field_index
 ! Local variables
 
 ! List of 4-D fields that can be populated from 2D real arrays
-CHARACTER(LEN=maxlen_fieldname), DIMENSION(1) :: fldnames_4d_real
+CHARACTER(LEN=maxlen_fieldname) :: fldnames_4d_real(1)
 DATA fldnames_4d_real / fldname_photol_rates /
 
 INTEGER :: i_field  ! Index of field in required fields array
@@ -1639,6 +1674,14 @@ CASE (fldname_grid_volume)
 CASE (fldname_grid_airmass)
   CALL set_field_3d_real(i_field, i1, i2, j1, j2, k1, k2, field_data,          &
                          grid_airmass)
+CASE (fldname_rel_humid_frac)
+  CALL set_field_3d_real(i_field, i1, i2, j1, j2, k1, k2, field_data,          &
+                         rel_humid_frac)
+CASE (fldname_rel_humid_frac_clr)
+  CALL set_field_3d_real(i_field, i1, i2, j1, j2, k1, k2, field_data,          &
+                         rel_humid_frac_clr)
+CASE (fldname_qsvp)
+  CALL set_field_3d_real(i_field, i1, i2, j1, j2, k1, k2, field_data, qsvp)
 CASE DEFAULT
   ! Error: Not a recognised field
   error_code = errcode_env_field_unknown
@@ -2181,6 +2224,9 @@ IF (ALLOCATED(lscat_zhang)) DEALLOCATE(lscat_zhang)
 IF (ALLOCATED(grid_area_fullht)) DEALLOCATE(grid_area_fullht)
 IF (ALLOCATED(grid_volume)) DEALLOCATE(grid_volume)
 IF (ALLOCATED(grid_airmass)) DEALLOCATE(grid_airmass)
+IF (ALLOCATED(rel_humid_frac)) DEALLOCATE(rel_humid_frac)
+IF (ALLOCATED(rel_humid_frac_clr)) DEALLOCATE(rel_humid_frac_clr)
+IF (ALLOCATED(qsvp)) DEALLOCATE(qsvp)
 
 ! Update field availability
 l_environ_field_available(:) = .FALSE.

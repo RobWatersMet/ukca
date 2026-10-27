@@ -44,9 +44,6 @@ USE ukca_step_control_mod, ONLY: ukca_step_control
 USE ukca_step_mod, ONLY: ukca_step
 USE ukca_config_specification_mod, ONLY:                                       &
   ukca_get_config,                                                             &
-  ukca_error_method_abort => i_error_method_abort,                             &
-  ukca_error_method_return => i_error_method_return,                           &
-  ukca_error_method_warn_and_return => i_error_method_warn_and_return,         &
   ukca_chem_off => i_ukca_chem_off,                                            &
   ukca_chem_trop => i_ukca_chem_trop,                                          &
   ukca_chem_raq => i_ukca_chem_raq,                                            &
@@ -81,7 +78,11 @@ USE ukca_config_specification_mod, ONLY:                                       &
   ukca_dms_flux_off => i_dms_flux_off,                                         &
   ukca_liss_merlivat => i_liss_merlivat,                                       &
   ukca_wanninkhof => i_wanninkhof,                                             &
-  ukca_nightingale => i_nightingale
+  ukca_nightingale => i_nightingale,                                           &
+  ukca_i_primss_method_smith => i_primss_method_smith,                         &
+  ukca_i_primss_method_monahan => i_primss_method_monahan,                     &
+  ukca_i_primss_method_combined => i_primss_method_combined,                   &
+  ukca_i_primss_method_jaegle => i_primss_method_jaegle
 USE ukca_constants_setup_mod, ONLY: ukca_constants_setup
 USE ukca_tracers_mod, ONLY: ukca_get_tracer_varlist
 USE ukca_ntp_mod, ONLY: ukca_get_ntp_varlist
@@ -146,8 +147,11 @@ USE ukca_error_mod, ONLY:                                                      &
   ukca_errcode_value_unknown => errcode_value_unknown,                         &
   ukca_errcode_value_invalid => errcode_value_invalid,                         &
   ukca_errcode_value_missing => errcode_value_missing,                         &
-  ukca_errcode_unexpected_api_call => errcode_unexpected_api_call
-USE ukca_ddepaer_coeff_mod, ONLY:                                                 ukca_zhg_eg_nedleaf => zhg_eg_nedleaf, &
+  ukca_errcode_unexpected_api_call => errcode_unexpected_api_call,             &
+  ukca_error_method_abort => i_error_method_abort,                             &
+  ukca_error_method_return => i_error_method_return,                           &
+  ukca_error_method_warn_and_return => i_error_method_warn_and_return
+USE ukca_ddepaer_coeff_mod, ONLY: ukca_zhg_eg_nedleaf => zhg_eg_nedleaf,       &
   ukca_zhg_eg_brdleaf => zhg_eg_brdleaf,                                       &
   ukca_zhg_dec_nedleaf => zhg_dec_nedleaf,                                     &
   ukca_zhg_dec_brdleaf => zhg_dec_brdleaf,                                     &

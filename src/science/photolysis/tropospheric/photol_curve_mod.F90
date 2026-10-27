@@ -16,7 +16,7 @@
 ! Method:
 !
 ! Code Owner: Please refer to the UM file CodeOwners.txt
-! This file belongs in section: UKCA_UM
+! This file belongs in section: UKCA_Photolysis
 !
 !  Code Description:
 !   Language:  FORTRAN 90
@@ -32,7 +32,8 @@ CHARACTER(LEN=*), PARAMETER, PRIVATE :: ModuleName='PHOTOL_CURVE_MOD'
 
 CONTAINS
 
-SUBROUTINE photol_curve(pjinda, tloc, dayl, tot_p_rows, row_length, jppj, wks)
+SUBROUTINE photol_curve(pjinda, tloc, dayl, tot_p_rows, row_length, jppj,      &
+                        errcode, wks, error_message, error_routine)
 !
 ! Purpose: Subroutine to interpolate tropospheric photolysis rates
 !          in time. Based on curve.F from Cambridge TOMCAT model.
@@ -41,10 +42,13 @@ SUBROUTINE photol_curve(pjinda, tloc, dayl, tot_p_rows, row_length, jppj, wks)
 !
 ! ---------------------------------------------------------------------
 !
+USE photol_config_specification_mod,  ONLY: photol_config
+USE ukca_error_mod,                   ONLY: error_report, maxlen_message,      &
+                                            maxlen_procname
+
 USE yomhook,     ONLY: lhook, dr_hook
-USE parkind1,            ONLY: jprb, jpim
-USE umPrintMgr,          ONLY: umPrint, umMessage
-USE ereport_mod, ONLY: ereport
+USE parkind1,    ONLY: jprb, jpim
+USE umPrintMgr,  ONLY: umPrint, umMessage
 
 IMPLICIT NONE
 
@@ -54,20 +58,27 @@ INTEGER, INTENT(IN) :: jppj                      ! number of chemical species
 
 REAL, INTENT(IN) :: dayl(:)                      ! day length
 REAL, INTENT(IN) :: tloc(:)                      ! local time
-REAL, INTENT(IN) :: pjinda(:,:,:)                ! 2D photolys
+REAL, INTENT(IN) :: pjinda(:,:,:,:)              ! 2D photolys
+
+INTEGER, TARGET, INTENT(OUT) :: errcode
 
 REAL, INTENT(OUT) :: wks(:,:)                    ! interpolated
 
+! error handling arguments
+CHARACTER(LEN=maxlen_message), OPTIONAL, INTENT(OUT) :: error_message
+                                                       ! Error return message
+CHARACTER(LEN=maxlen_procname), OPTIONAL, INTENT(OUT) :: error_routine
+                                         ! Routine in which error was trapped
 ! Local variables
 
-INTEGER :: i                                       ! loop variab
-INTEGER :: j                                       ! loop variables
-INTEGER :: k                                       ! loop variables
-INTEGER :: jr                                      ! loop variables
-INTEGER :: errcode                                 ! Variable passed to ereport
+INTEGER :: i                                     ! loop variab
+INTEGER :: j                                     ! loop variables
+INTEGER :: k                                     ! loop variables
+INTEGER :: jr                                    ! loop variables
+CHARACTER(LEN=maxlen_message) :: cmessage        ! Variable passed to ereport
 
-REAL, PARAMETER :: tfrac1 = 0.04691008             ! determines
-REAL, PARAMETER :: tfrac2 = 0.23076534             ! 2D photolys
+REAL, PARAMETER :: tfrac1 = 0.04691008           ! determines
+REAL, PARAMETER :: tfrac2 = 0.23076534           ! 2D photolys
 
 REAL :: dawn                ! time of dawn
 REAL :: dusk                ! time of dusk
@@ -76,6 +87,7 @@ REAL :: slope               ! slope used in linear interpolation
 REAL :: const               ! intercept used in linear interpola
 REAL :: fgmt(7)             ! times at which photol rates are va
 
+INTEGER, POINTER :: error_code_ptr
 
 INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
 INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
@@ -86,6 +98,13 @@ CHARACTER(LEN=*), PARAMETER :: RoutineName='PHOTOL_CURVE'
 ! Initialise wks
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+
+error_code_ptr => errcode
+error_code_ptr = 0
+cmessage = ''
+IF (PRESENT(error_message)) error_message = ''
+IF (PRESENT(error_routine)) error_routine = ''
+
 wks = 0.0
 
 ! Calculate rates using a simple linear interpolation.
@@ -132,7 +151,7 @@ DO j = 1,tot_p_rows
         IF ((fgmt(1) - timel) < 1.0e-6) timel = fgmt(1)
 
         DO jr = 1, jppj
-          slope = pjinda(j,1,jr)/(fgmt(2) - fgmt(1))
+          slope = pjinda(i,j,1,jr)/(fgmt(2) - fgmt(1))
           wks(k,jr) = slope*(timel - fgmt(1))
 
           IF (wks(k,jr) < 0.0) THEN
@@ -142,12 +161,19 @@ DO j = 1,tot_p_rows
             WRITE(umMessage,'(I6,I6,I6,I6,F12.6,F12.6,F12.6,F12.6)')           &
             i,j,k,jr,slope,fgmt(1),fgmt(2),timel
             CALL umPrint(umMessage,src='ukca_phot2d')
-            WRITE(umMessage,'(F12.6,F12.6)') pjinda(j,1,jr),fgmt(1)-timel
+            WRITE(umMessage,'(F12.6,F12.6)') pjinda(i,j,1,jr),fgmt(1)-timel
             CALL umPrint(umMessage,src='ukca_phot2d')
             WRITE(umMessage,'(F12.6,F12.6,F12.6)') fgmt,dawn,dusk
             CALL umPrint(umMessage,src='ukca_phot2d')
-            errcode = jr
-            CALL ereport('PHOTOL_CURVE',errcode,' Negative photolysis')
+            error_code_ptr = jr
+            cmessage = ' Negative photolysis, see log output'
+            CALL error_report(photol_config%i_error_method, error_code_ptr,    &
+                    cmessage, RoutineName, msg_out=error_message,              &
+                    locn_out=error_routine)
+
+            IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_out,   &
+                                    zhook_handle)
+            RETURN
           END IF
         END DO
 
@@ -159,9 +185,9 @@ DO j = 1,tot_p_rows
         IF (timel > fgmt(5)) timel = 24.00 - timel
 
         DO jr = 1, jppj
-          slope = (pjinda(j,2,jr)-pjinda(j,1,jr))/                             &
+          slope = (pjinda(i,j,2,jr)-pjinda(i,j,1,jr))/                         &
                (fgmt(3) - fgmt(2))
-          const = pjinda(j,1,jr)- slope* fgmt(2)
+          const = pjinda(i,j,1,jr)- slope* fgmt(2)
           wks(k,jr)= slope*timel + const
         END DO
 
@@ -172,9 +198,9 @@ DO j = 1,tot_p_rows
         IF (timel > fgmt(4)) timel = 24.00 - timel
 
         DO jr = 1, jppj
-          slope = (pjinda(j,3,jr)-pjinda(j,2,jr))/                             &
+          slope = (pjinda(i,j,3,jr)-pjinda(i,j,2,jr))/                         &
               (fgmt(4) - fgmt(3))
-          const = pjinda(j,2,jr)- slope* fgmt(3)
+          const = pjinda(i,j,2,jr)- slope* fgmt(3)
           wks(k,jr)= slope*timel + const
         END DO
 

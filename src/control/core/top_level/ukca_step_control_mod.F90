@@ -65,39 +65,45 @@ END INTERFACE ukca_step_control
 CONTAINS
 
 ! ----------------------------------------------------------------------
-SUBROUTINE ukca_step_control_1d_domain(timestep_number, current_time,          &
-                                       tracer_data, ntp_data,                  &
-                                       r_theta_levels, r_rho_levels,           &
-                                       error_code, previous_time, eta_theta_levels, &
-                                       ! Scalar environment field groups
-                                       envgroup_flat_integer,                  &
-                                       envgroup_scalar_real,                   &
-                                       envgroup_flat_real,                     &
-                                       emissions_flat,                         &
-                                       envgroup_flat_logical,                  &
-                                       ! 1D environment field groups
-                                       envgroup_flatpft_real,                  &
-                                       envgroup_fullht_real,                   &
-                                       envgroup_fullht0_real,                  &
-                                       envgroup_fullhtp1_real,                 &
-                                       envgroup_bllev_real,                    &
-                                       envgroup_entlev_real,                   &
-                                       envgroup_land_real,                     &
-                                       emissions_fullht,                       &
-                                       ! 2D environment field groups
-                                       envgroup_landtile_real,                 &
-                                       envgroup_landpft_real,                  &
-                                       envgroup_landtile_logical,              &
-                                       ! 2D environment fields
-                                       ! (spatial + photol species)
-                                       envgroup_fullhtphot_real,               &
-                                       ! Diagnostics output
-                                       diag_status_flat_real,                  &
-                                       diag_status_fullht_real,                &
-                                       diag_data_flat_real,                    &
-                                       diag_data_fullht_real,                  &
-                                       ! Error return info
-                                       error_message, error_routine)
+SUBROUTINE ukca_step_control_1d_domain(   timestep_number,                     &
+                                          current_time,                        &
+                                          tracer_data,                         &
+                                          ntp_data,                            &
+                                          r_theta_levels,                      &
+                                          r_rho_levels,                        &
+                                          error_code,                          &
+                                          previous_time,                       &
+                                          eta_theta_levels,                    &
+                                          ! Scalar environment field groups
+                                          envgroup_flat_integer,               &
+                                          envgroup_scalar_real,                &
+                                          envgroup_flat_real,                  &
+                                          emissions_flat,                      &
+                                          envgroup_flat_logical,               &
+                                          ! 1D environment field groups
+                                          envgroup_flatpft_real,               &
+                                          envgroup_fullht_real,                &
+                                          envgroup_fullht0_real,               &
+                                          envgroup_fullhtp1_real,              &
+                                          envgroup_bllev_real,                 &
+                                          envgroup_entlev_real,                &
+                                          envgroup_land_real,                  &
+                                          emissions_fullht,                    &
+                                          ! 2D environment field groups
+                                          envgroup_landtile_real,              &
+                                          envgroup_landpft_real,               &
+                                          envgroup_landtile_logical,           &
+                                          ! 2D environment fields
+                                          ! (spatial + photol species)
+                                          envgroup_fullhtphot_real,            &
+                                          ! Diagnostics output
+                                          diag_status_flat_real,               &
+                                          diag_status_fullht_real,             &
+                                          diag_data_flat_real,                 &
+                                          diag_data_fullht_real,               &
+                                          ! Error return info
+                                          error_message,                       &
+                                          error_routine )
 ! ----------------------------------------------------------------------
 ! Description:
 !   Obtains environmental driver and emission fields and performs
@@ -244,7 +250,7 @@ IF (PRESENT(error_routine)) error_routine = ''
 ! Note - envgroup_flat_logical is processed first because of the dependency of
 !        the land-point only fields on the land sea mask
 
-IF (error_code <= 0 .AND. PRESENT(envgroup_flat_logical)) THEN
+IF (PRESENT(envgroup_flat_logical)) THEN
   CALL ukca_get_envgroup_varlists(error_code,                                  &
                                   varnames_flat_logical_ptr=varnames,          &
                                   error_message=error_message,                 &
@@ -270,7 +276,7 @@ END IF
 
 ! Set environmental drivers in scalar group
 
-IF (PRESENT(envgroup_scalar_real)) THEN
+IF (error_code <= 0 .AND. PRESENT(envgroup_scalar_real)) THEN
   CALL ukca_get_envgroup_varlists(error_code,                                  &
                                   varnames_scalar_real_ptr=varnames,           &
                                   error_message=error_message,                 &
@@ -714,8 +720,7 @@ END IF
 
 
 ! Set environmental field for photolysis rates - full-height grid+no. reactions
-! Input values are 1D spatially , 2nd dimension is no. of reactions and 3rd
-! is no. of fields in the group (currently 1).
+! (Input values are 1D spatially , 2nd dimension is no. of reactions)
 
 IF (error_code <= 0 .AND. PRESENT(envgroup_fullhtphot_real)) THEN
   CALL ukca_get_envgroup_varlists(error_code,                                  &
@@ -1037,7 +1042,7 @@ IF (PRESENT(error_routine)) error_routine = ''
 ! Note - envgroup_flat_logical is processed first because of the dependency of
 !        the land-point only fields on the land sea mask
 
-IF (error_code <= 0 .AND. PRESENT(envgroup_flat_logical)) THEN
+IF (PRESENT(envgroup_flat_logical)) THEN
   CALL ukca_get_envgroup_varlists( error_code,                                 &
                                    varnames_flat_logical_ptr=varnames,         &
                                    error_message=error_message,                &
@@ -1048,7 +1053,7 @@ IF (error_code <= 0 .AND. PRESENT(envgroup_flat_logical)) THEN
       error_code = errcode_env_field_mismatch
       IF (PRESENT(error_message))                                              &
         WRITE(error_message, '(A,I0,A,I0,A)')                                  &
-          'Wrong number of scalar environment fields (', n,                    &
+          'Wrong number of environment fields (', n,                           &
           ') for logical group on flat grid. Expecting ', SIZE(varnames)
       IF (PRESENT(error_routine)) error_routine = RoutineName
     ELSE
@@ -1077,7 +1082,7 @@ END IF
 
 ! Set environmental drivers in scalar group
 
-IF (PRESENT(envgroup_scalar_real)) THEN
+IF (error_code <= 0 .AND. PRESENT(envgroup_scalar_real)) THEN
   CALL ukca_get_envgroup_varlists( error_code,                                 &
                                    varnames_scalar_real_ptr=varnames,          &
                                    error_message=error_message,                &
@@ -1117,7 +1122,7 @@ IF (error_code <= 0 .AND. PRESENT(envgroup_flat_integer)) THEN
       IF (PRESENT(error_message))                                              &
         WRITE(error_message, '(A,I0,A,I0,A)')                                  &
           'Wrong number of environment fields (', n,                           &
-          ') for 2d integer group on flat grid. Expecting ', SIZE(varnames)
+          ') for integer group on flat grid. Expecting ', SIZE(varnames)
       IF (PRESENT(error_routine)) error_routine = RoutineName
     ELSE
 
@@ -1152,7 +1157,7 @@ IF (error_code <= 0 .AND. PRESENT(envgroup_flat_real)) THEN
       error_code = errcode_env_field_mismatch
       IF (PRESENT(error_message))                                              &
         WRITE(error_message, '(A,I0,A,I0,A)')                                  &
-          'Wrong number of scalar environment fields (', n,                    &
+          'Wrong number of environment fields (', n,                           &
           ') for real group on flat grid. Expecting ', SIZE(varnames)
       IF (PRESENT(error_routine)) error_routine = RoutineName
     ELSE
@@ -1349,7 +1354,6 @@ IF (error_code <= 0 .AND. PRESENT(envgroup_fullhtp1_real)) THEN
 END IF
 
 ! Set environmental drivers in boundary layer levels group
-! (Input values are 1D for the column model)
 
 IF (error_code <= 0 .AND. PRESENT(envgroup_bllev_real)) THEN
   CALL ukca_get_envgroup_varlists(error_code,                                  &
@@ -1391,7 +1395,6 @@ IF (error_code <= 0 .AND. PRESENT(envgroup_bllev_real)) THEN
 END IF
 
 ! Set environmental drivers in entrainment levels group
-! (Input values are 1D for the column model)
 
 IF (error_code <= 0 .AND. PRESENT(envgroup_entlev_real)) THEN
   CALL ukca_get_envgroup_varlists( error_code,                                 &
@@ -1432,7 +1435,6 @@ IF (error_code <= 0 .AND. PRESENT(envgroup_entlev_real)) THEN
 END IF
 
 ! Set environmental drivers in land point group
-! (Input values are 1D for the column model, length 0 for sea or 1 for land)
 
 IF (error_code <= 0 .AND. PRESENT(envgroup_land_real)) THEN
   CALL ukca_get_envgroup_varlists(error_code,                                  &
@@ -1471,7 +1473,6 @@ END IF
 
 
 ! Set environmental drivers in land-point tile groups
-! (Input values are 2D for the column model, dim1 as for land point group)
 
 IF (error_code <= 0 .AND. PRESENT(envgroup_landtile_real)) THEN
   CALL ukca_get_envgroup_varlists(error_code,                                  &
@@ -1550,7 +1551,6 @@ END IF
 
 
 ! Set environmental drivers in land-point plant functional type tile group
-! (Input values are 2D for the column model, dim1 as for land point group)
 
 IF (error_code <= 0 .AND. PRESENT(envgroup_landpft_real)) THEN
   CALL ukca_get_envgroup_varlists(error_code,                                  &
@@ -1592,8 +1592,7 @@ END IF
 
 
 ! Set environmental field for photolysis rates - full-height grid+no. reactions
-! Input values are 3D spatially , 4th dimension is no. of reactions and 5th
-! is no. of fields in the group (currently 1).
+! (Input values are 3D spatially , 4th dimension is no. of reactions)
 
 IF (error_code <= 0 .AND. PRESENT(envgroup_fullhtphot_real)) THEN
   CALL ukca_get_envgroup_varlists(error_code,                                  &

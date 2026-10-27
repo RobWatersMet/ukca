@@ -63,8 +63,6 @@ PUBLIC
 ! Flags to indicate UM code availability
 LOGICAL, PARAMETER :: l_um_infrastructure = .FALSE.
   ! UM infrastructure code including STASH support, grid parameters
-LOGICAL, PARAMETER :: l_um_atmos_ukca_humidity = .FALSE.
-  ! atmos_ukca_humidity subroutine
 LOGICAL, PARAMETER :: l_um_emissions_updates = .FALSE.
   ! trsrc subroutine for emissions updating of tracers
 LOGICAL, PARAMETER :: l_um_calc_surf_area = .FALSE.
@@ -113,7 +111,6 @@ REAL, PARAMETER :: delta_phi = 0.0           ! Dummy value
 REAL, PARAMETER :: base_phi = 0.0            ! Dummy value
 
 REAL, ALLOCATABLE :: a_realhd(:)
-REAL :: rhcrit(1) = [0]                      ! Dummy value
 
 ! Required by ukca_main1_mod and ukca_chemistry_ctl_col_mod
 LOGICAL, PARAMETER :: l_autotune_segments = .FALSE.
@@ -180,20 +177,22 @@ INTEGER :: modl_b(1) = [0]  ! Dummy value
 ! Required by various modules for diagnostic processing
 
 INTEGER            :: nukca_d1items = 0
-INTEGER, PARAMETER :: istrat_first = 0          ! Dummy value
-INTEGER, PARAMETER :: imode_first = 0           ! Dummy value
-INTEGER, PARAMETER :: ukca_diag_sect = 0        ! Dummy value
-INTEGER, PARAMETER :: item1_mode_diags = 0      ! Dummy value
-INTEGER, PARAMETER :: item1_nitrate_diags = 0   ! Dummy value
-INTEGER, PARAMETER :: item1_nitrate_noems = 0   ! Dummy value
-INTEGER, PARAMETER :: itemN_nitrate_diags = 0   ! Dummy value
-INTEGER, PARAMETER :: item1_dust3mode_diags = 0 ! Dummy value
-INTEGER, PARAMETER :: itemN_dust3mode_diags = 0 ! Dummy value
+INTEGER, PARAMETER :: istrat_first = 0              ! Dummy value
+INTEGER, PARAMETER :: imode_first = 0               ! Dummy value
+INTEGER, PARAMETER :: ukca_diag_sect = 0            ! Dummy value
+INTEGER, PARAMETER :: item1_mode_diags = 0          ! Dummy value
+INTEGER, PARAMETER :: item1_nitrate_diags = 0       ! Dummy value
+INTEGER, PARAMETER :: item1_nitrate_noems = 0       ! Dummy value
+INTEGER, PARAMETER :: itemN_nitrate_diags = 0       ! Dummy value
+INTEGER, PARAMETER :: item1_dust3mode_diags = 0     ! Dummy value
+INTEGER, PARAMETER :: itemN_dust3mode_diags = 0     ! Dummy value
+INTEGER, PARAMETER :: item1_microplastic_diags = 0  ! Dummy value
+INTEGER, PARAMETER :: itemN_microplastic_diags = 0  ! Dummy value
 INTEGER            :: n_strat_fluxdiags = 0
 INTEGER            :: n_mode_diags = 0
-INTEGER, PARAMETER :: len_stlist = 0            ! Dummy value
-INTEGER, PARAMETER :: num_stash_levels = 0      ! Dummy value
-INTEGER, PARAMETER :: num_stash_pseudo = 0      ! Dummy value
+INTEGER, PARAMETER :: len_stlist = 0                ! Dummy value
+INTEGER, PARAMETER :: num_stash_levels = 0          ! Dummy value
+INTEGER, PARAMETER :: num_stash_pseudo = 0          ! Dummy value
 
 INTEGER, ALLOCATABLE :: stindex(:,:,:,:)
 INTEGER, ALLOCATABLE :: stlist(:,:)
@@ -247,6 +246,21 @@ INTEGER, PARAMETER :: stashcode_h2o_nuc_sol = 0
 INTEGER, PARAMETER :: stashcode_h2o_nuc_sol_load = 0
 INTEGER, PARAMETER :: stashcode_h2o_total = 0
 INTEGER, PARAMETER :: stashcode_h2o_total_load = 0
+INTEGER, PARAMETER :: stashcode_mp_cor_insol = 0
+INTEGER, PARAMETER :: stashcode_mp_acc_insol = 0
+INTEGER, PARAMETER :: stashcode_mp_ait_insol = 0
+INTEGER, PARAMETER :: stashcode_mp_cor_sol = 0
+INTEGER, PARAMETER :: stashcode_mp_acc_sol = 0
+INTEGER, PARAMETER :: stashcode_mp_ait_sol = 0
+INTEGER, PARAMETER :: stashcode_mp_sup_insol = 0
+INTEGER, PARAMETER :: stashcode_mp_sup_insol_load = 0
+INTEGER, PARAMETER :: stashcode_mp_cor_insol_load = 0
+INTEGER, PARAMETER :: stashcode_mp_acc_insol_load = 0
+INTEGER, PARAMETER :: stashcode_mp_ait_insol_load = 0
+INTEGER, PARAMETER :: stashcode_mp_cor_sol_load = 0
+INTEGER, PARAMETER :: stashcode_mp_acc_sol_load = 0
+INTEGER, PARAMETER :: stashcode_mp_ait_sol_load = 0
+INTEGER, PARAMETER :: stashcode_mp_total_load = 0
 INTEGER, PARAMETER :: stashcode_n_acc_insol = 0
 INTEGER, PARAMETER :: stashcode_n_acc_sol = 0
 INTEGER, PARAMETER :: stashcode_n_ait_insol = 0
@@ -288,6 +302,7 @@ INTEGER, PARAMETER :: stashcode_oc_total_load = 0
 INTEGER, PARAMETER :: stashcode_pm10_bc = 0
 INTEGER, PARAMETER :: stashcode_pm10_dry = 0
 INTEGER, PARAMETER :: stashcode_pm10_du = 0
+INTEGER, PARAMETER :: stashcode_pm10_mp = 0
 INTEGER, PARAMETER :: stashcode_pm10_nh4 = 0
 INTEGER, PARAMETER :: stashcode_pm10_nn = 0
 INTEGER, PARAMETER :: stashcode_pm10_no3 = 0
@@ -298,6 +313,7 @@ INTEGER, PARAMETER :: stashcode_pm10_wet = 0
 INTEGER, PARAMETER :: stashcode_pm2p5_bc = 0
 INTEGER, PARAMETER :: stashcode_pm2p5_dry = 0
 INTEGER, PARAMETER :: stashcode_pm2p5_du = 0
+INTEGER, PARAMETER :: stashcode_pm2p5_mp = 0
 INTEGER, PARAMETER :: stashcode_pm2p5_nh4 = 0
 INTEGER, PARAMETER :: stashcode_pm2p5_nn = 0
 INTEGER, PARAMETER :: stashcode_pm2p5_no3 = 0
@@ -482,44 +498,6 @@ END SUBROUTINE log_v
 ! ----------------------------------------------------------------------
 ! -- Unused Procedures (dummy versions) --
 ! ----------------------------------------------------------------------
-
-! Subroutines for humidity-related calculations required by ukca_main1_mod
-
-SUBROUTINE atmos_ukca_humidity(row_length, rows, model_levels,                 &
-                               t_theta_levels, p_theta_levels, q, rh,          &
-                               qsatmr_wat, qsatmr_ice_wat, svp)
-IMPLICIT NONE
-INTEGER, INTENT(IN) :: row_length
-INTEGER, INTENT(IN) :: rows
-INTEGER, INTENT(IN) :: model_levels
-REAL, INTENT(IN) :: t_theta_levels(:,:,:)
-REAL, INTENT(IN) :: p_theta_levels(:,:,:)
-REAL, OPTIONAL, INTENT(IN) :: q(:,:,:)
-REAL, OPTIONAL, INTENT(OUT) :: rh(:,:,:)
-REAL, OPTIONAL, INTENT(OUT) :: qsatmr_wat(:,:,:)
-REAL, OPTIONAL, INTENT(OUT) :: qsatmr_ice_wat(:,:,:)
-REAL, OPTIONAL, INTENT(OUT) :: svp(:,:,:)
-IF (PRESENT(rh)) rh = 0.0
-IF (PRESENT(qsatmr_wat)) qsatmr_wat = 0.0
-IF (PRESENT(qsatmr_ice_wat)) qsatmr_ice_wat = 0.0
-IF (PRESENT(svp)) svp = 0.0
-END SUBROUTINE atmos_ukca_humidity
-
-SUBROUTINE lsp_qclear(q, qsmr, qsmr_wat, qcf, cloud_liq_frac, cloud_frac,      &
-                      rhcrit, q_clear, npnts)
-IMPLICIT NONE
-REAL, INTENT(IN) :: q(:)
-REAL, INTENT(IN) :: qsmr(:)
-REAL, INTENT(IN) :: qsmr_wat(:)
-REAL, INTENT(IN) :: qcf(:)
-REAL, INTENT(IN) :: cloud_liq_frac(:)
-REAL, INTENT(IN) :: cloud_frac(:)
-REAL, INTENT(IN) :: rhcrit(:)
-REAL, INTENT(OUT) :: q_clear(:)
-INTEGER, INTENT(IN) :: npnts
-q_clear = 0.0
-RETURN
-END SUBROUTINE lsp_qclear
 
 ! Tracer update subroutine required by ukca_add_emiss_mod
 
