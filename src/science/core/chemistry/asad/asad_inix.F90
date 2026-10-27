@@ -84,6 +84,7 @@ INTEGER :: igrp(3)
 INTEGER :: idepd(jpspec)
 INTEGER :: idepw(jpspec)
 
+LOGICAL :: errcodes(jpnr,jpmsp)
 CHARACTER (LEN=2)  :: itype
 CHARACTER (LEN=errormessagelength) :: cmessage  ! Error message
 
@@ -207,6 +208,7 @@ END IF
 
 !       2.3  Build table for fractional products
 
+errcodes(:,:) = .FALSE.
 nnfrp = 0
 DO jr = 1, jpnr
   IF ( nfrpx(jr) /= 0 ) THEN
@@ -214,16 +216,20 @@ DO jr = 1, jpnr
       iss = nspi(jr,jp)
       IF ( iss /= 0 ) THEN
         nnfrp = nnfrp + 1
-        ntabfp(nnfrp,1) = iss
-        ntabfp(nnfrp,2) = jr
-        ntabfp(nnfrp,3) = nfrpx(jr) + (jp-3)
+        IF (nnfrp > jpfrpx) THEN
+          errcodes(jr,jp) = .TRUE.
+        ELSE
+          ntabfp(nnfrp,1) = iss
+          ntabfp(nnfrp,2) = jr
+          ntabfp(nnfrp,3) = nfrpx(jr) + (jp-3)
+        END IF
       END IF
     END DO
   END IF
 END DO
 
 ! Perform error check outside of the loop to better suit GPU runs
-IF ( nnfrp > jpfrpx ) THEN
+IF (ANY(errcodes(:,:))) THEN
   WRITE(umMessage,'(2A)') '*ASAD ERROR: The parameter jpfrpx is',              &
   ' too small. Please increase it.'
   CALL umPrint(umMessage,src='asad_inix')

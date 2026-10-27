@@ -248,19 +248,21 @@ IF (first_pass) THEN
       IF (nfrpx(jr) == 0) THEN
         DO jp=3,jpmsp
           js = nspi(jr,jp)
-          IF (js > 0) THEN
+          IF ((js >= 1) .AND. (js <= jpspec)) THEN
             IF (jr <= nuni) THEN
               nuintprod(js) = nuintprod(js) + 1
               IF (nuintprod(js) > prodmax) THEN
                 errcodes(js) = .TRUE.
+              ELSE
+                uprodreac(js,nuintprod(js)) = jr
               END IF
-              uprodreac(js,nuintprod(js)) = jr
             ELSE
               nbintprod(js) = nbintprod(js) + 1
               IF (nbintprod(js) > prodmax) THEN
                 errcodes(js) = .TRUE.
+              ELSE
+                bprodreac(js,nbintprod(js)) = jr
               END IF
-              bprodreac(js,nbintprod(js)) = jr
             END IF
           END IF
         END DO
@@ -268,24 +270,26 @@ IF (first_pass) THEN
       ! Do loss
       DO jp=1,2
         js = nspi(jr,jp)
-        IF (js > 0) THEN
+        IF ((js >= 1) .AND. (js <= jpspec)) THEN
           IF (jr <= nuni) THEN
             nuloss(js) = nuloss(js) + 1
             IF (nuloss(js) > prodmax) THEN
               errcodes(js) = .TRUE.
+            ELSE
+              ulossreac(js,nuloss(js)) = jr
             END IF
-            ulossreac(js,nuloss(js)) = jr
           ELSE
             nbloss(js) = nbloss(js) + 1
             IF (nbloss(js) > prodmax) THEN
               errcodes(js) = .TRUE.
-            END IF
-            blossreac(js,nbloss(js)) = jr
-            ! Remember which partner the loss reaction is done with
-            IF (jp == 1) THEN
-              blosspartner(js,nbloss(js)) = nspi(jr,2)
             ELSE
-              blosspartner(js,nbloss(js)) = nspi(jr,1)
+              blossreac(js,nbloss(js)) = jr
+              ! Remember which partner the loss reaction is done with
+              IF (jp == 1) THEN
+                blosspartner(js,nbloss(js)) = nspi(jr,2)
+              ELSE
+                blosspartner(js,nbloss(js)) = nspi(jr,1)
+              END IF
             END IF
           END IF
         END IF
@@ -308,9 +312,10 @@ IF (first_pass) THEN
       nfracprod(js) = nfracprod(js) + 1
       IF (nfracprod(js) > prodmax) THEN
         errcodes(js) = .TRUE.
+      ELSE
+        bprodreac(js,nfracprod(js)) = jr
+        frac_prod(js,nfracprod(js)) = frpx(ix)
       END IF
-      bprodreac(js,nfracprod(js)) = jr
-      frac_prod(js,nfracprod(js)) = frpx(ix)
     END DO
 
     ! Perform error check outside of the loop to better suit GPU runs

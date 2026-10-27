@@ -196,10 +196,20 @@ USE ukca_fieldname_mod,  ONLY: maxlen_fieldname,                               &
   fldname_inferno_nox,                                                         &
   fldname_inferno_oc,                                                          &
   fldname_inferno_so2,                                                         &
+  fldname_inferno_c2h4,                                                        &
+  fldname_inferno_c2h6,                                                        &
+  fldname_inferno_c3h8,                                                        &
+  fldname_inferno_hcho,                                                        &
+  fldname_inferno_mecho,                                                       &
+  fldname_inferno_nh3,                                                         &
+  fldname_inferno_dms,                                                         &
   fldname_lscat_zhang,                                                         &
   fldname_grid_area_fullht,                                                    &
   fldname_grid_volume,                                                         &
-  fldname_grid_airmass
+  fldname_grid_airmass,                                                        &
+  fldname_rel_humid_frac,                                                      &
+  fldname_rel_humid_frac_clr,                                                  &
+  fldname_qsvp
 
 USE ukca_environment_fields_mod, ONLY: environ_field_info, environ_field_ptrs, &
                                        l_environ_field_available,              &
@@ -407,7 +417,7 @@ CHARACTER(LEN=maxlen_procname), OPTIONAL, INTENT(OUT) :: error_routine
 ! Local variables
 
 ! Field counts
-INTEGER, PARAMETER :: n_max = 148  ! Maximum number of environment fields
+INTEGER, PARAMETER :: n_max = 151  ! Maximum number of environment fields
 INTEGER :: n                       ! Count of environment fields selected
 INTEGER :: i                       ! Counter for loops
 
@@ -1264,15 +1274,40 @@ ELSE IF ((ukca_config%l_ukca_trop .OR. ukca_config%l_ukca_raq .OR.             &
   END IF
 END IF
 
-! Cloud liquid fraction is always required if GLOMAP-mode is on
-IF (ukca_config%l_ukca_mode) THEN
+! Additional humidity fields may be required if option to use external
+! relative humidity fields is selected
+IF (ukca_config%l_environ_rel_humid) THEN
+  ! Relative humidity is required for chemistry or for GLOMAP-mode if
+  ! nucleation is active or the Plumeria scheme for volcanic emissions is used
+  IF (ukca_config%l_ukca_chem .OR. glomap_config%l_mode_bhn_on .OR.            &
+      ukca_config%l_ukca_so2ems_plumeria) THEN
+    n = n + 1
+    IF (n <= n_max) fld_names(n) = fldname_rel_humid_frac
+  END IF
+  ! Clear-sky relative humidity is required if GLOMAP-mode is on
+  IF (ukca_config%l_ukca_mode) THEN
+    n = n + 1
+    IF (n <= n_max) fld_names(n) = fldname_rel_humid_frac_clr
+  END IF
+  ! Saturation vapour pressure is required if the Activate scheme is used
+  IF (glomap_config%i_ukca_activation_scheme == i_ukca_activation_arg) THEN
+    n = n + 1
+    IF (n <= n_max) fld_names(n) = fldname_qsvp
+  END IF
+END IF
+
+! Cloud liquid fraction is required if relative humidity fields are calculated
+! internally and GLOMAP-mode is on. Also, it is always required if nucleation
+! scavenging is on in GLOMAP-mode.
+IF (((.NOT. ukca_config%l_environ_rel_humid) .AND. ukca_config%l_ukca_mode)    &
+    .OR. glomap_config%l_aero_rainout) THEN
   n = n + 1
   IF (n <= n_max) fld_names(n) = fldname_cloud_liq_frac
 END IF
 
 ! Autoconversion, accretion and riming rates are required if
 ! nucleation scavenging is on in GLOMAP-mode
-IF (glomap_config%l_rainout) THEN
+IF (glomap_config%l_aero_rainout) THEN
   n = n + 1
   IF (n <= n_max) fld_names(n) = fldname_autoconv
   n = n + 1
@@ -1545,6 +1580,48 @@ IF (.NOT. ukca_config%l_ukca_emissions_off) THEN
       IF (ukca_config%l_ukca_inferno) THEN
         l_req_emiss = .TRUE.
         use_fldname = fldname_inferno_so2
+      END IF
+
+    CASE ('C2H4')
+      IF (ukca_config%l_ukca_inferno) THEN
+        l_req_emiss = .TRUE.
+        use_fldname = fldname_inferno_c2h4
+      END IF
+
+    CASE ('C2H6')
+      IF (ukca_config%l_ukca_inferno) THEN
+        l_req_emiss = .TRUE.
+        use_fldname = fldname_inferno_c2h6
+      END IF
+
+    CASE ('C3H8')
+      IF (ukca_config%l_ukca_inferno) THEN
+        l_req_emiss = .TRUE.
+        use_fldname = fldname_inferno_c3h8
+      END IF
+
+    CASE ('HCHO')
+      IF (ukca_config%l_ukca_inferno) THEN
+        l_req_emiss = .TRUE.
+        use_fldname = fldname_inferno_hcho
+      END IF
+
+    CASE ('MeCHO')
+      IF (ukca_config%l_ukca_inferno) THEN
+        l_req_emiss = .TRUE.
+        use_fldname = fldname_inferno_mecho
+      END IF
+
+    CASE ('NH3')
+      IF (ukca_config%l_ukca_inferno) THEN
+        l_req_emiss = .TRUE.
+        use_fldname = fldname_inferno_nh3
+      END IF
+
+    CASE ('DMS')
+      IF (ukca_config%l_ukca_inferno) THEN
+        l_req_emiss = .TRUE.
+        use_fldname = fldname_inferno_dms
       END IF
     END SELECT
 
@@ -2147,12 +2224,12 @@ environ_field_available = .FALSE.
 
 ! Proceed only if environment fields requirement has been set
 IF ( l_environ_req_available ) THEN
-  DO i = 1, SIZE(environ_field_varnames)
+  check_varnames: DO i = 1, SIZE(environ_field_varnames)
     IF (varname == environ_field_varnames(i)) THEN
       environ_field_available = l_environ_field_available(i)
-      EXIT
+      EXIT check_varnames
     END IF
-  END DO
+  END DO check_varnames
   ! If we are here the supplied varname does not match any required env field
 END IF
 

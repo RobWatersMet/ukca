@@ -30,7 +30,10 @@ SUBROUTINE ukca_radaer_compute_aod(                                            &
       ! Prescribed ssa dimensions (Fixed array)
       npd_prof_ssa, npd_layr_ssa, npd_naod_ssa,                                &
       ! UKCA_RADAER structure
-      ukca_radaer,                                                             &
+      ! From the structure ukca_radaer for UKCA/radiation interaction
+      nmodes, ncp_max, ncp_max_x_nmodes,                                       &
+      i_cpnt_index, i_cpnt_type, n_cpnt_in_mode,                               &
+      l_nitrate, l_soluble, l_sustrat, i_mode_type, l_cornarrow_ins,           &
       ! Modal diameters from UKCA module
       ukca_dry, ukca_wet,                                                      &
       ! Mass thickness of layers
@@ -45,8 +48,8 @@ SUBROUTINE ukca_radaer_compute_aod(                                            &
       ukca_modal_number,                                                       &
       ! Type selection
       type_wanted, soluble_wanted,                                             &
-      ! Logical for if prescribed SSA is on
-      l_ukca_radaer_prescribe_ssa,                                             &
+      ! Switch for if prescribed SSA is on
+      i_ukca_radaer_prescribe_ssa,                                             &
       ! Model level of the tropopause
       trindxrad,                                                               &
       ! Prescription of single-scattering albedo
@@ -94,7 +97,8 @@ USE ukca_radaer_ri_calc_mod, ONLY:                                             &
     ukca_radaer_ri_calc
 
 USE ukca_option_mod,         ONLY:                                             &
-    i_ukca_tune_bc
+    i_ukca_tune_bc,                                                            &
+    do_not_prescribe
 
 USE glomap_clim_option_mod,  ONLY:                                             &
     i_glomap_clim_tune_bc
@@ -106,13 +110,13 @@ IMPLICIT NONE
 !
 
 ! Fixed array dimensions
-INTEGER :: npd_profile,                                                        &
+INTEGER, INTENT(IN) :: npd_profile,                                            &
         npd_layer,                                                             &
         npd_aerosol_mode,                                                      &
         npd_aod_wavel
 
 ! Actual array dimensions
-INTEGER :: n_profile,                                                          &
+INTEGER, INTENT(IN) :: n_profile,                                              &
         n_layer,                                                               &
         n_ukca_mode,                                                           &
         n_ukca_cpnt,                                                           &
@@ -121,61 +125,73 @@ INTEGER :: n_profile,                                                          &
 !
 ! Fixed array dimensions for prescribed SSA
 !
-INTEGER :: npd_prof_ssa,                                                       &
+INTEGER, INTENT(IN) :: npd_prof_ssa,                                           &
         npd_layr_ssa,                                                          &
         npd_naod_ssa
 
-! Structure for UKCA/radiation interaction
-TYPE (ukca_radaer_struct) :: ukca_radaer
+! From radaer structure
+INTEGER, INTENT(IN) :: nmodes
+INTEGER, INTENT(IN) :: ncp_max
+INTEGER, INTENT(IN) :: ncp_max_x_nmodes
+INTEGER, INTENT(IN) :: i_cpnt_index( ncp_max, nmodes )
+INTEGER, INTENT(IN) :: i_cpnt_type( ncp_max_x_nmodes )
+INTEGER, INTENT(IN) :: n_cpnt_in_mode( nmodes )
+LOGICAL, INTENT(IN) :: l_nitrate
+LOGICAL, INTENT(IN) :: l_soluble( nmodes )
+LOGICAL, INTENT(IN) :: l_sustrat
+INTEGER, INTENT(IN) :: i_mode_type( nmodes )
+LOGICAL, INTENT(IN) :: l_cornarrow_ins
 
 ! Modal dry and wet diameters
-REAL :: ukca_dry(npd_profile, npd_layer, n_ukca_mode)
-REAL :: ukca_wet(npd_profile, npd_layer, n_ukca_mode)
+REAL, INTENT(IN) :: ukca_dry(npd_profile, npd_layer, n_ukca_mode)
+REAL, INTENT(IN) :: ukca_wet(npd_profile, npd_layer, n_ukca_mode)
 
 ! Mass-thickness of vertical layers
-REAL :: d_mass(npd_profile, npd_layer)
+REAL, INTENT(IN) :: d_mass(npd_profile, npd_layer)
 
 ! Component volumes
-REAL :: ukca_cpnt_volume(n_ukca_cpnt, npd_profile, npd_layer)
+REAL, INTENT(IN) :: ukca_cpnt_volume(n_ukca_cpnt, npd_profile, npd_layer)
 
 ! Modal volumes
-REAL :: ukca_modal_volume(npd_profile, npd_layer, n_ukca_mode)
+REAL, INTENT(IN) :: ukca_modal_volume(npd_profile, npd_layer, n_ukca_mode)
 
 ! Modal density
-REAL :: ukca_modal_density(npd_profile, npd_layer, n_ukca_mode)
+REAL, INTENT(IN) :: ukca_modal_density(npd_profile, npd_layer, n_ukca_mode)
 
 ! Volume of water in each mode
-REAL :: ukca_water_volume(npd_profile, npd_layer, n_ukca_mode)
+REAL, INTENT(IN) :: ukca_water_volume(npd_profile, npd_layer, n_ukca_mode)
 
 ! Modal mass-mixing ratios
-REAL :: ukca_modal_mmr(npd_profile, npd_layer, npd_aerosol_mode)
+REAL, INTENT(IN) :: ukca_modal_mmr(npd_profile, npd_layer, npd_aerosol_mode)
 
 ! Modal number concentrations
-REAL :: ukca_modal_number(npd_profile, npd_layer, n_ukca_mode)
+REAL, INTENT(IN) :: ukca_modal_number(npd_profile, npd_layer, n_ukca_mode)
 
 ! Type selection
-INTEGER :: type_wanted
-LOGICAL :: soluble_wanted
+INTEGER, INTENT(IN) :: type_wanted
+LOGICAL, INTENT(IN) :: soluble_wanted
 
 !
-! When true, use a prescribed single scattering albedo field
+! When >0, use a prescribed single scattering albedo field
 !
-LOGICAL :: l_ukca_radaer_prescribe_ssa
+INTEGER, INTENT(IN) :: i_ukca_radaer_prescribe_ssa
 
 ! Model level of the tropopause
-INTEGER :: trindxrad(npd_profile)
+INTEGER, INTENT(IN) :: trindxrad(npd_profile)
 
 ! Prescription of single-scattering albedo
-REAL :: ukca_radaer_presc_ssa_aod(npd_prof_ssa, npd_layr_ssa, npd_naod_ssa)
+REAL, INTENT(IN) :: ukca_radaer_presc_ssa_aod( npd_prof_ssa,                   &
+                                               npd_layr_ssa,                   &
+                                               npd_naod_ssa )
 
 !
 ! Arguments with intent out
 !
 
 ! Modal aerosol optical depths: full column and stratosphere
-REAL :: ukca_modal_aod       (npd_profile, npd_aod_wavel),                     &
-        ukca_modal_aaod      (npd_profile, npd_aod_wavel),                     &
-        ukca_modal_strat_aod (npd_profile, npd_aod_wavel)
+REAL , INTENT(OUT):: ukca_modal_aod       (npd_profile, npd_aod_wavel),        &
+                     ukca_modal_aaod      (npd_profile, npd_aod_wavel),        &
+                     ukca_modal_strat_aod (npd_profile, npd_aod_wavel)
 !
 ! Local variables
 !
@@ -183,6 +199,9 @@ INTEGER :: i_mode,                                                             &
         i_layr,                                                                &
         i_prof,                                                                &
         n
+
+! Index of AOD in prescSSA array
+INTEGER :: n_ssa
 
 !
 ! Values at the AOD wavelengths:
@@ -254,14 +273,18 @@ CHARACTER(LEN=*), PARAMETER :: RoutineName='UKCA_RADAER_COMPUTE_AOD'
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName, zhook_in, zhook_handle)
 
-ukca_modal_aod(:, :)     = 0.0e+00
-ukca_modal_aaod(:, :)     = 0.0e+00
-ukca_modal_strat_aod(:, :) = 0.0e+00
+DO n = 1, npd_aod_wavel
+  DO i_prof = 1, npd_profile
+    ukca_modal_aod(       i_prof, n ) = 0.0e+00
+    ukca_modal_aaod(      i_prof, n ) = 0.0e+00
+    ukca_modal_strat_aod( i_prof, n ) = 0.0e+00
+  END DO
+END DO
 
 DO i_mode = 1, n_ukca_mode
 
-  IF ((ukca_radaer%i_mode_type(i_mode) == type_wanted) .AND.                   &
-      (ukca_radaer%l_soluble(i_mode) .EQV. soluble_wanted)) THEN
+  IF ( (i_mode_type(i_mode) == type_wanted) .AND.                              &
+       (l_soluble(i_mode) .EQV. soluble_wanted) ) THEN
 
     !
     ! Mode type. From a look-up table point of view, Aitken and
@@ -277,21 +300,20 @@ DO i_mode = 1, n_ukca_mode
     ! look-up tables are used.
     !
 
-    SELECT CASE (ukca_radaer%i_mode_type(i_mode))
+    SELECT CASE (i_mode_type(i_mode))
 
     CASE (ip_ukca_mode_aitken)
       this_mode_type = ip_ukca_lut_accum
 
     CASE (ip_ukca_mode_accum)
-      IF (ukca_radaer%l_soluble(i_mode)) THEN
+      IF (l_soluble(i_mode)) THEN
         this_mode_type = ip_ukca_lut_accnarrow
       ELSE
         this_mode_type = ip_ukca_lut_accum
       END IF
 
     CASE (ip_ukca_mode_coarse)
-      IF ((.NOT. ukca_radaer%l_soluble(i_mode)) .AND.                          &
-          ukca_radaer%l_cornarrow_ins) THEN
+      IF ( (.NOT. l_soluble(i_mode)) .AND. l_cornarrow_ins) THEN
         this_mode_type = ip_ukca_lut_cornarrow
       ELSE
         this_mode_type = ip_ukca_lut_coarse
@@ -362,15 +384,15 @@ DO i_mode = 1, n_ukca_mode
             !
             CALL ukca_radaer_ri_calc(                                          &
               ! From the structure ukca_radaer for UKCA/radiation interaction
-              ukca_radaer%nmodes,                                              &
-              ukca_radaer%ncp_max,                                             &
-              ukca_radaer%ncp_max_x_nmodes,                                    &
-              ukca_radaer%i_cpnt_index,                                        &
-              ukca_radaer%i_cpnt_type,                                         &
-              ukca_radaer%n_cpnt_in_mode,                                      &
-              ukca_radaer%l_nitrate,                                           &
-              ukca_radaer%l_soluble,                                           &
-              ukca_radaer%l_sustrat,                                           &
+              nmodes,                                                          &
+              ncp_max,                                                         &
+              ncp_max_x_nmodes,                                                &
+              i_cpnt_index,                                                    &
+              i_cpnt_type,                                                     &
+              n_cpnt_in_mode,                                                  &
+              l_nitrate,                                                       &
+              l_soluble,                                                       &
+              l_sustrat,                                                       &
               ! Refractive index
               precalc%aod_realrefr( :, n ),                                    &
               precalc%aod_imagrefr( :, n ),                                    &
@@ -384,7 +406,7 @@ DO i_mode = 1, n_ukca_mode
               l_in_stratosphere,                                               &
               ! Logical control switches
               i_ukca_tune_bc, i_glomap_clim_tune_bc,                           &
-              l_ukca_radaer_prescribe_ssa,                                     &
+              i_ukca_radaer_prescribe_ssa,                                     &
               ! Output refractive index real and imag parts
               re_m, im_m )
 
@@ -392,7 +414,7 @@ DO i_mode = 1, n_ukca_mode
             n_nr = MIN(nnr, MAX(1, n_nr))
 
             ! The AOD calculations depend on whether SSA is prescribed
-            IF (l_ukca_radaer_prescribe_ssa) THEN
+            IF (i_ukca_radaer_prescribe_ssa /= do_not_prescribe) THEN
 
               ! Fix the imaginary index to 1 (no absorption) as absorptivity
               ! is prescribed
@@ -415,7 +437,8 @@ DO i_mode = 1, n_ukca_mode
               ! case) to absorption and scattering coefficients in the
               ! proportion indicated by the prescription.
               !
-              this_ssa = ukca_radaer_presc_ssa_aod(i_prof, i_layr, n)
+              n_ssa = MIN(npd_naod_ssa, n)
+              this_ssa = ukca_radaer_presc_ssa_aod(i_prof, i_layr, n_ssa)
 
               !
               ! aerosol optical depth for extinction with prescribed SSA
@@ -494,7 +517,7 @@ DO i_mode = 1, n_ukca_mode
 
               END IF
 
-            END IF ! IF (l_ukca_radaer_prescribe_ssa)
+            END IF ! IF (i_ukca_radaer_prescribe_ssa /= do_not_prescribe)
 
           END DO ! n
 

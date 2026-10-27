@@ -64,7 +64,7 @@ SUBROUTINE ukca_chemistry_ctl_col(                                             &
                 zdryrt, zwetrt, nlev_with_ddep                                 &
                 )
 
-USE asad_mod,             ONLY: advt, cdt, ctype,                              &
+USE asad_mod,             ONLY: advt, cdt_diag, ctype,                         &
                                 dpd, dpw, fpsc1, fpsc2,                        &
                                 ihso3_h2o2, ihso3_o3, ih2so4_hv, iso2_oh,      &
                                 iso3_o3, jpctr, jpcspf, jpdd, jpdw, jpnr,      &
@@ -208,7 +208,6 @@ REAL :: zp  (model_levels)        ! 1-D pressure
 REAL :: zt  (model_levels)        ! 1-D temperature
 REAL :: zclw(model_levels)        ! 1-D cloud liquid water
 REAL :: zfcloud(model_levels)     ! 1-D cloud fraction
-REAL :: cdot(model_levels,jpcspf) ! 1-D chem. tendency
 REAL :: zq(model_levels)          ! 1-D water vapour vmr
 REAL :: co2_1d(model_levels)      ! 1-D CO2 vmr
 REAL :: zprt1d(model_levels,jppj) ! 1-D photolysis rates for ASAD
@@ -280,6 +279,32 @@ END IF
 #endif
 
 ! Model levels loop
+!$OMP PARALLEL DEFAULT(NONE)                                                   &
+!$OMP PRIVATE(cmessage, errcode, i, ierr, j, js, l, rc_het, stratflag,         &
+!$OMP         ystore, zclw, zdryrt2, zfcloud, zftr, have_nat1d,                &
+!$OMP         zp, zprt1d, zq, zt, co2_1d, zwetrt2,                             &
+!$OMP         kcs, kce, chunk_size, dpd_full, dpw_full,                        &
+!$OMP         fpsc1_full, fpsc2_full, prk_full, y_full, jspf, jna,             &
+!$OMP         H_plus_1d_arr)                                                   &
+!$OMP SHARED(advt, all_ntp, atm_cf2cl2_mol, atm_cfcl3_mol, atm_ch4_mol,        &
+!$OMP        atm_co_mol, atm_h2_mol, atm_mebr_mol, atm_n2o_mol, avogadro,      &
+!$OMP        c_species, c_na_species, cloud_frac,                              &
+!$OMP        delh2so4_chem, delSO2_wet_H2O2, delSO2_wet_O3, have_nat3d,        &
+!$OMP        ih2so4_hv, ihso3_h2o2, ihso3_o3, iso2_oh, iso3_o3,                &
+!$OMP        jpctr, jpdd, jpspec, jpcspf, jpro2, klevel, speci, specf,         &
+!$OMP        spro2, nlnaro2, ctype, co2_interactive, istore_h2so4,             &
+!$OMP        l_asad_use_chem_diags, l_asad_use_drydep,                         &
+!$OMP        l_asad_use_flux_rxns, l_asad_use_psc_diagnostic,                  &
+!$OMP        l_asad_use_rxn_rates, l_asad_use_wetdep, l_stratosphere,          &
+!$OMP        ukca_config,                                                      &
+!$OMP        l_autotune_local,                                                 &
+!$OMP        model_levels, n_cf2cl2, n_cfcl3, n_ch4, n_co, n_h2,               &
+!$OMP        n_mebr, n_n2o, nadvt, nlev_with_ddep,                             &
+!$OMP        nn_h2o2, nn_h2so4, nn_o1d, nn_o3, nn_o3p, nn_oh, nn_so2,          &
+!$OMP        o1d_in_ss, o3p_in_ss, photol_rates, pres, q, qcf, qcl,            &
+!$OMP        row_length, rows, so4_sa, shno3_3d,                               &
+!$OMP        temp, tracer, uph2so4inaer, volume, zdryrt, zwetrt,               &
+!$OMP        H_plus_3d_arr)
 
 IF (.NOT. ALLOCATED(ystore) .AND. uph2so4inaer == 1)                           &
                              ALLOCATE(ystore(model_levels))
@@ -468,8 +493,7 @@ DO i=1,rows
         END IF
 
         ! Call asad_cdrive with segmented arrays
-        CALL asad_cdrive(cdot(kcs:kce,:),                                      &
-                         zftr(kcs:kce,:),                                      &
+        CALL asad_cdrive(zftr(kcs:kce,:),                                      &
                          zp(kcs:kce),                                          &
                          zt(kcs:kce),                                          &
                          zq(kcs:kce),                                          &
@@ -511,23 +535,23 @@ DO i=1,rows
           ! Calculate chemical fluxes for MODE
           IF (ihso3_h2o2 > 0) delSO2_wet_H2O2(j,i,kcs:kce) =                   &
             delSO2_wet_H2O2(j,i,kcs:kce) + (rk(:,ihso3_h2o2)*                  &
-            y(:,nn_so2)*y(:,nn_h2o2))*cdt
+            y(:,nn_so2)*y(:,nn_h2o2))*cdt_diag
           IF (ihso3_o3 > 0) delSO2_wet_O3(j,i,kcs:kce) =                       &
             delSO2_wet_O3(j,i,kcs:kce) + (rk(:,ihso3_o3)*                      &
-            y(:,nn_so2)*y(:,nn_o3))*cdt
+            y(:,nn_so2)*y(:,nn_o3))*cdt_diag
           IF (iso3_o3 > 0) delSO2_wet_O3(j,i,kcs:kce) =                        &
             delSO2_wet_O3(j,i,kcs:kce) + (rk(:,iso3_o3)*                       &
-            y(:,nn_so2)*y(:,nn_o3))*cdt
+            y(:,nn_so2)*y(:,nn_o3))*cdt_diag
           ! net H2SO4 production - note that this is affected by
           ! l_fix_ukca_h2so4_ystore above. Y value is concentration
           ! from chemistry prior to zftr being over-written below
           IF (iso2_oh > 0 .AND. ih2so4_hv > 0) THEN
             delh2so4_chem(j,i,kcs:kce) = delh2so4_chem(j,i,kcs:kce) +          &
              ((rk(:,iso2_oh)*y(:,nn_so2)*y(:,nn_oh)) -                         &
-              (rk(:,ih2so4_hv)*y(:,nn_h2so4)))*cdt
+              (rk(:,ih2so4_hv)*y(:,nn_h2so4)))*cdt_diag
           ELSE IF (iso2_oh > 0) THEN
             delh2so4_chem(j,i,kcs:kce) = delh2so4_chem(j,i,kcs:kce) +          &
-              (rk(:,iso2_oh)*y(:,nn_so2)*y(:,nn_oh))*cdt
+              (rk(:,iso2_oh)*y(:,nn_so2)*y(:,nn_oh))*cdt_diag
           END IF
 
           IF (uph2so4inaer == 1) THEN
@@ -536,9 +560,10 @@ DO i=1,rows
             IF (ukca_config%l_fix_ukca_h2so4_ystore) THEN
               ! calculate delh2so4_chem as the difference in H2SO4 over
               ! chemistry
-              ! zftr is already in VMR, so divide by CDT to give as vmr/s
+              ! zftr is already in VMR, so divide by diagnostic chemistry
+              ! timestep to give as vmr/s
               delh2so4_chem(j,i,kcs:kce) = (zftr(kcs:kce,istore_h2so4)         &
-                                             - ystore(kcs:kce)) / cdt
+                                             - ystore(kcs:kce)) / cdt_diag
               ! primary array passed is zftr, so copy back to this, NOT y
               zftr(kcs:kce,istore_h2so4) = ystore(kcs:kce)
             ELSE

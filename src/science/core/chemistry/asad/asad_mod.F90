@@ -302,6 +302,7 @@ INTEGER, PARAMETER :: nss_n=3        !    "         "
 INTEGER, PARAMETER :: nss_h=4        !    "         "
 
 REAL    :: cdt                       ! chemistry timestep
+REAL    :: cdt_diag                  ! chem. timestep for writing diagnostics
 REAL    :: peps                      !
 REAL, PARAMETER :: tslimit = 1200.0  ! timestep limit for some solvers
 
@@ -316,6 +317,7 @@ INTEGER :: nro2           ! Counter for Non-transported RO2 species
 INTEGER :: nuni
 INTEGER :: nsst           ! No of steady-state species
 INTEGER :: ncsteps        ! No of chemical steps
+INTEGER :: ncsteps_factor ! Factor for ncsteps halvings
 INTEGER :: nit0=20        ! ftoy iterations with method=0
 INTEGER :: nfphot
 INTEGER :: jsubs
@@ -364,6 +366,17 @@ interface array_xor_checksum
   module procedure array_xor_checksum_logical_2d
   module procedure array_xor_checksum_logical_1d
 end interface
+
+! Variables which should be stored separately on each thread
+!$OMP THREADPRIVATE(cdt, cdt_diag, co3, deriv, dpd, dpw, ej, emr,              &
+!$OMP               f, fdot, fj, fpsc1, fpsc2, ftilde,                         &
+!$OMP               interval, ipa, jsubs,                                      &
+!$OMP               lati, linfam, ltrig, modified_map,                         &
+!$OMP               ncsteps, ncsteps_factor, p, pd, pmintnd, prk, prod,        &
+!$OMP               qa, ratio, rk,                                             &
+!$OMP               sh2o, shno3, slos, spfj, sph2o, sphno3,                    &
+!$OMP               t, t300, tnd, wp, co2, y, ydot, za)
+
 
 CONTAINS
 

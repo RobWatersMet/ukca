@@ -183,8 +183,9 @@ DO js = 1, jpspec
     ispf = ispf + 1
     IF ( iadv > jpctr ) THEN
       errcodes(js,1) = iadv
+    ELSE
+      advt(iadv)  = speci(js)
     END IF
-    advt(iadv)  = speci(js)
 
     ! Tracers added to lists of all species treated in f array,
     ! which includes non-transported RO2 species if option is set
@@ -193,37 +194,43 @@ DO js = 1, jpspec
 
     ! Second block to separate tracer-steady type RO2 species from other tracers
   ELSE IF (ctype(js) == jpoo) THEN
-    ! First add to RO2 counters and arrays
     iro2 = iro2 + 1
     nro2 = nro2 + 1
-    spro2(iro2) = speci(js)
-    IF ( iro2 > jpro2 ) THEN
-      errcodes(js,2) = iro2
-    END IF
+    ntrf = ntrf + 1
+    ispf = ispf + 1
 
     ! Add RO2 species to the list of species treated by ASAD (ntrf)
-    ntrf        = ntrf + 1
-    ispf        = ispf + 1
     nltrf(ntrf) = ispf ! ispf is always == ntrf
     specf(ntrf) = speci(js)
 
-    ! Create mapping indices to position in f-array
-    nlfro2(iro2) = ispf
-
-    ! See whether or not RO2 species are transported
-    IF (ukca_config%l_ukca_ro2_ntp) THEN
-
-      ! Add RO2 species to non-transported counters
-      inadv        = inadv + 1
-      nnaf         = nnaf + 1
-      nadvt(inadv) = speci(js)
-      ! Create mapping indices to position in non-advected species list
-      nlnaro2(iro2) = inadv
+    ! First add to RO2 counters and arrays
+    IF ( iro2 > jpro2 ) THEN
+      errcodes(js,2) = iro2
     ELSE
+      spro2(iro2) = speci(js)
 
-      ! Otherwise add RO2 species to list of transported tracers
-      iadv = iadv + 1
-      advt(iadv)  = speci(js)
+      ! Create mapping indices to position in f-array
+      nlfro2(iro2) = ispf
+
+      ! See whether or not RO2 species are transported
+      IF (ukca_config%l_ukca_ro2_ntp) THEN
+
+        ! Add RO2 species to non-transported counters
+        inadv        = inadv + 1
+        nnaf         = nnaf + 1
+        nadvt(inadv) = speci(js)
+        ! Create mapping indices to position in non-advected species list
+        nlnaro2(iro2) = inadv
+      ELSE
+
+        ! Otherwise add RO2 species to list of transported tracers
+        iadv = iadv + 1
+        IF ( iadv > jpctr ) THEN
+          errcodes(js,1) = iadv
+        ELSE
+          advt(iadv)  = speci(js)
+        END IF
+      END IF
     END IF
 
   ELSE IF ( ctype(js) == jpna ) THEN       ! Steady-state species
@@ -238,9 +245,10 @@ DO js = 1, jpspec
       ntr3 = ntr3 + 1
       IF ( iadv  >   jpctr ) THEN
         errcodes(js,1) = js
+      ELSE
+        advt(iadv)  = speci(js)
+        nltr3(ntr3) = iadv
       END IF
-      advt(iadv)  = speci(js)
-      nltr3(ntr3) = iadv
     END IF
     l_fa=.TRUE.
     DO jadv = 1, iadv
@@ -255,9 +263,10 @@ DO js = 1, jpspec
       ispf = ispf + 1
       IF ( iadv  >   jpctr ) THEN
         errcodes(js,1) = iadv
+      ELSE
+        advt(iadv) = family(js)
+        nltrf(ntrf) = ispf
       END IF
-      advt(iadv) = family(js)
-      nltrf(ntrf) = ispf
     END IF      ! l_fa
   END IF
 END DO

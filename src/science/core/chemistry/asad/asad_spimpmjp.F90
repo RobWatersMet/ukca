@@ -192,7 +192,11 @@ REAL(KIND=jprb)               :: zhook_handle
 CHARACTER(LEN=*), PARAMETER   :: RoutineName='CALC_RESIDUAL_ERROR'
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+
 call nvtxStartRange(ModuleName // ':' // RoutineName)
+
+residual_error = 0.0
+
 !  Temporary prod+loss array used to test for convergence
 !  by calculating residual_error further down
 DO jtr=1,jpcspf
@@ -200,9 +204,8 @@ DO jtr=1,jpcspf
   tmprc(1:n_points,jtr) = prod(1:n_points,j) + slos(1:n_points,j)
 END DO
 
-residual_error = 0.0
-DO jl=1,n_points
-  DO jtr=1,jpcspf
+DO jtr=1,jpcspf
+  DO jl=1,n_points
     IF (ABS(tmprc(jl,jtr)) > f_min) THEN
       residual_error=MAX(residual_error,ABS(G_f(jl,jtr)/tmprc(jl,jtr)))
     END IF
@@ -299,6 +302,8 @@ REAL :: ztmp
 ! The maximum concentration allowed was previously f_max = 1.0/f_min
 REAL, PARAMETER :: f_max = 1.0e30
 REAL :: f_min
+! Negative threshold to turn off filtering in quasi-Newton mode
+REAL, PARAMETER :: max_val = -1.0
 REAL :: RelTol_residual_error
 REAL :: RelTol_error
 REAL :: rafmin
@@ -440,10 +445,14 @@ DO iter=1,ukca_config%nrsteps
       IF (f(jl,jtr) > f_max) THEN
         ! Exit solver if chemical species is larger than f_max
         exit_code = 3
-        GO TO 9999
       END IF
     END DO
   END DO
+
+  ! moved outside of loop to allow parallelisation
+  IF (exit_code ==3) THEN
+    GO TO 9999
+  END IF
 
   CALL spfuljac(n_points,cdt,f_min,nonzero_map,spfj)
 
@@ -561,7 +570,8 @@ DO iter=1,ukca_config%nrsteps
                     /DOT_PRODUCT(delta_G(jl,:),delta_G(jl,:))
         G_ftmp(jl,:) = G_f(jl,:)*(1.0 - coeff)
       END DO
-      CALL spresolv2(n_points,G_ftmp,f_incr,f_min,modified_map,spfj)
+
+      CALL spresolv2(n_points,G_ftmp,f_incr,f_min,modified_map,spfj,max_val)
 
       f = f + f_incr
       ! remove negative values. Does not need to be done in

@@ -183,7 +183,6 @@ INTEGER       :: jl          ! Loop variable
 INTEGER       :: js          ! Loop variable
 INTEGER       :: ifam
 INTEGER       :: imaj
-INTEGER       :: nl
 INTEGER       :: istart
 INTEGER       :: iend
 INTEGER       :: iodd
@@ -191,11 +190,8 @@ INTEGER       :: itr
 INTEGER       :: icode       ! Error code
 INTEGER       :: iro2        ! Counter for RO2 species
 
-
 INTEGER, SAVE :: istmin
 INTEGER, SAVE :: ift
-!        INTEGER       :: ilstmin(jpspec)      ! Now in ASAD_MOD
-!        INTEGER       :: ilft(jpspec)         ! Now in ASAD_MOD
 
 CHARACTER (LEN=errormessagelength) :: cmessage     ! Error message
 INTEGER :: errcode          ! Variable passed to ereport
@@ -223,13 +219,28 @@ CHARACTER(LEN=*), PARAMETER :: RoutineName='ASAD_FTOY'
 !       1.  Initialise.
 !           -----------
 
-IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,                          &
-                        zhook_in,zhook_handle)
 call nvtxStartRange(ModuleName // ':' // RoutineName)
-
 call nvtxStartRange('RW_ftoy_1')
+IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+
+
+! initalise ints
+ifam = 0
+imaj = 0
+
+! initalise reals
+sl = 0.0
+zthresh = 2.0 / cdt
+
+! initialise arrays
+zy = 0.0
+zb = 0.0
+zc = 0.0
+zd = 0.0
+
 ! OMP CRITICAL will only allow one thread through this code at a time,
 ! while the other threads are held until completion.
+!$OMP CRITICAL (asad_ftoy_init)
 errcodes(:) = 0
 IF ( first_pass ) THEN
   IF ( gonce ) THEN
@@ -277,6 +288,15 @@ IF (ANY(errcodes(:) /= 0)) THEN
   CALL ereport('ASAD_FTOY',errcode,'Found unexpected species type')
 END IF
 
+! Perform error check outside of the loop to better suit GPU runs
+IF (ANY(errcodes(:) /= 0)) THEN
+  errcode = MINVAL(errcodes,mask=(errcodes(:) /= 0))
+  CALL umPrint( '**** ASAD ERROR in ASAD_FTOY!! ',src='asad_ftoy')
+  CALL umPrint( 'ASAD_FTOY found an unexpected species type',src='asad_ftoy')
+  CALL umPrint( 'in the species list nlstst ',src='asad_ftoy')
+  CALL ereport('ASAD_FTOY',errcode,'Found unexpected species type')
+END IF
+
 !       1.1 Set concentrations/initialise species
 
 CALL asad_fyinit(ofirst,n_points, ix, jy, nlev)
@@ -295,7 +315,7 @@ IF ( ukca_config%l_ukca_ro2_perm ) THEN
   DO j = 1, jpro2
 
     ! Get index location of each RO2 species and sum
-    iro2             = nlfro2(j)
+    iro2       = nlfro2(j)
     fro2(1:n_points) = fro2(1:n_points) + f(1:n_points, iro2)
 
   END DO   ! End iteration over RO2 species
@@ -315,8 +335,7 @@ IF ( ukca_config%l_ukca_ro2_perm ) THEN
   END IF
 
   ! Calculate the new concentration of RO2
-  y(1:n_points, jsro2) = fro2_old(1:n_points) +                                &
-      damp_ro2*(fro2(1:n_points) - fro2_old(1:n_points))
+  y(1:n_points, jsro2) = fro2_old(1:n_points) + damp_ro2*(fro2(1:n_points) - fro2_old(1:n_points))
 
 END IF
 call nvtxEndRange()
@@ -347,8 +366,6 @@ IF (ofirst .AND. iter < 5) THEN
   cmessage = 'iter too low on first call, resetting to 5'
   CALL ereport('ASAD_FTOY',icode,cmessage)
 END IF
-
-zthresh = 2.0 / cdt
 
 !       2.  Calculate self-reacting terms
 !           --------- ------------- -----
@@ -381,10 +398,7 @@ DO jit = 1, iter
     DO j = 1, nstst
       js = nlstst(j)
       DO jl = 1, n_points
-        IF (ABS(y(jl,js)) < peps .AND.                                         &
-            prod(jl,js) > peps ) THEN
-          y(jl,js) = peps
-        END IF
+        IF (ABS(y(jl,js)) < peps .AND. prod(jl,js) > peps ) y(jl,js) = peps
       END DO
     END DO
   END IF
@@ -395,7 +409,7 @@ call nvtxEndRange()
   !             Regardless of whether the user has them turned on or not.
   !             See method above.
 
-  CALL asad_prls( nl, istmin, ilstmin, gdepem )
+  CALL asad_prls( n_points, istmin, ilstmin, gdepem )
 
   !         4.2 Initialise ratios
   call nvtxStartRange('RW_ftoy_5')
@@ -456,8 +470,7 @@ call nvtxEndRange()
     DO jl = 1, n_points
       IF ( y(jl,imaj) > peps ) THEN
         ratio(jl,js)   = y(jl,js) / y(jl,imaj)
-        ratio(jl,imaj) = ratio(jl,imaj) +                                      &
-                         iodd * ratio(jl,js)
+        ratio(jl,imaj) = ratio(jl,imaj) + iodd * ratio(jl,js)
       ELSE
         ratio(jl,js) = 0.0
       END IF
@@ -482,9 +495,8 @@ call nvtxEndRange()
         ELSE
           sl = 0.0
         END IF
-        linfam(jl,itr) = sl  >   zthresh
-        IF ( linfam(jl,itr) )                                                  &
-             f(jl,ifam) = f(jl,ifam) + iodd*f(jl,itr)
+        linfam(jl,itr) = sl > zthresh
+        IF ( linfam(jl,itr) ) f(jl,ifam) = f(jl,ifam) + iodd*f(jl,itr)
       END DO
     END IF
 
@@ -492,8 +504,7 @@ call nvtxEndRange()
       IF ( linfam(jl,itr) ) THEN
         IF ( y(jl,imaj)  >   peps ) THEN
           ratio(jl,js)   = y(jl,js) / y(jl,imaj)
-          ratio(jl,imaj) = ratio(jl,imaj) +                                    &
-                           iodd * ratio(jl,js)
+          ratio(jl,imaj) = ratio(jl,imaj) + iodd * ratio(jl,js)
         ELSE
           ratio(jl,js) = 0.0
         END IF
@@ -535,8 +546,7 @@ call nvtxEndRange()
     ELSE
       itr = madvtr(js)
       DO jl = 1, n_points
-        IF ( linfam(jl,itr) ) y(jl,js) =                                       &
-             y(jl,imaj) * ratio(jl,js)
+        IF ( linfam(jl,itr) ) y(jl,js) = y(jl,imaj) * ratio(jl,js)
       END DO
     END IF
   END DO
@@ -573,7 +583,6 @@ call nvtxEndRange()
 
 END DO    ! End of iterations
 
-
 !       9. Convergence achieved or max. iterations reached.
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,                          &
@@ -581,4 +590,5 @@ IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,                          &
 call nvtxEndRange()
 RETURN
 END SUBROUTINE asad_ftoy
+
 END MODULE asad_ftoy_mod

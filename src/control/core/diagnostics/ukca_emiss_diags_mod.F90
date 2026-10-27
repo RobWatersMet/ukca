@@ -99,13 +99,13 @@ DO k = 1, n_chem_emissions + n_3d_emissions
   ! array that is required. This is needed here as BC & OC biomass
   ! netCDF fields are either 2D or 3D, so we cannot assume size of
   ! the array based on the name of the emitted species alone.
-  DO l = 1, num_em_flds    ! fields in emissions structure
+  initial_num_em_flds: DO l = 1, num_em_flds    ! fields in emissions structure
     IF (em_chem_spec (k) == emissions(l)%tracer_name) THEN
       ALLOCATE(em_diags(row_length, rows,                                      &
                SIZE(emissions(l)%diags(:,:,:),DIM=3)))
-      EXIT
+      EXIT initial_num_em_flds
     END IF
-  END DO
+  END DO initial_num_em_flds
 
   ! Set total diagnostic to zero every time we look for a new tracer
   em_diags (:,:,:) = 0.0
@@ -137,12 +137,17 @@ DO k = 1, n_chem_emissions + n_3d_emissions
 
   ! Report error if no emission field found in emissions structure
   ! Exception is BC/organic matter which can be missing if l_ukca_primbcoc=false
+  ! Microplastics can also be missing if l_ukca_mp_fragment/fibre = false
   IF (n == -1) THEN
     IF (.NOT. (                                                                &
         ((em_chem_spec(k)(1:2) == 'BC') .AND.                                  &
          .NOT. glomap_config%l_ukca_primbcoc) .OR.                             &
         ((em_chem_spec(k)(1:2) == 'OM') .AND.                                  &
-         .NOT. glomap_config%l_ukca_primbcoc))) THEN
+         .NOT. glomap_config%l_ukca_primbcoc) .OR.                             &
+        ((em_chem_spec(k)(1:2) == 'MP') .AND.                                  &
+         .NOT. glomap_config%l_ukca_mp_fragment) .OR.                          &
+        ((em_chem_spec(k)(1:2) == 'MP') .AND.                                  &
+         .NOT. glomap_config%l_ukca_mp_fibre))) THEN
       icode    = -n
       cmessage = "Emission field " // TRIM (em_chem_spec (k)) //               &
                  " not found in emissions structure"

@@ -116,6 +116,9 @@ last_point = p_fieldda
 
 Rgas = rmol/100.0
 
+! initialise reals
+flim = 0.0
+
 ! Initialise arrays
 
 wetrt(:,:,:) = 0.0
